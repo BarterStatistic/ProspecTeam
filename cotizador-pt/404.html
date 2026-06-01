@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#050608" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<title>404 · Prospect Team</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+  body{
+    background:
+      radial-gradient(900px 500px at 12% -10%, rgba(212,162,76,0.10), transparent 60%),
+      radial-gradient(900px 500px at 92% 110%, rgba(79,195,247,0.09), transparent 60%),
+      linear-gradient(180deg, #050608 0%, #08090D 100%);
+    color:#E8ECF1;
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:1.5rem;
+  }
+  .wrap{text-align:center;max-width:480px}
+  .code{
+    font-family:'JetBrains Mono',monospace;
+    font-weight:700;
+    font-size:clamp(5rem, 18vw, 9rem);
+    line-height:1;
+    background:linear-gradient(180deg,#F2C77A 0%,#2FA1D6 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    text-shadow:0 0 40px rgba(212,162,76,0.2);
+    letter-spacing:-0.05em;
+  }
+  h1{
+    font-family:'Cinzel',serif;
+    font-size:clamp(1.25rem,4vw,1.75rem);
+    margin:1rem 0 0.5rem;
+    letter-spacing:0.04em;
+  }
+  p{color:#8B92A3;font-size:0.95rem;line-height:1.6;margin-bottom:2rem}
+  a{
+    display:inline-block;
+    padding:0.85rem 1.75rem;
+    background:linear-gradient(180deg,#E5B65E 0%,#B8893E 100%);
+    color:#1A1208;
+    font-weight:700;
+    font-size:0.85rem;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    border-radius:10px;
+    text-decoration:none;
+    transition:transform 0.2s ease;
+    box-shadow:0 8px 24px -8px rgba(212,162,76,0.4);
+  }
+  a:hover{transform:translateY(-2px)}
+  .tag{
+    font-size:0.65rem;
+    letter-spacing:0.25em;
+    text-transform:uppercase;
+    color:#5A6173;
+    margin-top:2.5rem;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="code">404</div>
+    <h1>Página no encontrada</h1>
+    <p>La ruta que buscas no existe o fue movida. Vuelve al cotizador para continuar.</p>
+    <a href="/">← Ir al cotizador</a>
+    <div class="tag">Prospect Team</div>
+  </div>
+</body>
+</html>

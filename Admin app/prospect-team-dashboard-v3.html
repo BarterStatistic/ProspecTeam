@@ -1,0 +1,2909 @@
+﻿<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prospect Team · Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+    <script src="https://unpkg.com/lucide-react@0.441.0/dist/umd/lucide-react.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel" data-presets="react,env">
+// ============================================================================
+// GLOBALS (reemplaza imports — versión Babel Standalone para navegador)
+// ============================================================================
+const { useState, useEffect, useMemo } = React;
+const {
+  LayoutDashboard, Calendar, BarChart3, DollarSign, CreditCard,
+  TrendingUp, MessageSquare, LogOut, Plus, Trash2, Edit3,
+  CheckCircle2, XCircle, Lock, Mail, Eye, EyeOff, AlertCircle,
+  Bike, Users, Target, ChevronDown, X, Save, Download, Info, Database, UserPlus, UserMinus
+} = lucideReact;
+const {
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell,
+  RadialBarChart, RadialBar
+} = Recharts;
+
+
+// ============================================================================
+// PROSPECT TEAM LOGO (embedded base64)
+// ============================================================================
+const LOGO_PT = "data:image/png;base64,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";
+
+// ============================================================================
+// DESIGN TOKENS (matching Cotizador aesthetic)
+// ============================================================================
+const C = {
+  gold: '#D4A24C',
+  goldLight: '#E5B65E',
+  goldDark: '#B8893E',
+  goldFaint: 'rgba(212,162,76,0.08)',
+  goldBorder: 'rgba(212,162,76,0.2)',
+  cyan: '#4FC3F7',
+  cyanDark: '#2FA1D6',
+  bg: '#050608',
+  bgCard: '#0B0E13',
+  bgCardHover: '#11151C',
+  bgInput: '#0E1218',
+  border: 'rgba(255,255,255,0.06)',
+  borderStrong: 'rgba(255,255,255,0.12)',
+  text: '#E8EAED',
+  textMuted: '#8B92A3',
+  textDim: '#5A6173',
+  success: '#4ADE80',
+  danger: '#F87171',
+  warning: '#FBBF24'
+};
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+const ADMIN_EMAIL = 'braulioacostalong505@gmail.com';
+const ADMIN_PASS = 'xbox2015';
+const STORAGE_KEY = 'prospectteam_dashboard_v1';
+
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+const NIVELES_RENDIMIENTO = [
+  { value: 'excelente', label: 'Excelente', color: C.success },
+  { value: 'bueno', label: 'Bueno', color: '#86EFAC' },
+  { value: 'regular', label: 'Regular', color: C.warning },
+  { value: 'bajo', label: 'Bajo', color: '#FB923C' },
+  { value: 'critico', label: 'Crítico', color: C.danger }
+];
+
+// ============================================================================
+// PERFECTED COMMISSION LOGIC
+// ============================================================================
+// Original Excel had inconsistent formulas. Web-perfected version:
+// - feeBancario  : optional banking/fiscal deduction (default 0%, configurable per sale)
+// - vendedor     : (total - feeBancario) * vendorRate   (default 20%)
+// - promotor     : (total * promotorRate) + bonus       (default 10%, optional bonus/penalty)
+// - admin        : total - vendedor - promotor          (residual)
+// - bonoFinanciamiento : monthly admin bonus = 1% of total financed amount
+function calcComisiones(venta) {
+  const total = Number(venta.comisionTotal) || 0;
+  const feeRate = Number(venta.feeBancario) || 0; // 0..1
+  const vendRate = Number(venta.tasaVendedor) || 0.20;
+  const promRate = Number(venta.tasaPromotor) || 0.10;
+  const promAjuste = Number(venta.ajustePromotor) || 0; // can be negative
+
+  const fee = total * feeRate;
+  const baseVendedor = total - fee;
+  const cVendedor = +(baseVendedor * vendRate).toFixed(2);
+  const cPromotor = +((total * promRate) + promAjuste).toFixed(2);
+  const cAdmin = +(total - cVendedor - cPromotor).toFixed(2);
+
+  return { fee, cVendedor, cPromotor, cAdmin };
+}
+
+// ============================================================================
+// DEFAULT/SEED DATA (from Excel)
+// ============================================================================
+const DEFAULT_DATA = {
+  vendedores: ['Alejandro Acosta', 'Emmanuel Bernal', 'Braulio Acosta'],
+  promotores: ['Alan S', 'Cintya C'],
+  modelosMoto: ['Renegada', 'B52', 'SPF 250', 'Alien R', 'Xtreme RLX', 'U2', 'KF-Racer'],
+  guardias: {
+    semanaInicio: '2026-04-27',
+    semanaFin: '2026-05-04',
+    horarios: {
+      matutino: '10:00 AM – 4:00 PM',
+      vespertino: '4:00 PM – 10:00 PM'
+    },
+    schedule: {
+      matutino:   ['Alejandro Acosta','Alejandro Acosta','Alejandro Acosta','Alejandro Acosta','Alejandro Acosta','Libre','Libre'],
+      vespertino: ['Emmanuel Bernal','Emmanuel Bernal','Emmanuel Bernal','Emmanuel Bernal','Emmanuel Bernal','Emmanuel Bernal','Alejandro Acosta']
+    },
+    metas: { metricoVentas: 7, totalVentas: 6 },
+    reglas: [
+      'Todos los clientes que atiendes deberás asignarlos a tu usuario o mandar un mensaje desde Chatfuel para confirmar atención.',
+      'Si un cliente no fue atendido al cierre del turno, el siguiente turno tiene la responsabilidad de atenderlo.',
+      'Si no puedes cubrir tu guardia, negocia el cambio con otro vendedor y avisa.',
+      'Los prospectos que lleguen entre 10:00 PM y 10:00 AM serán atendidos en el turno matutino.'
+    ]
+  },
+  ventas: [
+    { id: 1, mes: 'Enero', año: 2026, vendedor: 'Alejandro Acosta', numeroVenta: 2, cliente: 'Francisco Cercantes', moto: 'Renegada', comisionTotal: 8312, feeBancario: 0, tasaVendedor: 0.20, tasaPromotor: 0.10, ajustePromotor: 0, promotor: 'Alan S', fechaPago: '2026-01-30', montoFinanciado: 144704, pagadoVendedor: true, pagadoPromotor: true, pagadoAdmin: true, adelantoPromotor: false },
+    { id: 2, mes: 'Enero', año: 2026, vendedor: 'Alejandro Acosta', numeroVenta: 1, cliente: 'Jose Luis Barcena', moto: 'B52', comisionTotal: 10144, feeBancario: 0, tasaVendedor: 0.25, tasaPromotor: 0.12, ajustePromotor: 0, promotor: 'Alan S', fechaPago: '2026-02-06', montoFinanciado: 169076, pagadoVendedor: true, pagadoPromotor: true, pagadoAdmin: true, adelantoPromotor: false },
+    { id: 3, mes: 'Enero', año: 2026, vendedor: 'Emmanuel Bernal', numeroVenta: 1, cliente: 'Humberto', moto: 'Renegada', comisionTotal: 8682, feeBancario: 0, tasaVendedor: 0.20, tasaPromotor: 0.10, ajustePromotor: 0, promotor: 'Cintya C', fechaPago: '2026-02-06', montoFinanciado: 144704, pagadoVendedor: true, pagadoPromotor: true, pagadoAdmin: true, adelantoPromotor: false },
+    { id: 4, mes: 'Febrero', año: 2026, vendedor: 'Alejandro Acosta', numeroVenta: 1, cliente: 'Luis Nava', moto: 'SPF 250', comisionTotal: 9411, feeBancario: 0, tasaVendedor: 0.20, tasaPromotor: 0.10, ajustePromotor: 0, promotor: 'Cintya C', fechaPago: '2026-02-13', montoFinanciado: 156865, pagadoVendedor: true, pagadoPromotor: true, pagadoAdmin: true, adelantoPromotor: false },
+    { id: 5, mes: 'Febrero', año: 2026, vendedor: 'Emmanuel Bernal', numeroVenta: 1, cliente: 'Yessenia Arias', moto: 'Alien R', comisionTotal: 2300, feeBancario: 0, tasaVendedor: 0.20, tasaPromotor: 0.10, ajustePromotor: 0, promotor: 'Cintya C', fechaPago: '2026-02-27', montoFinanciado: 0, pagadoVendedor: true, pagadoPromotor: true, pagadoAdmin: true, adelantoPromotor: false },
+    { id: 6, mes: 'Marzo', año: 2026, vendedor: 'Emmanuel Bernal', numeroVenta: 1, cliente: 'David', moto: 'Xtreme RLX', comisionTotal: 6500, feeBancario: 0, tasaVendedor: 0.20, tasaPromotor: 0.10, ajustePromotor: 0, promotor: 'Cintya C', fechaPago: '2026-04-01', montoFinanciado: 0, pagadoVendedor: false, pagadoPromotor: false, pagadoAdmin: false, adelantoPromotor: false }
+  ],
+  prospectos: [
+    { mes: 'Enero', año: 2026, vendedor: 'Alejandro Acosta', cantidad: 8 },
+    { mes: 'Enero', año: 2026, vendedor: 'Emmanuel Bernal', cantidad: 5 },
+    { mes: 'Febrero', año: 2026, vendedor: 'Alejandro Acosta', cantidad: 8 },
+    { mes: 'Febrero', año: 2026, vendedor: 'Emmanuel Bernal', cantidad: 12 },
+    { mes: 'Marzo', año: 2026, vendedor: 'Alejandro Acosta', cantidad: 13 },
+    { mes: 'Marzo', año: 2026, vendedor: 'Emmanuel Bernal', cantidad: 9 },
+    { mes: 'Abril', año: 2026, vendedor: 'Alejandro Acosta', cantidad: 20 },
+    { mes: 'Abril', año: 2026, vendedor: 'Emmanuel Bernal', cantidad: 4 }
+  ],
+  metasMensuales: {
+    'Enero-2026':   { 'Alejandro Acosta': 2, 'Emmanuel Bernal': 3, 'Braulio Acosta': 0 },
+    'Febrero-2026': { 'Alejandro Acosta': 3, 'Emmanuel Bernal': 2, 'Braulio Acosta': 0 },
+    'Marzo-2026':   { 'Alejandro Acosta': 3, 'Emmanuel Bernal': 3, 'Braulio Acosta': 0 },
+    'Abril-2026':   { 'Alejandro Acosta': 3, 'Emmanuel Bernal': 3, 'Braulio Acosta': 0 }
+  },
+  historicoGlobal: {
+    'Alejandro Acosta': { prospectos: 8, ventas: 3 },
+    'Emmanuel Bernal':  { prospectos: 5, ventas: 1 },
+    'Braulio Acosta':   { prospectos: 0, ventas: 0 }
+  },
+  retros: {
+    'Alejandro Acosta': [],
+    'Emmanuel Bernal': [],
+    'Braulio Acosta': []
+  },
+  gastos: [
+    { id: 1, mes: 'Marzo', año: 2026, diasMes: 31, montoxDia: 85, gastoServicio: 100, gastoGasolina: 50, gastoConstancia: 70, motosVendidas: 3 }
+  ]
+};
+
+// ============================================================================
+// SQL DATABASE MODULE (sql.js — SQLite WebAssembly en navegador)
+// ============================================================================
+let DB = null;
+const DB_STORAGE_KEY = 'prospectteam_sqldb_v1';
+
+const SQL_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gmail TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password TEXT NOT NULL,
+    es_admin INTEGER DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS vendedores (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL UNIQUE);
+  CREATE TABLE IF NOT EXISTS promotores (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL UNIQUE);
+  CREATE TABLE IF NOT EXISTS modelos_moto (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL UNIQUE);
+  CREATE TABLE IF NOT EXISTS ventas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, mes TEXT NOT NULL, anio INTEGER NOT NULL,
+    vendedor TEXT NOT NULL, numero_venta INTEGER, cliente TEXT, moto TEXT,
+    comision_total REAL DEFAULT 0, fee_bancario REAL DEFAULT 0,
+    tasa_vendedor REAL DEFAULT 0.20, tasa_promotor REAL DEFAULT 0.10,
+    ajuste_promotor REAL DEFAULT 0, promotor TEXT, fecha_pago TEXT,
+    monto_financiado REAL DEFAULT 0, pagado_vendedor INTEGER DEFAULT 0,
+    pagado_promotor INTEGER DEFAULT 0, pagado_admin INTEGER DEFAULT 0,
+    adelanto_promotor INTEGER DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS prospectos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, mes TEXT NOT NULL, anio INTEGER NOT NULL,
+    vendedor TEXT NOT NULL, cantidad INTEGER DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS metas_mensuales (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, mes_anio TEXT NOT NULL,
+    vendedor TEXT NOT NULL, meta INTEGER DEFAULT 0, UNIQUE(mes_anio, vendedor)
+  );
+  CREATE TABLE IF NOT EXISTS historico_global (
+    vendedor TEXT PRIMARY KEY, prospectos INTEGER DEFAULT 0, ventas INTEGER DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS retroalimentaciones (
+    id INTEGER PRIMARY KEY, vendedor TEXT NOT NULL,
+    fecha_retro TEXT, nivel TEXT, contenido TEXT
+  );
+  CREATE TABLE IF NOT EXISTS gastos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, mes TEXT NOT NULL, anio INTEGER NOT NULL,
+    dias_mes INTEGER DEFAULT 0, monto_x_dia REAL DEFAULT 0,
+    gasto_servicio REAL DEFAULT 0, gasto_gasolina REAL DEFAULT 0,
+    gasto_constancia REAL DEFAULT 0, motos_vendidas INTEGER DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS guardias_config (id INTEGER PRIMARY KEY DEFAULT 1, config_json TEXT);
+`;
+
+function dbPersist() {
+  if (!DB) return;
+  try {
+    const bArr = DB.export();
+    const b64 = btoa(String.fromCharCode(...bArr));
+    localStorage.setItem(DB_STORAGE_KEY, b64);
+  } catch (e) { console.error('DB persist error:', e); }
+}
+
+function dbSeed(appData) {
+  const { vendedores, promotores, modelosMoto, ventas, prospectos,
+          metasMensuales, historicoGlobal, retros, gastos, guardias } = appData;
+  DB.run('BEGIN TRANSACTION');
+  try {
+    // Cuenta administrador
+    DB.run('INSERT OR IGNORE INTO usuarios (gmail, password, es_admin) VALUES (?,?,?)',
+      [ADMIN_EMAIL, ADMIN_PASS, 1]);
+    (vendedores || []).forEach(v => DB.run('INSERT OR IGNORE INTO vendedores (nombre) VALUES (?)', [v]));
+    (promotores || []).forEach(p => DB.run('INSERT OR IGNORE INTO promotores (nombre) VALUES (?)', [p]));
+    (modelosMoto || []).forEach(m => DB.run('INSERT OR IGNORE INTO modelos_moto (nombre) VALUES (?)', [m]));
+    (ventas || []).forEach(v => DB.run(
+      `INSERT OR IGNORE INTO ventas (id,mes,anio,vendedor,numero_venta,cliente,moto,comision_total,
+       fee_bancario,tasa_vendedor,tasa_promotor,ajuste_promotor,promotor,fecha_pago,monto_financiado,
+       pagado_vendedor,pagado_promotor,pagado_admin,adelanto_promotor) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [v.id, v.mes, v.año, v.vendedor, v.numeroVenta, v.cliente, v.moto, v.comisionTotal,
+       v.feeBancario||0, v.tasaVendedor||0.20, v.tasaPromotor||0.10, v.ajustePromotor||0,
+       v.promotor, v.fechaPago, v.montoFinanciado||0,
+       v.pagadoVendedor?1:0, v.pagadoPromotor?1:0, v.pagadoAdmin?1:0, v.adelantoPromotor?1:0]
+    ));
+    (prospectos || []).forEach(p => DB.run(
+      'INSERT OR IGNORE INTO prospectos (mes,anio,vendedor,cantidad) VALUES (?,?,?,?)',
+      [p.mes, p.año, p.vendedor, p.cantidad]
+    ));
+    Object.entries(metasMensuales || {}).forEach(([mesAnio, vm]) => {
+      Object.entries(vm).forEach(([vendedor, meta]) => DB.run(
+        'INSERT OR REPLACE INTO metas_mensuales (mes_anio,vendedor,meta) VALUES (?,?,?)',
+        [mesAnio, vendedor, meta]
+      ));
+    });
+    Object.entries(historicoGlobal || {}).forEach(([vendedor, d]) => DB.run(
+      'INSERT OR REPLACE INTO historico_global (vendedor,prospectos,ventas) VALUES (?,?,?)',
+      [vendedor, d.prospectos||0, d.ventas||0]
+    ));
+    Object.entries(retros || {}).forEach(([vendedor, list]) => {
+      (list || []).forEach(r => DB.run(
+        'INSERT OR IGNORE INTO retroalimentaciones (id,vendedor,fecha_retro,nivel,contenido) VALUES (?,?,?,?,?)',
+        [r.id, vendedor, r.date, r.nivel, r.comentario]
+      ));
+    });
+    (gastos || []).forEach(g => DB.run(
+      `INSERT OR IGNORE INTO gastos (id,mes,anio,dias_mes,monto_x_dia,gasto_servicio,
+       gasto_gasolina,gasto_constancia,motos_vendidas) VALUES (?,?,?,?,?,?,?,?,?)`,
+      [g.id, g.mes, g.año, g.diasMes, g.montoxDia, g.gastoServicio, g.gastoGasolina, g.gastoConstancia, g.motosVendidas]
+    ));
+    DB.run('INSERT OR REPLACE INTO guardias_config (id,config_json) VALUES (1,?)',
+      [JSON.stringify(guardias || DEFAULT_DATA.guardias)]);
+    DB.run('COMMIT');
+  } catch (e) { DB.run('ROLLBACK'); console.error('dbSeed error:', e); }
+}
+
+function dbToAppData() {
+  if (!DB) return DEFAULT_DATA;
+  const vendedores = (DB.exec('SELECT nombre FROM vendedores ORDER BY id')[0]?.values || []).map(r => r[0]);
+  const promotores = (DB.exec('SELECT nombre FROM promotores ORDER BY id')[0]?.values || []).map(r => r[0]);
+  const modelosMoto = (DB.exec('SELECT nombre FROM modelos_moto ORDER BY id')[0]?.values || []).map(r => r[0]);
+
+  const vr = DB.exec('SELECT id,mes,anio,vendedor,numero_venta,cliente,moto,comision_total,fee_bancario,tasa_vendedor,tasa_promotor,ajuste_promotor,promotor,fecha_pago,monto_financiado,pagado_vendedor,pagado_promotor,pagado_admin,adelanto_promotor FROM ventas ORDER BY id');
+  const ventas = (vr[0]?.values || []).map(r => ({
+    id:r[0], mes:r[1], año:r[2], vendedor:r[3], numeroVenta:r[4], cliente:r[5],
+    moto:r[6], comisionTotal:r[7], feeBancario:r[8], tasaVendedor:r[9],
+    tasaPromotor:r[10], ajustePromotor:r[11], promotor:r[12], fechaPago:r[13],
+    montoFinanciado:r[14], pagadoVendedor:!!r[15], pagadoPromotor:!!r[16],
+    pagadoAdmin:!!r[17], adelantoPromotor:!!r[18]
+  }));
+
+  const pr = DB.exec('SELECT mes,anio,vendedor,cantidad FROM prospectos ORDER BY id');
+  const prospectos = (pr[0]?.values || []).map(r => ({ mes:r[0], año:r[1], vendedor:r[2], cantidad:r[3] }));
+
+  const mr = DB.exec('SELECT mes_anio,vendedor,meta FROM metas_mensuales');
+  const metasMensuales = {};
+  (mr[0]?.values || []).forEach(r => { if (!metasMensuales[r[0]]) metasMensuales[r[0]]={ }; metasMensuales[r[0]][r[1]]=r[2]; });
+
+  const hr = DB.exec('SELECT vendedor,prospectos,ventas FROM historico_global');
+  const historicoGlobal = {};
+  (hr[0]?.values || []).forEach(r => { historicoGlobal[r[0]] = { prospectos:r[1], ventas:r[2] }; });
+
+  const rr = DB.exec('SELECT id,vendedor,fecha_retro,nivel,contenido FROM retroalimentaciones ORDER BY fecha_retro');
+  const retros = {};
+  vendedores.forEach(v => { retros[v] = []; });
+  (rr[0]?.values || []).forEach(r => { if (!retros[r[1]]) retros[r[1]]=[]; retros[r[1]].push({ id:r[0], date:r[2], nivel:r[3], comentario:r[4] }); });
+
+  const gr = DB.exec('SELECT id,mes,anio,dias_mes,monto_x_dia,gasto_servicio,gasto_gasolina,gasto_constancia,motos_vendidas FROM gastos ORDER BY id');
+  const gastos = (gr[0]?.values || []).map(r => ({ id:r[0], mes:r[1], año:r[2], diasMes:r[3], montoxDia:r[4], gastoServicio:r[5], gastoGasolina:r[6], gastoConstancia:r[7], motosVendidas:r[8] }));
+
+  const gcr = DB.exec('SELECT config_json FROM guardias_config WHERE id=1');
+  const guardias = gcr[0]?.values[0]?.[0] ? JSON.parse(gcr[0].values[0][0]) : DEFAULT_DATA.guardias;
+
+  return { vendedores, promotores, modelosMoto, ventas, prospectos, metasMensuales, historicoGlobal, retros, gastos, guardias };
+}
+
+function appDataToDB(appData) {
+  if (!DB) return;
+  const { vendedores, promotores, modelosMoto, ventas, prospectos,
+          metasMensuales, historicoGlobal, retros, gastos, guardias } = appData;
+  DB.run('BEGIN TRANSACTION');
+  try {
+    DB.run('DELETE FROM vendedores');
+    (vendedores||[]).forEach(v => DB.run('INSERT INTO vendedores (nombre) VALUES (?)', [v]));
+    DB.run('DELETE FROM promotores');
+    (promotores||[]).forEach(p => DB.run('INSERT INTO promotores (nombre) VALUES (?)', [p]));
+    DB.run('DELETE FROM modelos_moto');
+    (modelosMoto||[]).forEach(m => DB.run('INSERT INTO modelos_moto (nombre) VALUES (?)', [m]));
+    DB.run('DELETE FROM ventas');
+    (ventas||[]).forEach(v => DB.run(
+      `INSERT INTO ventas (id,mes,anio,vendedor,numero_venta,cliente,moto,comision_total,
+       fee_bancario,tasa_vendedor,tasa_promotor,ajuste_promotor,promotor,fecha_pago,monto_financiado,
+       pagado_vendedor,pagado_promotor,pagado_admin,adelanto_promotor) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [v.id, v.mes, v.año, v.vendedor, v.numeroVenta, v.cliente, v.moto, v.comisionTotal,
+       v.feeBancario||0, v.tasaVendedor||0.20, v.tasaPromotor||0.10, v.ajustePromotor||0,
+       v.promotor, v.fechaPago, v.montoFinanciado||0,
+       v.pagadoVendedor?1:0, v.pagadoPromotor?1:0, v.pagadoAdmin?1:0, v.adelantoPromotor?1:0]
+    ));
+    DB.run('DELETE FROM prospectos');
+    (prospectos||[]).forEach(p => DB.run('INSERT INTO prospectos (mes,anio,vendedor,cantidad) VALUES (?,?,?,?)', [p.mes,p.año,p.vendedor,p.cantidad]));
+    DB.run('DELETE FROM metas_mensuales');
+    Object.entries(metasMensuales||{}).forEach(([k,vm]) => Object.entries(vm).forEach(([vend,meta]) =>
+      DB.run('INSERT INTO metas_mensuales (mes_anio,vendedor,meta) VALUES (?,?,?)', [k,vend,meta])
+    ));
+    DB.run('DELETE FROM historico_global');
+    Object.entries(historicoGlobal||{}).forEach(([vend,d]) =>
+      DB.run('INSERT INTO historico_global (vendedor,prospectos,ventas) VALUES (?,?,?)', [vend,d.prospectos||0,d.ventas||0])
+    );
+    DB.run('DELETE FROM retroalimentaciones');
+    Object.entries(retros||{}).forEach(([vend,list]) =>
+      (list||[]).forEach(r => DB.run('INSERT INTO retroalimentaciones (id,vendedor,fecha_retro,nivel,contenido) VALUES (?,?,?,?,?)', [r.id,vend,r.date,r.nivel,r.comentario]))
+    );
+    DB.run('DELETE FROM gastos');
+    (gastos||[]).forEach(g => DB.run(
+      'INSERT INTO gastos (id,mes,anio,dias_mes,monto_x_dia,gasto_servicio,gasto_gasolina,gasto_constancia,motos_vendidas) VALUES (?,?,?,?,?,?,?,?,?)',
+      [g.id,g.mes,g.año,g.diasMes,g.montoxDia,g.gastoServicio,g.gastoGasolina,g.gastoConstancia,g.motosVendidas]
+    ));
+    DB.run('DELETE FROM guardias_config');
+    DB.run('INSERT INTO guardias_config (id,config_json) VALUES (1,?)', [JSON.stringify(guardias||DEFAULT_DATA.guardias)]);
+    DB.run('COMMIT');
+    dbPersist();
+  } catch (e) { DB.run('ROLLBACK'); console.error('appDataToDB error:', e); }
+}
+
+async function initDB() {
+  const SQL = await window.initSqlJs({
+    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${file}`
+  });
+  const saved = localStorage.getItem(DB_STORAGE_KEY);
+  if (saved) {
+    try {
+      const buf = Uint8Array.from(atob(saved), c => c.charCodeAt(0));
+      DB = new SQL.Database(buf);
+      DB.run(SQL_SCHEMA); // ensure schema is up-to-date (creates new tables if missing)
+      // Garantizar que el admin siempre exista (migración desde versiones anteriores)
+      DB.run('INSERT OR IGNORE INTO usuarios (gmail, password, es_admin) VALUES (?,?,?)',
+        [ADMIN_EMAIL, ADMIN_PASS, 1]);
+      dbPersist();
+    } catch (e) {
+      console.warn('DB load failed, rebuilding:', e);
+      DB = new SQL.Database();
+      DB.run(SQL_SCHEMA);
+      const old = localStorage.getItem(STORAGE_KEY);
+      dbSeed(old ? (() => { try { return JSON.parse(old); } catch(_){ return DEFAULT_DATA; } })() : DEFAULT_DATA);
+      dbPersist();
+    }
+  } else {
+    DB = new SQL.Database();
+    DB.run(SQL_SCHEMA);
+    const old = localStorage.getItem(STORAGE_KEY);
+    if (old) {
+      try { dbSeed(JSON.parse(old)); localStorage.removeItem(STORAGE_KEY); }
+      catch(_) { dbSeed(DEFAULT_DATA); }
+    } else {
+      dbSeed(DEFAULT_DATA);
+    }
+    dbPersist();
+  }
+  return DB;
+}
+
+function dbVerifyLogin(email, password) {
+  if (!DB) {
+    return email.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASS ? { isAdmin: true } : null;
+  }
+  try {
+    const result = DB.exec(
+      'SELECT es_admin FROM usuarios WHERE gmail = ? AND password = ? LIMIT 1',
+      [email.trim().toLowerCase(), password]
+    );
+    if (result[0]?.values[0]) {
+      return { isAdmin: !!result[0].values[0][0] };
+    }
+    return null;
+  } catch (e) {
+    console.error('Login query error:', e);
+    return email.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASS ? { isAdmin: true } : null;
+  }
+}
+
+// Legacy wrappers (kept for compatibility)
+async function loadData() { return DEFAULT_DATA; }
+async function saveData() {}
+
+// ============================================================================
+// INJECT FONT + GLOBAL STYLES
+// ============================================================================
+function useGlobalStyles() {
+  useEffect(() => {
+    if (document.getElementById('pt-fonts')) return;
+    const link = document.createElement('link');
+    link.id = 'pt-fonts';
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600;700;800;900&display=swap';
+    document.head.appendChild(link);
+
+    const style = document.createElement('style');
+    style.id = 'pt-styles';
+    style.textContent = `
+      .pt-display { font-family: 'League Spartan', sans-serif; font-weight: 700; letter-spacing: 0.02em; }
+      .pt-body { font-family: 'League Spartan', sans-serif; font-weight: 400; }
+      body { font-family: 'League Spartan', sans-serif; }
+      .pt-grad-text {
+        background: linear-gradient(180deg, #F2C77A 0%, #B8893E 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .pt-grad-cyan {
+        background: linear-gradient(180deg, #6BD3FA 0%, #2FA1D6 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .pt-btn-gold {
+        background: linear-gradient(180deg, #E5B65E 0%, #B8893E 100%);
+        color: #1A1208; font-weight: 700; letter-spacing: 0.06em;
+        box-shadow: 0 8px 24px -8px rgba(212,162,76,0.4);
+        transition: transform .2s ease, box-shadow .2s ease;
+      }
+      .pt-btn-gold:hover { transform: translateY(-1px); box-shadow: 0 12px 32px -8px rgba(212,162,76,0.6); }
+      .pt-btn-gold:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+      .pt-card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.005) 100%);
+        border: 1px solid ${C.border};
+        backdrop-filter: blur(12px);
+      }
+      .pt-input {
+        background: ${C.bgInput}; border: 1px solid ${C.border};
+        color: ${C.text}; transition: border-color .15s ease;
+      }
+      .pt-input:focus { outline: none; border-color: ${C.gold}; }
+      .pt-input::placeholder { color: ${C.textDim}; }
+      .pt-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+      .pt-scroll::-webkit-scrollbar-track { background: transparent; }
+      .pt-scroll::-webkit-scrollbar-thumb {
+        background: rgba(212,162,76,0.2); border-radius: 4px;
+      }
+      .pt-scroll::-webkit-scrollbar-thumb:hover { background: rgba(212,162,76,0.4); }
+      @keyframes pt-fade-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .pt-fade-in { animation: pt-fade-in 0.4s ease-out; }
+      .pt-shine {
+        position: relative; overflow: hidden;
+      }
+      .pt-shine::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(105deg, transparent 40%, rgba(212,162,76,0.15) 50%, transparent 60%);
+        transform: translateX(-100%); transition: transform .8s ease;
+      }
+      .pt-shine:hover::after { transform: translateX(100%); }
+    `;
+    document.head.appendChild(style);
+    return () => {};
+  }, []);
+}
+
+// ============================================================================
+// LOGIN SCREEN
+// ============================================================================
+function LoginScreen({ onLogin }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [remember, setRemember] = useState(false);
+
+  // Load remembered email on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        if (typeof window !== 'undefined' && window.storage) {
+          const r = await window.storage.get('prospectteam_remember_email');
+          if (r && r.value) {
+            setEmail(r.value);
+            setRemember(true);
+          }
+        }
+      } catch (e) { /* nothing remembered */ }
+    })();
+  }, []);
+
+  const submit = () => {
+    setError('');
+    setLoading(true);
+    setTimeout(async () => {
+      const user = dbVerifyLogin(email, password);
+      if (user) {
+        // Persist or clear remembered email
+        try {
+          if (typeof window !== 'undefined' && window.storage) {
+            if (remember) {
+              await window.storage.set('prospectteam_remember_email', email.trim().toLowerCase());
+            } else {
+              await window.storage.delete('prospectteam_remember_email');
+            }
+          }
+        } catch (e) { /* ignore storage errors */ }
+        onLogin(user.isAdmin);
+      } else {
+        setError('Credenciales inválidas. Verifica e intenta de nuevo.');
+        setLoading(false);
+      }
+    }, 400);
+  };
+
+  const onKey = (e) => { if (e.key === 'Enter') submit(); };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6 pt-body"
+         style={{ background: C.bg }}>
+      <div className="w-full max-w-md pt-fade-in">
+        {/* Brand block */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center mb-5">
+            <img src={LOGO_PT} alt="Prospect Team" className="w-24 h-24 object-contain"
+                 style={{ filter: 'drop-shadow(0 12px 32px rgba(212,162,76,0.35))' }} />
+          </div>
+          <h1 className="pt-display text-3xl mb-2" style={{ color: C.gold }}>PROSPECT TEAM</h1>
+          <p className="text-xs uppercase tracking-[0.3em]" style={{ color: C.textDim }}>
+            Panel Administrativo · Dinamo
+          </p>
+        </div>
+
+        {/* Form card */}
+        <div className="pt-card rounded-2xl p-8" style={{ borderColor: C.goldBorder }}>
+          <h2 className="pt-display text-lg mb-1" style={{ color: C.text }}>Acceso seguro</h2>
+          <p className="text-sm mb-6" style={{ color: C.textMuted }}>
+            Inicia sesión para acceder al panel.
+          </p>
+
+          <div className="mb-4">
+            <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: C.textMuted }}>
+              Correo
+            </label>
+            <div className="relative">
+              <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: C.textDim }} />
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={onKey}
+                placeholder="tu@correo.com"
+                className="pt-input w-full rounded-lg pl-10 pr-3 py-2.5 text-sm"
+                autoComplete="email"
+              />
+            </div>
+          </div>
+
+          <div className="mb-2">
+            <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: C.textMuted }}>
+              Contraseña
+            </label>
+            <div className="relative">
+              <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: C.textDim }} />
+              <input
+                type={showPass ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={onKey}
+                placeholder="••••••••"
+                className="pt-input w-full rounded-lg pl-10 pr-10 py-2.5 text-sm"
+                autoComplete="current-password"
+              />
+              <button type="button" onClick={() => setShowPass(s => !s)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2"
+                      style={{ color: C.textDim }}>
+                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Remember me toggle */}
+          <button type="button" onClick={() => setRemember(r => !r)}
+                  className="mt-4 flex items-center gap-2.5 text-xs group transition"
+                  style={{ color: remember ? C.gold : C.textMuted }}>
+            <span className="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition"
+                  style={{
+                    background: remember ? C.gold : 'transparent',
+                    borderColor: remember ? C.gold : C.borderStrong
+                  }}>
+              {remember && <CheckCircle2 size={11} color="#1A1208" strokeWidth={3} />}
+            </span>
+            <span className="select-none">Recordar mi cuenta en este dispositivo</span>
+          </button>
+
+          {error && (
+            <div className="flex items-start gap-2 mt-4 p-3 rounded-lg text-xs"
+                 style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', color: C.danger }}>
+              <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <button type="button" onClick={submit} disabled={loading}
+                  className="pt-btn-gold w-full mt-6 py-3 rounded-lg text-sm uppercase">
+            {loading ? 'Verificando…' : 'Iniciar sesión'}
+          </button>
+
+          <p className="text-center text-xs mt-6 pt-display tracking-[0.2em]"
+             style={{ color: C.textDim }}>
+            PERSEVERA PARA TRIUNFAR
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// SHARED UI COMPONENTS
+// ============================================================================
+function InfoTip({ text, side = 'top' }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative inline-flex items-center"
+          onMouseEnter={() => setShow(true)}
+          onMouseLeave={() => setShow(false)}>
+      <Info size={11} style={{ color: C.textDim, cursor: 'help', opacity: 0.7 }} />
+      {show && (
+        <span className="absolute z-[60] pt-fade-in"
+              style={{
+                ...(side === 'top' ? { bottom: '100%', marginBottom: 6, left: '50%', transform: 'translateX(-50%)' }
+                                   : { top: '100%', marginTop: 6, left: '50%', transform: 'translateX(-50%)' }),
+                background: '#0E1218',
+                border: `1px solid ${C.goldBorder}`,
+                color: C.text,
+                padding: '8px 10px',
+                borderRadius: 8,
+                width: 240,
+                fontSize: 11,
+                lineHeight: 1.45,
+                fontWeight: 400,
+                letterSpacing: 'normal',
+                textTransform: 'none',
+                boxShadow: '0 12px 28px -8px rgba(0,0,0,0.7)',
+                pointerEvents: 'none'
+              }}>
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function Card({ children, className = '', style = {} }) {
+  return (
+    <div className={`pt-card rounded-xl ${className}`} style={style}>
+      {children}
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, value, sublabel, accent = 'gold', info }) {
+  const color = accent === 'cyan' ? C.cyan : C.gold;
+  return (
+    <Card className="p-5">
+      <div className="flex items-start justify-between mb-3">
+        <div className="text-[10px] uppercase tracking-[0.18em] flex items-center gap-1.5" style={{ color: C.textMuted }}>
+          <span>{label}</span>
+          {info && <InfoTip text={info} />}
+        </div>
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center"
+             style={{ background: `${color}15`, border: `1px solid ${color}33` }}>
+          <Icon size={16} style={{ color }} />
+        </div>
+      </div>
+      <div className="pt-display text-2xl font-semibold" style={{ color: C.text }}>{value}</div>
+      {sublabel && <div className="text-xs mt-1" style={{ color: C.textMuted }}>{sublabel}</div>}
+    </Card>
+  );
+}
+
+function SectionHeader({ title, subtitle, action, info }) {
+  return (
+    <div className="flex items-end justify-between mb-6 pt-fade-in">
+      <div>
+        <div className="flex items-center gap-2">
+          <h2 className="pt-display text-2xl pt-grad-text">{title}</h2>
+          {info && <InfoTip text={info} side="bottom" />}
+        </div>
+        {subtitle && <p className="text-sm mt-1" style={{ color: C.textMuted }}>{subtitle}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function Button({ children, onClick, variant = 'gold', size = 'md', className = '', type = 'button', disabled }) {
+  const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm', lg: 'px-5 py-2.5 text-sm' };
+  const variants = {
+    gold: 'pt-btn-gold',
+    ghost: 'border',
+    danger: ''
+  };
+  const variantStyle = variant === 'ghost'
+    ? { background: 'transparent', borderColor: C.borderStrong, color: C.text }
+    : variant === 'danger'
+    ? { background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', color: C.danger }
+    : {};
+  return (
+    <button type={type} disabled={disabled} onClick={onClick}
+            className={`${sizes[size]} ${variants[variant]} rounded-lg uppercase font-semibold tracking-wider transition ${className}`}
+            style={variantStyle}>
+      {children}
+    </button>
+  );
+}
+
+function Input({ label, value, onChange, type = 'text', placeholder, options, suffix, step, min, max, info }) {
+  return (
+    <div>
+      {label && (
+        <label className="block text-[10px] uppercase tracking-[0.18em] mb-1.5 flex items-center gap-1.5" style={{ color: C.textMuted }}>
+          <span>{label}</span>
+          {info && <InfoTip text={info} />}
+        </label>
+      )}
+      <div className="relative">
+        {options ? (
+          <select value={value} onChange={e => onChange(e.target.value)}
+                  className="pt-input w-full rounded-lg px-3 py-2 text-sm pr-8 appearance-none">
+            {options.map((o, i) => {
+              const v = typeof o === 'object' ? o.value : o;
+              const l = typeof o === 'object' ? o.label : o;
+              return <option key={i} value={v}>{l}</option>;
+            })}
+          </select>
+        ) : (
+          <input type={type} value={value} step={step} min={min} max={max}
+                 onChange={e => {
+                   if (type === 'number') {
+                     const raw = e.target.value;
+                     if (raw === '') return onChange('');
+                     let n = Number(raw);
+                     if (min !== undefined && n < min) n = min;
+                     if (max !== undefined && n > max) n = max;
+                     onChange(n);
+                   } else {
+                     onChange(e.target.value);
+                   }
+                 }}
+                 placeholder={placeholder}
+                 className={`pt-input w-full rounded-lg px-3 py-2 text-sm ${suffix ? 'pr-10' : ''}`} />
+        )}
+        {options && <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: C.textDim }} />}
+        {suffix && !options && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: C.textDim }}>{suffix}</span>}
+      </div>
+    </div>
+  );
+}
+
+function Modal({ open, onClose, title, children, footer, maxWidth = 'max-w-2xl' }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pt-fade-in"
+         style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+         onClick={onClose}>
+      <div className={`${maxWidth} w-full pt-card rounded-2xl pt-scroll overflow-y-auto`}
+           style={{ maxHeight: '90vh', borderColor: C.goldBorder }}
+           onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: C.border }}>
+          <h3 className="pt-display text-lg" style={{ color: C.text }}>{title}</h3>
+          <button onClick={onClose} className="p-1 rounded hover:bg-white/5" style={{ color: C.textMuted }}>
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-5">{children}</div>
+        {footer && (
+          <div className="flex justify-end gap-2 p-5 border-t" style={{ borderColor: C.border }}>
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const fmt = {
+  money: (n) => `$${(Number(n) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+  pct: (n) => `${((Number(n) || 0) * 100).toFixed(1)}%`,
+  int: (n) => (Number(n) || 0).toLocaleString('es-MX')
+};
+
+// ============================================================================
+// DASHBOARD OVERVIEW
+// ============================================================================
+function DashboardView({ data }) {
+  const stats = useMemo(() => {
+    const totalVentas = data.ventas.length;
+    const ingresoTotal = data.ventas.reduce((s, v) => s + (v.comisionTotal || 0), 0);
+    const totalAdmin = data.ventas.reduce((s, v) => s + calcComisiones(v).cAdmin, 0);
+    const ventasPorVendedor = {};
+    data.ventas.forEach(v => {
+      ventasPorVendedor[v.vendedor] = (ventasPorVendedor[v.vendedor] || 0) + 1;
+    });
+    return { totalVentas, ingresoTotal, totalAdmin, ventasPorVendedor };
+  }, [data]);
+
+  const ventasPorMes = useMemo(() => {
+    const map = {};
+    data.ventas.forEach(v => {
+      const k = `${v.mes.substring(0, 3)}-${String(v.año).slice(-2)}`;
+      if (!map[k]) map[k] = { mes: k, ventas: 0, comisiones: 0 };
+      map[k].ventas += 1;
+      map[k].comisiones += v.comisionTotal || 0;
+    });
+    return Object.values(map);
+  }, [data]);
+
+  const distribucionVendedor = useMemo(() => {
+    return Object.entries(stats.ventasPorVendedor).map(([name, value]) => ({ name, value }));
+  }, [stats]);
+
+  const COLORS = [C.gold, C.cyan, C.goldDark, C.cyanDark];
+
+  return (
+    <div className="pt-fade-in">
+      <SectionHeader title="Vista General" subtitle="Resumen ejecutivo del equipo Prospect Team"
+                     info="Pantalla principal con KPIs clave, gráficos de desempeño y las últimas ventas registradas." />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard icon={DollarSign} label="Ventas totales" value={fmt.int(stats.totalVentas)} sublabel="todas las ventas registradas"
+                  info="Número total de ventas registradas en todo el sistema, sin importar mes o año." />
+        <StatCard icon={TrendingUp} label="Ingreso bruto" value={fmt.money(stats.ingresoTotal)} sublabel="comisión total acumulada" accent="cyan"
+                  info="Suma de las comisiones totales de todas las ventas. Antes de distribuir entre vendedor, promotor y admin." />
+        <StatCard icon={Target} label="Neto admin" value={fmt.money(stats.totalAdmin)} sublabel="después de comisiones"
+                  info="Lo que recibe administración después de pagar a vendedores y promotores. No incluye gastos." />
+        <StatCard icon={Users} label="Vendedores" value={data.vendedores.length} sublabel={`${data.promotores.length} promotores`} accent="cyan"
+                  info="Total de personas en el equipo, separadas en vendedores (cierran ventas) y promotores (captan clientes)." />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <Card className="p-5 lg:col-span-2">
+          <h3 className="pt-display text-base mb-4" style={{ color: C.text }}>Ventas por mes</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={ventasPorMes}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+              <XAxis dataKey="mes" stroke={C.textMuted} fontSize={11} />
+              <YAxis stroke={C.textMuted} fontSize={11} />
+              <Tooltip contentStyle={{ background: C.bgCard, border: `1px solid ${C.goldBorder}`, borderRadius: 8, fontSize: 12 }} />
+              <Bar dataKey="ventas" fill={C.gold} radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card className="p-5">
+          <h3 className="pt-display text-base mb-4" style={{ color: C.text }}>Distribución por vendedor</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <PieChart>
+              <Pie data={distribucionVendedor} dataKey="value" nameKey="name" cx="50%" cy="50%"
+                   innerRadius={50} outerRadius={80} paddingAngle={3}>
+                {distribucionVendedor.map((_, i) => (
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={{ background: C.bgCard, border: `1px solid ${C.goldBorder}`, borderRadius: 8, fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 11, color: C.textMuted }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      <Card className="p-5">
+        <h3 className="pt-display text-base mb-4" style={{ color: C.text }}>Últimas ventas</h3>
+        <div className="overflow-x-auto pt-scroll">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-wider" style={{ color: C.textMuted }}>
+                <th className="pb-3 font-medium">Vendedor</th>
+                <th className="pb-3 font-medium">Cliente</th>
+                <th className="pb-3 font-medium">Moto</th>
+                <th className="pb-3 font-medium">Mes</th>
+                <th className="pb-3 font-medium">Fecha pago</th>
+                <th className="pb-3 font-medium text-right">Comisión</th>
+                <th className="pb-3 font-medium text-right">Neto Admin</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...data.ventas].slice(-6).reverse().map(v => {
+                const { cAdmin } = calcComisiones(v);
+                return (
+                  <tr key={v.id} className="border-t" style={{ borderColor: C.border, color: C.text }}>
+                    <td className="py-3">{v.vendedor}</td>
+                    <td className="py-3" style={{ color: C.textMuted }}>{v.cliente}</td>
+                    <td className="py-3" style={{ color: C.textMuted }}>{v.moto}</td>
+                    <td className="py-3" style={{ color: C.textMuted }}>{v.mes} {v.año}</td>
+                    <td className="py-3" style={{ color: C.textMuted }}>
+                      {v.fechaPago ? new Date(v.fechaPago + 'T00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : <span style={{ color: C.textDim }}>—</span>}
+                    </td>
+                    <td className="py-3 text-right">{fmt.money(v.comisionTotal)}</td>
+                    <td className="py-3 text-right" style={{ color: C.gold, fontWeight: 600 }}>{fmt.money(cAdmin)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// PNG EXPORT — Guardias
+// ============================================================================
+function downloadGuardiasPNG(g) {
+  const W = 1400, H = 1000;
+
+  const render = (logoImg) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // Background
+    ctx.fillStyle = '#050608';
+    ctx.fillRect(0, 0, W, H);
+
+    // Top accent line
+    const grad = ctx.createLinearGradient(0, 0, W, 0);
+    grad.addColorStop(0, '#D4A24C');
+    grad.addColorStop(1, '#4FC3F7');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, 4);
+
+    // Logo (top-left)
+    if (logoImg) {
+      try { ctx.drawImage(logoImg, 50, 30, 90, 90); } catch (e) { /* ignore */ }
+    }
+
+    // Header
+    ctx.fillStyle = '#D4A24C';
+    ctx.font = '800 44px "League Spartan", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PROSPECT TEAM', W / 2, 80);
+
+    ctx.fillStyle = '#8B92A3';
+    ctx.font = '500 14px "League Spartan", sans-serif';
+    ctx.fillText('GUARDIAS · DINAMO', W / 2, 108);
+
+    // Period
+    const formatDate = (d) => {
+      if (!d) return '—';
+      const date = new Date(d + 'T00:00');
+      return date.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+    };
+    ctx.fillStyle = '#E8EAED';
+    ctx.font = '600 18px "League Spartan", sans-serif';
+    ctx.fillText(`${formatDate(g.semanaInicio)}  —  ${formatDate(g.semanaFin)}`, W / 2, 145);
+
+    // Schedule grid
+    const dayLabels = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
+    const gridX = 80;
+    const gridY = 200;
+    const turnoColW = 220;
+    const dayColW = (W - gridX * 2 - turnoColW) / 7;
+    const rowH = 90;
+
+    // Day headers
+    ctx.fillStyle = '#8B92A3';
+    ctx.font = '700 12px "League Spartan", sans-serif';
+    ctx.textAlign = 'center';
+    dayLabels.forEach((d, i) => {
+      ctx.fillText(d, gridX + turnoColW + dayColW * i + dayColW / 2, gridY - 10);
+    });
+
+    // Rows: matutino + vespertino
+    const turnos = ['matutino', 'vespertino'];
+    turnos.forEach((turno, ri) => {
+      const y = gridY + ri * rowH;
+
+      ctx.fillStyle = '#E8EAED';
+      ctx.font = '700 17px "League Spartan", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(turno.toUpperCase(), gridX + 10, y + 35);
+      ctx.fillStyle = '#8B92A3';
+      ctx.font = '500 12px "League Spartan", sans-serif';
+      ctx.fillText(g.horarios[turno] || '', gridX + 10, y + 58);
+
+      const slots = (g.schedule && g.schedule[turno]) || [];
+      slots.forEach((nombre, di) => {
+        const x = gridX + turnoColW + di * dayColW;
+        const isLibre = nombre === 'Libre' || !nombre;
+
+        ctx.fillStyle = isLibre ? 'rgba(255,255,255,0.025)' : 'rgba(212,162,76,0.10)';
+        ctx.strokeStyle = isLibre ? 'rgba(255,255,255,0.08)' : 'rgba(212,162,76,0.30)';
+        ctx.lineWidth = 1;
+        const cx = x + 6, cy = y + 12, cw = dayColW - 12, ch = rowH - 24;
+        const r = 8;
+        ctx.beginPath();
+        ctx.moveTo(cx + r, cy);
+        ctx.lineTo(cx + cw - r, cy);
+        ctx.quadraticCurveTo(cx + cw, cy, cx + cw, cy + r);
+        ctx.lineTo(cx + cw, cy + ch - r);
+        ctx.quadraticCurveTo(cx + cw, cy + ch, cx + cw - r, cy + ch);
+        ctx.lineTo(cx + r, cy + ch);
+        ctx.quadraticCurveTo(cx, cy + ch, cx, cy + ch - r);
+        ctx.lineTo(cx, cy + r);
+        ctx.quadraticCurveTo(cx, cy, cx + r, cy);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = isLibre ? '#5A6173' : '#D4A24C';
+        ctx.textAlign = 'center';
+        ctx.font = '700 14px "League Spartan", sans-serif';
+        const display = isLibre ? '—' : String(nombre).split(' ')[0];
+        ctx.fillText(display, x + dayColW / 2, y + rowH / 2 + 5);
+      });
+    });
+
+    // Metas summary box
+    const metasY = gridY + 2 * rowH + 30;
+    ctx.fillStyle = 'rgba(212,162,76,0.06)';
+    ctx.strokeStyle = 'rgba(212,162,76,0.25)';
+    ctx.lineWidth = 1;
+    const mbX = gridX, mbY = metasY, mbW = W - gridX * 2, mbH = 70;
+    const r2 = 12;
+    ctx.beginPath();
+    ctx.moveTo(mbX + r2, mbY);
+    ctx.lineTo(mbX + mbW - r2, mbY);
+    ctx.quadraticCurveTo(mbX + mbW, mbY, mbX + mbW, mbY + r2);
+    ctx.lineTo(mbX + mbW, mbY + mbH - r2);
+    ctx.quadraticCurveTo(mbX + mbW, mbY + mbH, mbX + mbW - r2, mbY + mbH);
+    ctx.lineTo(mbX + r2, mbY + mbH);
+    ctx.quadraticCurveTo(mbX, mbY + mbH, mbX, mbY + mbH - r2);
+    ctx.lineTo(mbX, mbY + r2);
+    ctx.quadraticCurveTo(mbX, mbY, mbX + r2, mbY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#8B92A3';
+    ctx.font = '600 11px "League Spartan", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('META MÉTRICO DE VENTAS', mbX + 30, mbY + 28);
+    ctx.fillStyle = '#D4A24C';
+    ctx.font = '800 28px "League Spartan", sans-serif';
+    ctx.fillText(String((g.metas && g.metas.metricoVentas) || 0), mbX + 30, mbY + 60);
+
+    ctx.fillStyle = '#8B92A3';
+    ctx.font = '600 11px "League Spartan", sans-serif';
+    ctx.fillText('META TOTAL DE VENTAS', mbX + mbW / 2 + 30, mbY + 28);
+    ctx.fillStyle = '#4FC3F7';
+    ctx.font = '800 28px "League Spartan", sans-serif';
+    ctx.fillText(String((g.metas && g.metas.totalVentas) || 0), mbX + mbW / 2 + 30, mbY + 60);
+
+    // Rules section
+    const rulesY = metasY + mbH + 50;
+    ctx.fillStyle = '#D4A24C';
+    ctx.font = '800 18px "League Spartan", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('REGLAS DE OPERACIÓN', gridX, rulesY);
+
+    ctx.strokeStyle = 'rgba(212,162,76,0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(gridX, rulesY + 8);
+    ctx.lineTo(gridX + 220, rulesY + 8);
+    ctx.stroke();
+
+    const wrapText = (text, maxWidth) => {
+      const words = String(text).split(' ');
+      const lines = [];
+      let line = '';
+      words.forEach(w => {
+        const test = line + w + ' ';
+        if (ctx.measureText(test).width > maxWidth && line) {
+          lines.push(line.trim());
+          line = w + ' ';
+        } else {
+          line = test;
+        }
+      });
+      if (line) lines.push(line.trim());
+      return lines;
+    };
+
+    ctx.font = '500 14px "League Spartan", sans-serif';
+    let curY = rulesY + 40;
+    (g.reglas || []).forEach((rule, i) => {
+      ctx.fillStyle = 'rgba(212,162,76,0.15)';
+      ctx.beginPath();
+      ctx.arc(gridX + 12, curY - 5, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#D4A24C';
+      ctx.font = '700 11px "League Spartan", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(String(i + 1), gridX + 12, curY - 1);
+
+      ctx.fillStyle = '#B5BCCB';
+      ctx.font = '500 14px "League Spartan", sans-serif';
+      ctx.textAlign = 'left';
+      const lines = wrapText(rule, W - gridX * 2 - 40);
+      lines.forEach((ln, li) => {
+        ctx.fillText(ln, gridX + 35, curY + li * 20);
+      });
+      curY += lines.length * 20 + 14;
+    });
+
+    // Footer
+    ctx.fillStyle = '#5A6173';
+    ctx.font = '600 11px "League Spartan", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PERSEVERA PARA TRIUNFAR  ·  PROSPECT TEAM', W / 2, H - 30);
+
+    // Trigger download
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `guardias-${g.semanaInicio || 'prospect-team'}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  };
+
+  // Preload logo, then render. Fallback if load fails.
+  try {
+    const img = new Image();
+    img.onload = () => render(img);
+    img.onerror = () => render(null);
+    img.src = LOGO_PT;
+  } catch (e) {
+    render(null);
+  }
+}
+
+// ============================================================================
+// GUARDIAS (SHIFTS) MODULE
+// ============================================================================
+function GuardiasView({ data, setData }) {
+  const [editing, setEditing] = useState(false);
+  const g = data.guardias;
+  const now = new Date();
+  const [selMes, setSelMes] = useState(MESES[now.getMonth()]);
+  const [selAño, setSelAño] = useState(now.getFullYear());
+
+  const añosDisponiblesGuardias = useMemo(() => {
+    const set = new Set([now.getFullYear(), now.getFullYear() - 1, now.getFullYear() + 1, ...data.ventas.map(v => v.año)]);
+    return [...set].sort();
+  }, [data.ventas]);
+
+  const updateSlot = (turno, dayIdx, value) => {
+    setData(d => ({
+      ...d,
+      guardias: {
+        ...d.guardias,
+        schedule: {
+          ...d.guardias.schedule,
+          [turno]: d.guardias.schedule[turno].map((v, i) => i === dayIdx ? value : v)
+        }
+      }
+    }));
+  };
+
+  const updateMeta = (key, val) => {
+    setData(d => ({ ...d, guardias: { ...d.guardias, metas: { ...d.guardias.metas, [key]: Number(val) || 0 } } }));
+  };
+
+  const updateRange = (key, val) => {
+    setData(d => ({ ...d, guardias: { ...d.guardias, [key]: val } }));
+  };
+
+  const opciones = ['Libre', ...data.vendedores];
+
+  // Compute distribution stats
+  const distrib = useMemo(() => {
+    const counts = {};
+    Object.values(g.schedule).flat().forEach(v => {
+      if (v && v !== 'Libre') counts[v] = (counts[v] || 0) + 1;
+    });
+    return counts;
+  }, [g.schedule]);
+
+  const totalSlots = 14;
+  const slotsLibres = Object.values(g.schedule).flat().filter(v => v === 'Libre').length;
+
+  // Sales for selected month/year (computed against meta)
+  const ventasMes = useMemo(() => {
+    return data.ventas.filter(v => v.mes === selMes && v.año === selAño).length;
+  }, [data.ventas, selMes, selAño]);
+
+  // Aggregate prospectos for the month
+  const prospectosMes = useMemo(() => {
+    return data.prospectos
+      .filter(p => p.mes === selMes && p.año === selAño)
+      .reduce((s, p) => s + p.cantidad, 0);
+  }, [data.prospectos, selMes, selAño]);
+
+  return (
+    <div className="pt-fade-in">
+      <SectionHeader
+        title="Guardias"
+        subtitle="Distribución de turnos del equipo de ventas"
+        info="Calendario semanal de turnos matutino y vespertino. Asigna vendedores a cada día, define metas mensuales y descarga la información en PNG."
+        action={
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => downloadGuardiasPNG(g)}>
+              <Download size={14} className="inline mr-1.5" />Descargar PNG
+            </Button>
+            <Button variant={editing ? 'gold' : 'ghost'} onClick={() => setEditing(!editing)}>
+              {editing ? <><Save size={14} className="inline mr-1.5" />Guardar</> : <><Edit3 size={14} className="inline mr-1.5" />Editar</>}
+            </Button>
+          </div>
+        }
+      />
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <Card className="p-5 lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="pt-display text-base" style={{ color: C.text }}>Período</h3>
+            <div className="flex gap-2 items-center">
+              <input type="date" value={g.semanaInicio}
+                     onChange={e => updateRange('semanaInicio', e.target.value)}
+                     disabled={!editing}
+                     className="pt-input rounded-lg px-2 py-1.5 text-xs" />
+              <span style={{ color: C.textDim }}>—</span>
+              <input type="date" value={g.semanaFin}
+                     onChange={e => updateRange('semanaFin', e.target.value)}
+                     disabled={!editing}
+                     className="pt-input rounded-lg px-2 py-1.5 text-xs" />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto pt-scroll">
+            <table className="w-full text-sm" style={{ minWidth: 720 }}>
+              <thead>
+                <tr>
+                  <th className="text-left pb-3 pr-3 text-[10px] uppercase tracking-wider font-medium" style={{ color: C.textMuted, width: 180 }}>Turno</th>
+                  {DIAS.map(d => (
+                    <th key={d} className="text-center pb-3 px-1 text-[10px] uppercase tracking-wider font-medium" style={{ color: C.textMuted }}>
+                      {d.substring(0, 3)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {['matutino', 'vespertino'].map(turno => (
+                  <tr key={turno} className="border-t" style={{ borderColor: C.border }}>
+                    <td className="py-3 pr-3">
+                      <div className="text-xs uppercase tracking-wider font-semibold" style={{ color: C.text }}>
+                        {turno === 'matutino' ? 'Matutino' : 'Vespertino'}
+                      </div>
+                      <div className="text-xs" style={{ color: C.textMuted }}>{g.horarios[turno]}</div>
+                    </td>
+                    {g.schedule[turno].map((nombre, i) => (
+                      <td key={i} className="py-2 px-1">
+                        {editing ? (
+                          <select value={nombre}
+                                  onChange={e => updateSlot(turno, i, e.target.value)}
+                                  className="pt-input rounded-md px-1.5 py-1 text-xs w-full">
+                            {opciones.map(o => <option key={o} value={o}>{o.split(' ')[0]}</option>)}
+                          </select>
+                        ) : (
+                          <div className={`text-center py-2 px-1 rounded-md text-xs font-medium`}
+                               style={{
+                                 background: nombre === 'Libre' ? 'rgba(255,255,255,0.03)' : C.goldFaint,
+                                 color: nombre === 'Libre' ? C.textDim : C.gold,
+                                 border: `1px solid ${nombre === 'Libre' ? C.border : C.goldBorder}`
+                               }}>
+                            {nombre === 'Libre' ? '—' : nombre.split(' ')[0]}
+                          </div>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <div className="space-y-4">
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="pt-display text-base" style={{ color: C.text }}>Síntesis del mes</h3>
+              <div className="flex gap-1.5">
+                <select value={selMes} onChange={e => setSelMes(e.target.value)}
+                        className="pt-input rounded-md px-2 py-1 text-xs">
+                  {MESES.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <select value={selAño} onChange={e => setSelAño(Number(e.target.value))}
+                        className="pt-input rounded-md px-2 py-1 text-xs">
+                  {añosDisponiblesGuardias.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: C.textMuted }}>Métrico de ventas (meta)</div>
+                {editing ? (
+                  <input type="number" value={g.metas.metricoVentas} onChange={e => updateMeta('metricoVentas', e.target.value)}
+                         className="pt-input rounded-lg px-3 py-1.5 text-sm w-full" />
+                ) : (
+                  <div className="pt-display text-2xl pt-grad-text">{g.metas.metricoVentas}</div>
+                )}
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: C.textMuted }}>Total ventas (meta)</div>
+                {editing ? (
+                  <input type="number" value={g.metas.totalVentas} onChange={e => updateMeta('totalVentas', e.target.value)}
+                         className="pt-input rounded-lg px-3 py-1.5 text-sm w-full" />
+                ) : (
+                  <div className="pt-display text-2xl pt-grad-text">{g.metas.totalVentas}</div>
+                )}
+              </div>
+              <div className="pt-3 border-t" style={{ borderColor: C.border }}>
+                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: C.textMuted }}>
+                  Ventas registradas · {selMes} {selAño}
+                </div>
+                <div className="pt-display text-2xl pt-grad-cyan">{ventasMes}</div>
+                <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  <div className="h-full transition-all" style={{
+                    width: `${Math.min(100, (ventasMes / Math.max(1, g.metas.totalVentas)) * 100)}%`,
+                    background: `linear-gradient(90deg, ${C.cyan}, ${C.cyanDark})`
+                  }} />
+                </div>
+                <div className="text-xs mt-1" style={{ color: C.textMuted }}>
+                  {fmt.pct(ventasMes / Math.max(1, g.metas.totalVentas))} de la meta
+                </div>
+              </div>
+              <div className="pt-3 border-t flex items-center justify-between" style={{ borderColor: C.border }}>
+                <span className="text-[10px] uppercase tracking-wider" style={{ color: C.textMuted }}>Prospectos del mes</span>
+                <span className="pt-display text-base" style={{ color: C.gold }}>{prospectosMes}</span>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <h3 className="pt-display text-base mb-3" style={{ color: C.text }}>Carga semanal</h3>
+            {Object.entries(distrib).map(([nombre, count]) => (
+              <div key={nombre} className="flex items-center justify-between text-sm py-1.5">
+                <span style={{ color: C.textMuted }}>{nombre.split(' ')[0]}</span>
+                <span className="pt-display" style={{ color: C.gold }}>{count} guardias</span>
+              </div>
+            ))}
+            <div className="flex items-center justify-between text-sm py-1.5 border-t mt-2 pt-2" style={{ borderColor: C.border }}>
+              <span style={{ color: C.textDim }}>Slots libres</span>
+              <span style={{ color: C.textDim }}>{slotsLibres}/{totalSlots}</span>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      <Card className="p-5">
+        <h3 className="pt-display text-base mb-4" style={{ color: C.text }}>Reglas de operación</h3>
+        <ol className="space-y-3">
+          {g.reglas.map((r, i) => (
+            <li key={i} className="flex gap-3 text-sm" style={{ color: C.textMuted }}>
+              <span className="pt-display flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                    style={{ background: C.goldFaint, color: C.gold, border: `1px solid ${C.goldBorder}` }}>
+                {i + 1}
+              </span>
+              <span className="pt-1">{r}</span>
+            </li>
+          ))}
+        </ol>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// METRICOS DE VENTA MODULE
+// ============================================================================
+function MetricosView({ data, setData }) {
+  const [añoFiltro, setAñoFiltro] = useState(2026);
+  const [vendedorFiltro, setVendedorFiltro] = useState('Todos');
+  const [editingHist, setEditingHist] = useState(false);
+  const [draftHist, setDraftHist] = useState(null);
+  const [showEquipo, setShowEquipo] = useState(false);
+  const [nuevoVendedor, setNuevoVendedor] = useState('');
+
+  const dataPorMes = useMemo(() => {
+    return MESES.map(mes => {
+      const ventas = data.ventas.filter(v => v.mes === mes && v.año === añoFiltro
+        && (vendedorFiltro === 'Todos' || v.vendedor === vendedorFiltro));
+      const prospectos = data.prospectos.filter(p => p.mes === mes && p.año === añoFiltro
+        && (vendedorFiltro === 'Todos' || p.vendedor === vendedorFiltro))
+        .reduce((s, p) => s + p.cantidad, 0);
+      const cantVentas = ventas.length;
+      const exito = prospectos > 0 ? cantVentas / prospectos : 0;
+      return { mes: mes.substring(0, 3), ventas: cantVentas, prospectos, exito: +(exito * 100).toFixed(1) };
+    }).filter(d => d.ventas > 0 || d.prospectos > 0);
+  }, [data, añoFiltro, vendedorFiltro]);
+
+  const historico = useMemo(() => {
+    return data.vendedores.map(v => {
+      const stored = (data.historicoGlobal && data.historicoGlobal[v]) || {};
+      const ventas = stored.ventas !== undefined ? stored.ventas : data.ventas.filter(x => x.vendedor === v).length;
+      const prospectos = stored.prospectos !== undefined ? stored.prospectos
+        : data.prospectos.filter(x => x.vendedor === v).reduce((s, p) => s + p.cantidad, 0);
+      const exito = prospectos > 0 ? ventas / prospectos : 0;
+      return { vendedor: v, ventas, prospectos, exito };
+    });
+  }, [data]);
+
+  const startEdit = () => {
+    const draft = {};
+    historico.forEach(h => { draft[h.vendedor] = { prospectos: h.prospectos, ventas: h.ventas }; });
+    setDraftHist(draft);
+    setEditingHist(true);
+  };
+
+  const saveHist = () => {
+    setData(d => ({ ...d, historicoGlobal: { ...(d.historicoGlobal || {}), ...draftHist } }));
+    setEditingHist(false);
+    setDraftHist(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingHist(false);
+    setDraftHist(null);
+  };
+
+  const updDraft = (vendedor, key, val) => {
+    setDraftHist(prev => ({ ...prev, [vendedor]: { ...prev[vendedor], [key]: Number(val) || 0 } }));
+  };
+
+  const agregarVendedor = () => {
+    const nombre = nuevoVendedor.trim();
+    if (!nombre || data.vendedores.includes(nombre)) return;
+    setData(d => ({
+      ...d,
+      vendedores: [...d.vendedores, nombre],
+      retros: { ...d.retros, [nombre]: [] },
+      historicoGlobal: { ...d.historicoGlobal, [nombre]: { prospectos: 0, ventas: 0 } }
+    }));
+    setNuevoVendedor('');
+  };
+
+  const eliminarVendedor = (nombre) => {
+    const ventasDelVendedor = data.ventas.filter(v => v.vendedor === nombre).length;
+    const msg = ventasDelVendedor > 0
+      ? `¿Eliminar a "${nombre}"? Tiene ${ventasDelVendedor} venta(s) registrada(s). Sus ventas permanecerán en el historial pero ya no aparecerá en el equipo.`
+      : `¿Eliminar a "${nombre}" del equipo?`;
+    if (!confirm(msg)) return;
+    setData(d => {
+      const newRetros = { ...d.retros };
+      delete newRetros[nombre];
+      const newHist = { ...d.historicoGlobal };
+      delete newHist[nombre];
+      return { ...d, vendedores: d.vendedores.filter(v => v !== nombre), retros: newRetros, historicoGlobal: newHist };
+    });
+  };
+
+  const totalEsperado = useMemo(() => {
+    let t = 0;
+    Object.values(data.metasMensuales).forEach(m => Object.values(m).forEach(n => t += n));
+    return t;
+  }, [data]);
+
+  const totalGlobal = data.ventas.length;
+  const cumplimiento = totalEsperado > 0 ? totalGlobal / totalEsperado : 0;
+
+  return (
+    <div className="pt-fade-in">
+      <SectionHeader title="Métricos de Venta" subtitle="Histórico, rendimiento y porcentajes por vendedor"
+                     info="Análisis del desempeño del equipo: prospectos atendidos, ventas cerradas y porcentaje de éxito por vendedor y por mes."
+                     action={<Button onClick={() => setShowEquipo(true)}><Users size={14} className="inline mr-1.5" />Gestionar equipo</Button>} />
+
+      {/* Modal gestión de equipo */}
+      {showEquipo && (
+        <Modal open onClose={() => { setShowEquipo(false); setNuevoVendedor(''); }} title="Gestionar equipo de ventas">
+          <div className="mb-5">
+            <div className="text-xs uppercase tracking-wider mb-3 flex items-center gap-1.5" style={{ color: C.textMuted }}>
+              <UserPlus size={13} /> Agregar vendedor
+            </div>
+            <div className="flex gap-2">
+              <input value={nuevoVendedor} onChange={e => setNuevoVendedor(e.target.value)}
+                     onKeyDown={e => { if (e.key === 'Enter') agregarVendedor(); }}
+                     placeholder="Nombre completo del vendedor"
+                     className="pt-input flex-1 rounded-lg px-3 py-2 text-sm" />
+              <Button onClick={agregarVendedor} disabled={!nuevoVendedor.trim()}>
+                <Plus size={14} className="inline mr-1" />Agregar
+              </Button>
+            </div>
+            {data.vendedores.includes(nuevoVendedor.trim()) && nuevoVendedor.trim() && (
+              <p className="text-xs mt-1.5" style={{ color: C.warning }}>Este vendedor ya existe en el equipo.</p>
+            )}
+          </div>
+          <div className="border-t pt-4" style={{ borderColor: C.border }}>
+            <div className="text-xs uppercase tracking-wider mb-3 flex items-center gap-1.5" style={{ color: C.textMuted }}>
+              <Users size={13} /> Equipo actual ({data.vendedores.length})
+            </div>
+            <div className="space-y-2">
+              {data.vendedores.map(v => (
+                <div key={v} className="flex items-center justify-between px-4 py-3 rounded-xl"
+                     style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.border}` }}>
+                  <div>
+                    <span className="text-sm font-medium" style={{ color: C.text }}>{v}</span>
+                    <span className="text-xs ml-3" style={{ color: C.textDim }}>
+                      {data.ventas.filter(x => x.vendedor === v).length} ventas registradas
+                    </span>
+                  </div>
+                  <button onClick={() => eliminarVendedor(v)}
+                          className="p-1.5 rounded-lg hover:bg-white/5 transition"
+                          style={{ color: C.danger }}
+                          title="Eliminar vendedor">
+                    <UserMinus size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard icon={Target} label="Ventas esperadas (acum.)" value={totalEsperado}
+                  info="Suma de las metas mensuales de todos los vendedores. Es el objetivo total comprometido." />
+        <StatCard icon={TrendingUp} label="Ventas globales" value={totalGlobal} accent="cyan"
+                  info="Total de ventas reales registradas en el sistema." />
+        <StatCard icon={BarChart3} label="% cubierto" value={fmt.pct(cumplimiento)} sublabel={cumplimiento >= 1 ? '✓ meta cumplida' : 'en progreso'}
+                  info="Ventas globales ÷ Ventas esperadas. Si supera 100%, el equipo está sobre la meta." />
+        <StatCard icon={Users} label="Vendedores activos" value={historico.filter(h => h.ventas > 0).length} accent="cyan"
+                  info="Vendedores con al menos una venta registrada." />
+      </div>
+
+      {/* Histórico table */}
+      <Card className="p-5 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="pt-display text-base" style={{ color: C.text }}>Histórico global</h3>
+          {!editingHist ? (
+            <Button variant="ghost" size="sm" onClick={startEdit}>
+              <Edit3 size={13} className="inline mr-1.5" />Editar histórico
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={cancelEdit}>Cancelar</Button>
+              <Button size="sm" onClick={saveHist}><Save size={13} className="inline mr-1.5" />Guardar</Button>
+            </div>
+          )}
+        </div>
+        <div className="overflow-x-auto pt-scroll">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-wider" style={{ color: C.textMuted }}>
+                <th className="pb-3 font-medium">Vendedor</th>
+                <th className="pb-3 font-medium text-right">Prospectos</th>
+                <th className="pb-3 font-medium text-right">Ventas</th>
+                <th className="pb-3 font-medium text-right">% Éxito</th>
+                <th className="pb-3 font-medium text-right">Cumplimiento</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historico.map(h => {
+                const editingVals = editingHist && draftHist ? draftHist[h.vendedor] : null;
+                const showProsp = editingVals ? editingVals.prospectos : h.prospectos;
+                const showVent  = editingVals ? editingVals.ventas : h.ventas;
+                const exitoEdit = showProsp > 0 ? showVent / showProsp : 0;
+                return (
+                  <tr key={h.vendedor} className="border-t" style={{ borderColor: C.border, color: C.text }}>
+                    <td className="py-3">{h.vendedor}</td>
+                    <td className="py-3 text-right">
+                      {editingHist ? (
+                        <input type="number" value={showProsp}
+                               onChange={e => updDraft(h.vendedor, 'prospectos', e.target.value)}
+                               className="pt-input rounded-md px-2 py-1 text-xs text-right w-20" />
+                      ) : showProsp}
+                    </td>
+                    <td className="py-3 text-right">
+                      {editingHist ? (
+                        <input type="number" value={showVent}
+                               onChange={e => updDraft(h.vendedor, 'ventas', e.target.value)}
+                               className="pt-input rounded-md px-2 py-1 text-xs text-right w-20" />
+                      ) : showVent}
+                    </td>
+                    <td className="py-3 text-right" style={{ color: C.gold, fontWeight: 600 }}>{fmt.pct(exitoEdit)}</td>
+                    <td className="py-3 text-right">
+                      <div className="inline-flex items-center gap-2">
+                        <div className="w-20 h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                          <div className="h-full rounded-full" style={{
+                            width: `${Math.min(100, exitoEdit * 100)}%`,
+                            background: `linear-gradient(90deg, ${C.gold}, ${C.cyan})`
+                          }} />
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Filters + Charts */}
+      <div className="flex flex-wrap items-end gap-3 mb-4">
+        <div className="w-32"><Input label="Año" value={añoFiltro} onChange={v => setAñoFiltro(Number(v))}
+                                      options={[2024, 2025, 2026, 2027].map(a => ({ value: a, label: String(a) }))} /></div>
+        <div className="w-56"><Input label="Vendedor" value={vendedorFiltro} onChange={setVendedorFiltro}
+                                       options={['Todos', ...data.vendedores]} /></div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="p-5">
+          <h3 className="pt-display text-base mb-4" style={{ color: C.text }}>Prospectos vs Ventas por mes</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={dataPorMes}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+              <XAxis dataKey="mes" stroke={C.textMuted} fontSize={11} />
+              <YAxis stroke={C.textMuted} fontSize={11} />
+              <Tooltip contentStyle={{ background: C.bgCard, border: `1px solid ${C.goldBorder}`, borderRadius: 8, fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 11, color: C.textMuted }} />
+              <Bar dataKey="prospectos" fill={C.cyan} radius={[4, 4, 0, 0]} name="Prospectos" />
+              <Bar dataKey="ventas" fill={C.gold} radius={[4, 4, 0, 0]} name="Ventas" />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card className="p-5">
+          <h3 className="pt-display text-base mb-4" style={{ color: C.text }}>% Éxito por mes</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={dataPorMes}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+              <XAxis dataKey="mes" stroke={C.textMuted} fontSize={11} />
+              <YAxis stroke={C.textMuted} fontSize={11} unit="%" />
+              <Tooltip contentStyle={{ background: C.bgCard, border: `1px solid ${C.goldBorder}`, borderRadius: 8, fontSize: 12 }} />
+              <Line type="monotone" dataKey="exito" stroke={C.gold} strokeWidth={3}
+                    dot={{ fill: C.gold, r: 5 }} name="% Éxito" />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// COMISIONES MODULE
+// ============================================================================
+function ComisionesView({ data, setData }) {
+  const [modal, setModal] = useState(null);
+  const [filterMes, setFilterMes] = useState('Todos');
+  const [filterAño, setFilterAño] = useState('Todos');
+  const [filterVendedor, setFilterVendedor] = useState('Todos');
+
+  const añosDisponibles = useMemo(() => {
+    const set = new Set(data.ventas.map(v => v.año));
+    return ['Todos', ...[...set].sort()];
+  }, [data.ventas]);
+
+  const filtered = useMemo(() => {
+    return data.ventas.filter(v =>
+      (filterMes === 'Todos' || v.mes === filterMes) &&
+      (filterAño === 'Todos' || v.año === Number(filterAño)) &&
+      (filterVendedor === 'Todos' || v.vendedor === filterVendedor)
+    ).sort((a, b) => {
+      if (a.año !== b.año) return a.año - b.año;
+      return MESES.indexOf(a.mes) - MESES.indexOf(b.mes);
+    });
+  }, [data, filterMes, filterAño, filterVendedor]);
+
+  const totals = useMemo(() => {
+    let totalCom = 0, totalVend = 0, totalProm = 0, totalAdmin = 0, totalFin = 0;
+    filtered.forEach(v => {
+      const c = calcComisiones(v);
+      totalCom += v.comisionTotal || 0;
+      totalVend += c.cVendedor;
+      totalProm += c.cPromotor;
+      totalAdmin += c.cAdmin;
+      totalFin += v.montoFinanciado || 0;
+    });
+    const bonoFin = totalFin * 0.01;
+    return { totalCom, totalVend, totalProm, totalAdmin, totalFin, bonoFin, netoFinal: totalAdmin + bonoFin };
+  }, [filtered]);
+
+  const remove = (id) => {
+    if (!confirm('¿Eliminar esta venta?')) return;
+    setData(d => ({ ...d, ventas: d.ventas.filter(v => v.id !== id) }));
+  };
+
+  return (
+    <div className="pt-fade-in">
+      <SectionHeader
+        title="Comisiones"
+        subtitle="Registro y cálculo automático de comisiones por venta"
+        info="Listado completo de ventas con cálculo automático del reparto de comisión: vendedor, promotor y administración."
+        action={<Button onClick={() => setModal({ mode: 'new', venta: blankVenta(data) })}><Plus size={14} className="inline mr-1.5" />Nueva venta</Button>}
+      />
+
+      {/* Totals row */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+        <StatCard icon={DollarSign} label="Comisión total" value={fmt.money(totals.totalCom)} sublabel={`${filtered.length} ventas`}
+                  info="Suma de todas las comisiones brutas (lo que paga el banco) en el filtro actual." />
+        <StatCard icon={Users} label="A vendedores" value={fmt.money(totals.totalVend)} sublabel={fmt.pct(totals.totalCom > 0 ? totals.totalVend / totals.totalCom : 0)} accent="cyan"
+                  info="Total que se debe pagar a los vendedores por sus ventas en el filtro actual." />
+        <StatCard icon={Users} label="A promotores" value={fmt.money(totals.totalProm)} sublabel={fmt.pct(totals.totalCom > 0 ? totals.totalProm / totals.totalCom : 0)} accent="cyan"
+                  info="Total que se debe pagar a los promotores por captación de clientes." />
+        <StatCard icon={TrendingUp} label="Neto admin" value={fmt.money(totals.totalAdmin)} sublabel={fmt.pct(totals.totalCom > 0 ? totals.totalAdmin / totals.totalCom : 0)}
+                  info="Comisión total menos los pagos a vendedores y promotores. Es lo que queda para administración." />
+        <StatCard icon={CreditCard} label="Bono financiación 1%" value={fmt.money(totals.bonoFin)} sublabel={`Sobre ${fmt.money(totals.totalFin)}`}
+                  info="Bono extra de 1% sobre el monto total financiado por los bancos. Va directo a administración." />
+      </div>
+
+      <Card className="p-5 mb-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-40"><Input label="Mes" value={filterMes} onChange={setFilterMes} options={['Todos', ...MESES]} /></div>
+          <div className="w-32"><Input label="Año" value={filterAño} onChange={setFilterAño}
+                                        options={añosDisponibles.map(a => ({ value: a, label: String(a) }))} /></div>
+          <div className="w-56"><Input label="Vendedor" value={filterVendedor} onChange={setFilterVendedor} options={['Todos', ...data.vendedores]} /></div>
+          <div className="ml-auto text-xs pt-display" style={{ color: C.gold }}>
+            {filtered.length} {filtered.length === 1 ? 'venta' : 'ventas'}
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-0">
+        <div className="overflow-x-auto pt-scroll">
+          <table className="w-full text-sm" style={{ minWidth: 1100 }}>
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-wider border-b" style={{ borderColor: C.border, color: C.textMuted }}>
+                <th className="px-4 py-3 font-medium">Mes</th>
+                <th className="px-2 py-3 font-medium">Vendedor</th>
+                <th className="px-2 py-3 font-medium">Cliente</th>
+                <th className="px-2 py-3 font-medium">Moto</th>
+                <th className="px-2 py-3 font-medium text-right">Comisión total</th>
+                <th className="px-2 py-3 font-medium text-right">Vendedor</th>
+                <th className="px-2 py-3 font-medium text-right">Promotor</th>
+                <th className="px-2 py-3 font-medium text-right">Neto Admin</th>
+                <th className="px-2 py-3 font-medium text-right">Financiado</th>
+                <th className="px-2 py-3 font-medium text-center">Pagada</th>
+                <th className="px-4 py-3 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(v => {
+                const c = calcComisiones(v);
+                const pagaCompleta = v.pagadoVendedor && v.pagadoPromotor && v.pagadoAdmin;
+                return (
+                  <tr key={v.id} className="border-t hover:bg-white/[0.015]" style={{ borderColor: C.border, color: C.text }}>
+                    <td className="px-4 py-3 text-xs" style={{ color: C.textMuted }}>{v.mes.substring(0,3)} {v.año}</td>
+                    <td className="px-2 py-3">{v.vendedor}</td>
+                    <td className="px-2 py-3" style={{ color: C.textMuted }}>{v.cliente}</td>
+                    <td className="px-2 py-3" style={{ color: C.textMuted }}>{v.moto}</td>
+                    <td className="px-2 py-3 text-right">{fmt.money(v.comisionTotal)}</td>
+                    <td className="px-2 py-3 text-right" style={{ color: C.cyan }}>{fmt.money(c.cVendedor)}</td>
+                    <td className="px-2 py-3 text-right" style={{ color: C.cyan }}>{fmt.money(c.cPromotor)}</td>
+                    <td className="px-2 py-3 text-right pt-grad-text font-semibold">{fmt.money(c.cAdmin)}</td>
+                    <td className="px-2 py-3 text-right text-xs" style={{ color: C.textMuted }}>{fmt.money(v.montoFinanciado)}</td>
+                    <td className="px-2 py-3 text-center">
+                      <div className="inline-flex flex-col gap-1 items-center">
+                        {pagaCompleta
+                          ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider"
+                                  style={{ background: 'rgba(74,222,128,0.1)', color: C.success, border: '1px solid rgba(74,222,128,0.3)' }}>
+                              <CheckCircle2 size={10} /> Pagada
+                            </span>
+                          : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider"
+                                  style={{ background: 'rgba(251,191,36,0.1)', color: C.warning, border: '1px solid rgba(251,191,36,0.3)' }}>
+                              Pendiente
+                            </span>
+                        }
+                        {v.adelantoPromotor && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] uppercase tracking-wider"
+                                style={{ background: 'rgba(79,195,247,0.08)', color: C.cyan, border: '1px solid rgba(79,195,247,0.25)' }}>
+                            ⚡ Adelanto prom.
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={() => setModal({ mode: 'edit', venta: { ...v } })}
+                                className="p-1.5 rounded hover:bg-white/5" style={{ color: C.textMuted }}>
+                          <Edit3 size={13} />
+                        </button>
+                        <button onClick={() => remove(v.id)}
+                                className="p-1.5 rounded hover:bg-white/5" style={{ color: C.danger }}>
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr><td colSpan="11" className="px-4 py-12 text-center text-sm" style={{ color: C.textDim }}>
+                  Sin ventas en este período
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {modal && (
+        <VentaModal
+          mode={modal.mode}
+          venta={modal.venta}
+          data={data}
+          onSave={(v) => {
+            setData(d => {
+              if (modal.mode === 'new') {
+                const nextId = Math.max(0, ...d.ventas.map(x => x.id)) + 1;
+                return { ...d, ventas: [...d.ventas, { ...v, id: nextId }] };
+              } else {
+                return { ...d, ventas: d.ventas.map(x => x.id === v.id ? v : x) };
+              }
+            });
+            setModal(null);
+          }}
+          onClose={() => setModal(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function blankVenta(data) {
+  return {
+    mes: MESES[new Date().getMonth()], año: new Date().getFullYear(),
+    vendedor: data.vendedores[0] || '', numeroVenta: 1, cliente: '', moto: '',
+    comisionTotal: 0, feeBancario: 0, tasaVendedor: 0.20, tasaPromotor: 0.10, ajustePromotor: 0,
+    promotor: data.promotores[0] || '', fechaPago: '', montoFinanciado: 0,
+    pagadoVendedor: false, pagadoPromotor: false, pagadoAdmin: false, adelantoPromotor: false
+  };
+}
+
+function VentaModal({ mode, venta: initial, data, onSave, onClose }) {
+  const [v, setV] = useState(initial);
+  const upd = (k, val) => setV(prev => ({ ...prev, [k]: val }));
+  const c = calcComisiones(v);
+  const adelantoOn = !!v.adelantoPromotor;
+
+  return (
+    <Modal open onClose={onClose}
+           title={mode === 'new' ? 'Nueva venta' : 'Editar venta'}
+           footer={<>
+             <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+             <Button onClick={() => onSave(v)} disabled={!v.cliente || !v.vendedor || !v.comisionTotal}>
+               <Save size={14} className="inline mr-1.5" />Guardar
+             </Button>
+           </>}>
+      <div className="grid grid-cols-2 gap-4">
+        <Input label="Mes" value={v.mes} onChange={x => upd('mes', x)} options={MESES}
+               info="Mes en que se cierra la venta. Determina en qué columna del mes aparece el registro." />
+        <Input label="Año" type="number" min={2020} value={v.año} onChange={x => upd('año', x)}
+               info="Año fiscal de la venta. Usado para filtros y reportes anuales." />
+        <Input label="Vendedor" value={v.vendedor} onChange={x => upd('vendedor', x)} options={data.vendedores}
+               info="Vendedor que cierra la venta. Recibirá el % de comisión configurado." />
+        <Input label="N° de venta" type="number" min={1} value={v.numeroVenta} onChange={x => upd('numeroVenta', x)}
+               info="Número consecutivo de venta del vendedor en el mes (1ra, 2da, 3ra…)." />
+        <Input label="Cliente" value={v.cliente} onChange={x => upd('cliente', x)} placeholder="Nombre del cliente"
+               info="Nombre completo del cliente que compra la moto." />
+        <Input label="Moto vendida" value={v.moto} onChange={x => upd('moto', x)} placeholder="Ej. Renegada, B52, SPF 250…"
+               info="Modelo de la moto vendida. Texto libre para soportar nuevos modelos." />
+        <Input label="Promotor" value={v.promotor} onChange={x => upd('promotor', x)} options={data.promotores}
+               info="Promotor que captó al cliente. Recibirá el % de comisión de promoción." />
+        <Input label="Fecha de pago" type="date" value={v.fechaPago} onChange={x => upd('fechaPago', x)}
+               info="Fecha en que se libera la comisión. Generalmente coincide con el desembolso del banco." />
+      </div>
+
+      {/* Adelanto promotor toggle */}
+      <div className="mt-5 p-4 rounded-xl flex items-center justify-between"
+           style={{
+             background: adelantoOn ? 'rgba(74,222,128,0.06)' : 'rgba(255,255,255,0.02)',
+             border: `1px solid ${adelantoOn ? 'rgba(74,222,128,0.3)' : C.border}`
+           }}>
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+               style={{ background: adelantoOn ? 'rgba(74,222,128,0.15)' : C.goldFaint,
+                        border: `1px solid ${adelantoOn ? 'rgba(74,222,128,0.4)' : C.goldBorder}` }}>
+            <DollarSign size={16} style={{ color: adelantoOn ? C.success : C.gold }} />
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <span className="text-sm font-semibold" style={{ color: C.text }}>Adelanto pagado al promotor</span>
+              <InfoTip text="Marca esta casilla si ya se entregó un adelanto de la comisión al promotor antes de la fecha de pago oficial. Útil para llevar control aparte de los flujos de caja." />
+            </div>
+            <div className="text-xs" style={{ color: C.textMuted }}>
+              {adelantoOn ? `Promotor: ${v.promotor || '—'} · adelanto registrado` : 'Sin adelanto registrado'}
+            </div>
+          </div>
+        </div>
+        <button type="button" onClick={() => upd('adelantoPromotor', !adelantoOn)}
+                className="px-4 py-2 rounded-lg text-xs uppercase tracking-wider font-semibold transition"
+                style={{
+                  background: adelantoOn ? 'rgba(74,222,128,0.15)' : 'transparent',
+                  color: adelantoOn ? C.success : C.gold,
+                  border: `1px solid ${adelantoOn ? 'rgba(74,222,128,0.4)' : C.goldBorder}`
+                }}>
+          {adelantoOn ? <><CheckCircle2 size={13} className="inline mr-1.5" />Pagado</> : 'Marcar como pagado'}
+        </button>
+      </div>
+
+      <div className="mt-6 pt-5 border-t" style={{ borderColor: C.border }}>
+        <h4 className="pt-display text-sm mb-3 flex items-center gap-2" style={{ color: C.text }}>
+          <span>Comisión y rates</span>
+          <InfoTip text="Configuración financiera de la venta. Todos los valores deben ser positivos." />
+        </h4>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Input label="Comisión total ($)" type="number" min={0} value={v.comisionTotal} onChange={x => upd('comisionTotal', x)} step="0.01"
+                 info="Comisión bruta que paga el banco/financiera por la venta. Es la base de todos los cálculos." />
+          <Input label="Monto financiado ($)" type="number" min={0} value={v.montoFinanciado} onChange={x => upd('montoFinanciado', x)} step="0.01"
+                 info="Monto total que el banco financia al cliente. Genera el bono mensual de 1% para administración." />
+          <Input label="% Vendedor" type="number" min={0} max={1} value={v.tasaVendedor} onChange={x => upd('tasaVendedor', x)} step="0.01" suffix="ratio"
+                 info="Porcentaje de la comisión que recibe el vendedor (0.20 = 20%). Configurable por venta." />
+          <Input label="% Promotor" type="number" min={0} max={1} value={v.tasaPromotor} onChange={x => upd('tasaPromotor', x)} step="0.01" suffix="ratio"
+                 info="Porcentaje de la comisión que recibe el promotor (0.10 = 10%). Configurable por venta." />
+          <Input label="Fee bancario" type="number" min={0} max={1} value={v.feeBancario} onChange={x => upd('feeBancario', x)} step="0.0001" suffix="ratio"
+                 info="Descuento bancario opcional sobre la comisión antes de calcular la parte del vendedor (0.0425 = 4.25%)." />
+          <Input label="Ajuste promotor" type="number" min={0} value={v.ajustePromotor} onChange={x => upd('ajustePromotor', x)} step="1" suffix="$"
+                 info="Bono adicional fijo al promotor (ej. $200 por meta cumplida). Solo valores positivos." />
+        </div>
+      </div>
+
+      <div className="mt-6 p-4 rounded-xl" style={{ background: C.goldFaint, border: `1px solid ${C.goldBorder}` }}>
+        <div className="text-[10px] uppercase tracking-wider mb-3 flex items-center gap-1.5" style={{ color: C.gold }}>
+          <span>Cálculo automático</span>
+          <InfoTip text="Distribución de la comisión calculada en vivo. Vendedor + Promotor + Admin = Comisión total." />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+          <div>
+            <div className="text-xs flex items-center gap-1" style={{ color: C.textMuted }}>
+              <span>Vendedor</span>
+              <InfoTip text="(Comisión total − fee bancario) × % Vendedor" />
+            </div>
+            <div className="pt-display text-lg" style={{ color: C.cyan }}>{fmt.money(c.cVendedor)}</div>
+          </div>
+          <div>
+            <div className="text-xs flex items-center gap-1" style={{ color: C.textMuted }}>
+              <span>Promotor</span>
+              <InfoTip text="(Comisión total × % Promotor) + ajuste promotor" />
+            </div>
+            <div className="pt-display text-lg" style={{ color: C.cyan }}>{fmt.money(c.cPromotor)}</div>
+          </div>
+          <div>
+            <div className="text-xs flex items-center gap-1" style={{ color: C.textMuted }}>
+              <span>Neto admin</span>
+              <InfoTip text="Comisión total − Vendedor − Promotor. Es lo que queda para administración." />
+            </div>
+            <div className="pt-display text-lg pt-grad-text">{fmt.money(c.cAdmin)}</div>
+          </div>
+          <div>
+            <div className="text-xs flex items-center gap-1" style={{ color: C.textMuted }}>
+              <span>Bono 1% finan.</span>
+              <InfoTip text="Monto financiado × 1%. Bono mensual extra para administración por colocación de financiamiento." />
+            </div>
+            <div className="pt-display text-lg" style={{ color: C.gold }}>{fmt.money((v.montoFinanciado || 0) * 0.01)}</div>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ============================================================================
+// PAGOS MODULE
+// ============================================================================
+function PagosView({ data, setData }) {
+  const [filter, setFilter] = useState('Todos');
+  const [filterRecipient, setFilterRecipient] = useState('Todos');
+
+  const rows = useMemo(() => {
+    const out = [];
+    data.ventas.forEach(v => {
+      const c = calcComisiones(v);
+      out.push({
+        id: `${v.id}-vend`, ventaId: v.id, tipo: 'Vendedor', nombre: v.vendedor, monto: c.cVendedor,
+        cliente: v.cliente, moto: v.moto, fecha: v.fechaPago, mes: v.mes, año: v.año,
+        pagado: v.pagadoVendedor, pagoKey: 'pagadoVendedor'
+      });
+      out.push({
+        id: `${v.id}-prom`, ventaId: v.id, tipo: 'Promotor', nombre: v.promotor, monto: c.cPromotor,
+        cliente: v.cliente, moto: v.moto, fecha: v.fechaPago, mes: v.mes, año: v.año,
+        pagado: v.pagadoPromotor, pagoKey: 'pagadoPromotor'
+      });
+      out.push({
+        id: `${v.id}-adm`, ventaId: v.id, tipo: 'Admin', nombre: 'Administración', monto: c.cAdmin,
+        cliente: v.cliente, moto: v.moto, fecha: v.fechaPago, mes: v.mes, año: v.año,
+        pagado: v.pagadoAdmin, pagoKey: 'pagadoAdmin'
+      });
+    });
+    return out
+      .filter(r => filter === 'Todos' || (filter === 'Pagado' ? r.pagado : !r.pagado))
+      .filter(r => filterRecipient === 'Todos' || r.tipo === filterRecipient)
+      .sort((a, b) => (a.pagado === b.pagado) ? 0 : (a.pagado ? 1 : -1));
+  }, [data, filter, filterRecipient]);
+
+  const togglePago = (ventaId, pagoKey) => {
+    setData(d => ({
+      ...d,
+      ventas: d.ventas.map(v => v.id === ventaId ? { ...v, [pagoKey]: !v[pagoKey] } : v)
+    }));
+  };
+
+  const totals = useMemo(() => {
+    let pendiente = 0, pagado = 0;
+    rows.forEach(r => r.pagado ? pagado += r.monto : pendiente += r.monto);
+    return { pendiente, pagado };
+  }, [rows]);
+
+  return (
+    <div className="pt-fade-in">
+      <SectionHeader title="Pagos" subtitle="Control de comisiones pagadas y pendientes"
+                     info="Tracking de cada pago derivado de una venta. Marca pagos individuales como completados conforme los liberas." />
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <StatCard icon={CheckCircle2} label="Total pagado" value={fmt.money(totals.pagado)} sublabel={`${rows.filter(r => r.pagado).length} pagos`}
+                  info="Comisiones que ya entregaste. Se actualiza al marcar pagos como pagados." />
+        <StatCard icon={AlertCircle} label="Pendiente" value={fmt.money(totals.pendiente)} sublabel={`${rows.filter(r => !r.pagado).length} pagos`} accent="cyan"
+                  info="Comisiones por pagar. Es tu pasivo actual con vendedores, promotores y la propia administración." />
+        <StatCard icon={DollarSign} label="Total general" value={fmt.money(totals.pagado + totals.pendiente)}
+                  info="Suma de todos los pagos del filtro actual, sin importar su estado." />
+      </div>
+
+      <Card className="p-5 mb-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-44"><Input label="Estado" value={filter} onChange={setFilter} options={['Todos', 'Pagado', 'Pendiente']} /></div>
+          <div className="w-44"><Input label="Tipo" value={filterRecipient} onChange={setFilterRecipient} options={['Todos', 'Vendedor', 'Promotor', 'Admin']} /></div>
+        </div>
+      </Card>
+
+      <Card className="p-0">
+        <div className="overflow-x-auto pt-scroll">
+          <table className="w-full text-sm" style={{ minWidth: 900 }}>
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-wider border-b" style={{ borderColor: C.border, color: C.textMuted }}>
+                <th className="px-4 py-3 font-medium">Tipo</th>
+                <th className="px-2 py-3 font-medium">Beneficiario</th>
+                <th className="px-2 py-3 font-medium">Cliente</th>
+                <th className="px-2 py-3 font-medium">Moto</th>
+                <th className="px-2 py-3 font-medium">Fecha</th>
+                <th className="px-2 py-3 font-medium text-right">Monto</th>
+                <th className="px-4 py-3 font-medium text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.id} className="border-t" style={{ borderColor: C.border, color: C.text, opacity: r.pagado ? 0.55 : 1 }}>
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-0.5 rounded text-[10px] uppercase tracking-wider"
+                          style={{
+                            background: r.tipo === 'Admin' ? C.goldFaint : 'rgba(79,195,247,0.08)',
+                            color: r.tipo === 'Admin' ? C.gold : C.cyan,
+                            border: `1px solid ${r.tipo === 'Admin' ? C.goldBorder : 'rgba(79,195,247,0.2)'}`
+                          }}>
+                      {r.tipo}
+                    </span>
+                  </td>
+                  <td className="px-2 py-3">{r.nombre}</td>
+                  <td className="px-2 py-3 text-xs" style={{ color: C.textMuted }}>{r.cliente}</td>
+                  <td className="px-2 py-3 text-xs" style={{ color: C.textMuted }}>{r.moto}</td>
+                  <td className="px-2 py-3 text-xs" style={{ color: C.textMuted }}>{r.fecha || '—'}</td>
+                  <td className="px-2 py-3 text-right pt-display">{fmt.money(r.monto)}</td>
+                  <td className="px-4 py-3 text-center">
+                    <button onClick={() => togglePago(r.ventaId, r.pagoKey)}
+                            className="px-3 py-1 rounded text-[10px] uppercase tracking-wider transition"
+                            style={{
+                              background: r.pagado ? 'rgba(74,222,128,0.1)' : 'rgba(212,162,76,0.08)',
+                              color: r.pagado ? C.success : C.gold,
+                              border: `1px solid ${r.pagado ? 'rgba(74,222,128,0.3)' : C.goldBorder}`
+                            }}>
+                      {r.pagado ? '✓ Pagado' : 'Marcar pagado'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr><td colSpan="7" className="px-4 py-12 text-center text-sm" style={{ color: C.textDim }}>
+                  Sin pagos en este filtro
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// FINANCIERO MODULE
+// ============================================================================
+function FinancieroView({ data, setData }) {
+  const [añoFiltro, setAñoFiltro] = useState(2026);
+  const [editing, setEditing] = useState(null);
+
+  const monthData = useMemo(() => {
+    return MESES.map(mes => {
+      const ventasMes = data.ventas.filter(v => v.mes === mes && v.año === añoFiltro);
+      const ingresoBruto = ventasMes.reduce((s, v) => s + calcComisiones(v).cAdmin, 0);
+      const totalFinanciado = ventasMes.reduce((s, v) => s + (v.montoFinanciado || 0), 0);
+      const bonoFin = totalFinanciado * 0.01;
+      const utilidadBruta = ingresoBruto + bonoFin;
+      const gasto = data.gastos.find(g => g.mes === mes && g.año === añoFiltro);
+      const gastoPub = gasto ? (gasto.diasMes || 0) * (gasto.montoxDia || 0) : 0;
+      const gastoOp = gasto ? (gasto.motosVendidas || 0) * ((gasto.gastoServicio || 0) + (gasto.gastoGasolina || 0) + (gasto.gastoConstancia || 0)) : 0;
+      const totalGastos = gastoPub + gastoOp;
+      const utilidadNeta = utilidadBruta - totalGastos;
+      return {
+        mes, ventas: ventasMes.length, totalFinanciado, ingresoBruto, bonoFin, utilidadBruta,
+        gastoPub, gastoOp, totalGastos, utilidadNeta, gastoData: gasto
+      };
+    }).filter(m => m.ventas > 0 || m.gastoData);
+  }, [data, añoFiltro]);
+
+  const yearTotals = useMemo(() => {
+    return monthData.reduce((acc, m) => ({
+      utilidadBruta: acc.utilidadBruta + m.utilidadBruta,
+      totalGastos: acc.totalGastos + m.totalGastos,
+      utilidadNeta: acc.utilidadNeta + m.utilidadNeta,
+      ventas: acc.ventas + m.ventas
+    }), { utilidadBruta: 0, totalGastos: 0, utilidadNeta: 0, ventas: 0 });
+  }, [monthData]);
+
+  const saveGasto = (g) => {
+    setData(d => {
+      const exist = d.gastos.find(x => x.mes === g.mes && x.año === g.año);
+      if (exist) {
+        return { ...d, gastos: d.gastos.map(x => x.id === exist.id ? { ...exist, ...g } : x) };
+      } else {
+        const nextId = Math.max(0, ...d.gastos.map(x => x.id)) + 1;
+        return { ...d, gastos: [...d.gastos, { ...g, id: nextId }] };
+      }
+    });
+    setEditing(null);
+  };
+
+  return (
+    <div className="pt-fade-in">
+      <SectionHeader
+        title="Control Financiero"
+        subtitle="Utilidades, gastos y rentabilidad mensual"
+        info="P&L mensual de la operación. Calcula utilidad bruta (de comisiones), resta gastos de publicidad y operativos, y muestra utilidad neta."
+        action={
+          <div className="w-32"><Input label="" value={añoFiltro} onChange={v => setAñoFiltro(Number(v))}
+                                        options={[2024, 2025, 2026, 2027].map(a => ({ value: a, label: String(a) }))} /></div>
+        }
+      />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard icon={TrendingUp} label="Utilidad bruta" value={fmt.money(yearTotals.utilidadBruta)} sublabel={`${yearTotals.ventas} ventas`}
+                  info="Neto admin acumulado + bonos del 1% por financiación. Es lo que entró a administración antes de gastos." />
+        <StatCard icon={CreditCard} label="Gastos totales" value={fmt.money(yearTotals.totalGastos)} accent="cyan"
+                  info="Suma de gastos de publicidad y operativos del año. Se restan a la utilidad bruta." />
+        <StatCard icon={DollarSign} label="Utilidad neta" value={fmt.money(yearTotals.utilidadNeta)} sublabel={fmt.pct(yearTotals.utilidadBruta > 0 ? yearTotals.utilidadNeta / yearTotals.utilidadBruta : 0) + ' margen'}
+                  info="Utilidad bruta menos gastos totales. Es la ganancia real del negocio." />
+        <StatCard icon={Target} label="Promedio/venta" value={fmt.money(yearTotals.ventas > 0 ? yearTotals.utilidadNeta / yearTotals.ventas : 0)} accent="cyan"
+                  info="Utilidad neta dividida entre el número de ventas. Indica cuánto se gana por cada moto vendida." />
+      </div>
+
+      <Card className="p-5 mb-6">
+        <h3 className="pt-display text-base mb-4" style={{ color: C.text }}>Utilidad por mes ({añoFiltro})</h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={monthData.map(m => ({
+            mes: m.mes.substring(0,3),
+            'Utilidad bruta': m.utilidadBruta,
+            'Gastos': m.totalGastos,
+            'Utilidad neta': m.utilidadNeta
+          }))}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+            <XAxis dataKey="mes" stroke={C.textMuted} fontSize={11} />
+            <YAxis stroke={C.textMuted} fontSize={11} />
+            <Tooltip contentStyle={{ background: C.bgCard, border: `1px solid ${C.goldBorder}`, borderRadius: 8, fontSize: 12 }}
+                     formatter={(v) => fmt.money(v)} />
+            <Legend wrapperStyle={{ fontSize: 11, color: C.textMuted }} />
+            <Bar dataKey="Utilidad bruta" fill={C.gold} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Gastos" fill={C.danger} radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Utilidad neta" fill={C.cyan} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <Card className="p-0 mb-6">
+        <div className="overflow-x-auto pt-scroll">
+          <table className="w-full text-sm" style={{ minWidth: 900 }}>
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-wider border-b" style={{ borderColor: C.border, color: C.textMuted }}>
+                <th className="px-4 py-3 font-medium">Mes</th>
+                <th className="px-2 py-3 font-medium text-right">Ventas</th>
+                <th className="px-2 py-3 font-medium text-right">Util. Bruta</th>
+                <th className="px-2 py-3 font-medium text-right">Publicidad</th>
+                <th className="px-2 py-3 font-medium text-right">Operativo</th>
+                <th className="px-2 py-3 font-medium text-right">Gastos</th>
+                <th className="px-2 py-3 font-medium text-right">Util. Neta</th>
+                <th className="px-4 py-3 font-medium text-center">Editar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthData.map(m => (
+                <tr key={m.mes} className="border-t" style={{ borderColor: C.border, color: C.text }}>
+                  <td className="px-4 py-3 pt-display">{m.mes}</td>
+                  <td className="px-2 py-3 text-right">{m.ventas}</td>
+                  <td className="px-2 py-3 text-right pt-grad-text font-semibold">{fmt.money(m.utilidadBruta)}</td>
+                  <td className="px-2 py-3 text-right" style={{ color: C.textMuted }}>{fmt.money(m.gastoPub)}</td>
+                  <td className="px-2 py-3 text-right" style={{ color: C.textMuted }}>{fmt.money(m.gastoOp)}</td>
+                  <td className="px-2 py-3 text-right" style={{ color: C.danger }}>{fmt.money(m.totalGastos)}</td>
+                  <td className="px-2 py-3 text-right" style={{ color: m.utilidadNeta >= 0 ? C.success : C.danger }}>{fmt.money(m.utilidadNeta)}</td>
+                  <td className="px-4 py-3 text-center">
+                    <button onClick={() => setEditing(m.gastoData || { mes: m.mes, año: añoFiltro, diasMes: 30, montoxDia: 85, gastoServicio: 100, gastoGasolina: 50, gastoConstancia: 70, motosVendidas: m.ventas })}
+                            className="p-1.5 rounded hover:bg-white/5" style={{ color: C.textMuted }}>
+                      <Edit3 size={13} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {monthData.length === 0 && (
+                <tr><td colSpan="8" className="px-4 py-12 text-center text-sm" style={{ color: C.textDim }}>
+                  Sin datos para {añoFiltro}
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {editing && (
+        <GastoModal gasto={editing} onSave={saveGasto} onClose={() => setEditing(null)} />
+      )}
+    </div>
+  );
+}
+
+function GastoModal({ gasto: initial, onSave, onClose }) {
+  const [g, setG] = useState(initial);
+  const upd = (k, v) => setG(p => ({ ...p, [k]: v }));
+  const gastoPub = (g.diasMes || 0) * (g.montoxDia || 0);
+  const gastoOp = (g.motosVendidas || 0) * ((g.gastoServicio || 0) + (g.gastoGasolina || 0) + (g.gastoConstancia || 0));
+
+  return (
+    <Modal open onClose={onClose} title={`Gastos · ${g.mes} ${g.año}`}
+           footer={<>
+             <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+             <Button onClick={() => onSave(g)}><Save size={14} className="inline mr-1.5" />Guardar</Button>
+           </>}>
+      <div className="mb-5">
+        <h4 className="pt-display text-sm mb-3 flex items-center gap-2" style={{ color: C.gold }}>
+          <span>Publicidad</span>
+          <InfoTip text="Gasto de marketing del mes. Se calcula como días × monto diario." />
+        </h4>
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Días del mes" type="number" min={1} max={31} value={g.diasMes} onChange={v => upd('diasMes', v)}
+                 info="Número de días que se hizo publicidad en el mes. Generalmente 28-31." />
+          <Input label="Monto por día" type="number" min={0} value={g.montoxDia} onChange={v => upd('montoxDia', v)} suffix="$"
+                 info="Inversión diaria en publicidad (Facebook Ads, Google Ads, etc)." />
+        </div>
+        <div className="text-xs mt-2" style={{ color: C.textMuted }}>
+          Total publicidad: <span className="pt-display" style={{ color: C.gold }}>{fmt.money(gastoPub)}</span>
+        </div>
+      </div>
+
+      <div>
+        <h4 className="pt-display text-sm mb-3 flex items-center gap-2" style={{ color: C.gold }}>
+          <span>Operativo (por moto vendida)</span>
+          <InfoTip text="Gastos asociados a la entrega de cada moto (servicio, gasolina, constancia). Se multiplica por motos vendidas." />
+        </h4>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Input label="Motos vendidas" type="number" min={0} value={g.motosVendidas} onChange={v => upd('motosVendidas', v)}
+                 info="Cantidad de motos entregadas en el mes. Multiplica los gastos operativos." />
+          <Input label="Servicio" type="number" min={0} value={g.gastoServicio} onChange={v => upd('gastoServicio', v)} suffix="$"
+                 info="Costo de servicio mecánico por moto entregada." />
+          <Input label="Gasolina" type="number" min={0} value={g.gastoGasolina} onChange={v => upd('gastoGasolina', v)} suffix="$"
+                 info="Gasolina de cortesía o gasto de traslado por moto." />
+          <Input label="Constancia" type="number" min={0} value={g.gastoConstancia} onChange={v => upd('gastoConstancia', v)} suffix="$"
+                 info="Costo del trámite de constancia o factura por moto." />
+        </div>
+        <div className="text-xs mt-2" style={{ color: C.textMuted }}>
+          Total operativo: <span className="pt-display" style={{ color: C.gold }}>{fmt.money(gastoOp)}</span>
+        </div>
+      </div>
+
+      <div className="mt-5 p-4 rounded-xl" style={{ background: C.goldFaint, border: `1px solid ${C.goldBorder}` }}>
+        <div className="flex justify-between items-center">
+          <span className="pt-display text-sm" style={{ color: C.text }}>Total gastos</span>
+          <span className="pt-display text-xl pt-grad-text">{fmt.money(gastoPub + gastoOp)}</span>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ============================================================================
+// RETROS MODULE
+// ============================================================================
+function RetrosView({ data, setData }) {
+  const [vendedor, setVendedor] = useState(data.vendedores[0]);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState({ date: new Date().toISOString().slice(0, 10), nivel: 'bueno', comentario: '' });
+
+  const ventasVendedor = useMemo(() => data.ventas.filter(v => v.vendedor === vendedor), [data.ventas, vendedor]);
+  const prospectosVendedor = useMemo(() =>
+    data.prospectos.filter(p => p.vendedor === vendedor).reduce((s, p) => s + p.cantidad, 0), [data.prospectos, vendedor]);
+  const exito = prospectosVendedor > 0 ? ventasVendedor.length / prospectosVendedor : 0;
+  const retros = data.retros[vendedor] || [];
+
+  const addRetro = () => {
+    if (!draft.comentario.trim()) return;
+    setData(d => ({
+      ...d,
+      retros: { ...d.retros, [vendedor]: [...(d.retros[vendedor] || []), { ...draft, id: Date.now() }] }
+    }));
+    setDraft({ date: new Date().toISOString().slice(0, 10), nivel: 'bueno', comentario: '' });
+    setAdding(false);
+  };
+
+  const removeRetro = (id) => {
+    setData(d => ({
+      ...d,
+      retros: { ...d.retros, [vendedor]: (d.retros[vendedor] || []).filter(r => r.id !== id) }
+    }));
+  };
+
+  // Determine current level based on success rate
+  const nivelSugerido = exito >= 0.30 ? 'excelente' : exito >= 0.20 ? 'bueno' : exito >= 0.12 ? 'regular' : exito > 0 ? 'bajo' : 'critico';
+  const nivelData = NIVELES_RENDIMIENTO.find(n => n.value === nivelSugerido);
+
+  return (
+    <div className="pt-fade-in">
+      <SectionHeader title="Retros" subtitle="Niveles de rendimiento y feedback por vendedor"
+                     info="Sistema de evaluación y feedback. El nivel se sugiere automáticamente según el % de éxito del vendedor, pero puedes registrar comentarios manuales." />
+
+      <div className="flex flex-wrap gap-2 mb-5">
+        {data.vendedores.map(v => (
+          <button key={v} onClick={() => setVendedor(v)}
+                  className={`px-4 py-2 rounded-lg text-sm transition`}
+                  style={{
+                    background: vendedor === v ? C.goldFaint : 'transparent',
+                    color: vendedor === v ? C.gold : C.textMuted,
+                    border: `1px solid ${vendedor === v ? C.goldBorder : C.border}`
+                  }}>
+            {v}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <Card className="p-5 lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="pt-display text-lg" style={{ color: C.text }}>{vendedor}</h3>
+            <div className="px-3 py-1 rounded text-xs uppercase tracking-wider"
+                 style={{ background: `${nivelData.color}15`, color: nivelData.color, border: `1px solid ${nivelData.color}40` }}>
+              {nivelData.label}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: C.textMuted }}>Ventas</div>
+              <div className="pt-display text-3xl pt-grad-text">{ventasVendedor.length}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: C.textMuted }}>Prospectos</div>
+              <div className="pt-display text-3xl pt-grad-cyan">{prospectosVendedor}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: C.textMuted }}>% Éxito</div>
+              <div className="pt-display text-3xl" style={{ color: nivelData.color }}>{fmt.pct(exito)}</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <h3 className="pt-display text-base mb-3" style={{ color: C.text }}>Niveles</h3>
+          <div className="space-y-2">
+            {NIVELES_RENDIMIENTO.map(n => (
+              <div key={n.value} className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ background: n.color }}></span>
+                  <span style={{ color: nivelSugerido === n.value ? n.color : C.textMuted }}>{n.label}</span>
+                </span>
+                <span className="text-[10px]" style={{ color: C.textDim }}>
+                  {n.value === 'excelente' && '≥ 30%'}
+                  {n.value === 'bueno' && '20–30%'}
+                  {n.value === 'regular' && '12–20%'}
+                  {n.value === 'bajo' && '0–12%'}
+                  {n.value === 'critico' && '0%'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="pt-display text-base" style={{ color: C.text }}>Historial de retros</h3>
+        <Button onClick={() => setAdding(true)}><Plus size={14} className="inline mr-1.5" />Nuevo retro</Button>
+      </div>
+
+      {adding && (
+        <Card className="p-5 mb-3" style={{ borderColor: C.goldBorder }}>
+          <div className="grid grid-cols-2 gap-4 mb-3">
+            <Input label="Fecha" type="date" value={draft.date} onChange={v => setDraft(d => ({ ...d, date: v }))} />
+            <Input label="Nivel" value={draft.nivel} onChange={v => setDraft(d => ({ ...d, nivel: v }))}
+                   options={NIVELES_RENDIMIENTO.map(n => ({ value: n.value, label: n.label }))} />
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-[0.18em] mb-1.5" style={{ color: C.textMuted }}>Comentario</label>
+            <textarea value={draft.comentario}
+                      onChange={e => setDraft(d => ({ ...d, comentario: e.target.value }))}
+                      placeholder="Describe el feedback, acciones y compromisos..."
+                      rows={4}
+                      className="pt-input w-full rounded-lg px-3 py-2 text-sm" />
+          </div>
+          <div className="flex justify-end gap-2 mt-3">
+            <Button variant="ghost" size="sm" onClick={() => setAdding(false)}>Cancelar</Button>
+            <Button size="sm" onClick={addRetro} disabled={!draft.comentario.trim()}>Guardar retro</Button>
+          </div>
+        </Card>
+      )}
+
+      {retros.length === 0 ? (
+        <Card className="p-12 text-center">
+          <MessageSquare size={32} className="mx-auto mb-3" style={{ color: C.textDim }} />
+          <p className="text-sm" style={{ color: C.textDim }}>Sin retros registrados para este vendedor.</p>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {[...retros].sort((a, b) => b.date.localeCompare(a.date)).map(r => {
+            const nv = NIVELES_RENDIMIENTO.find(n => n.value === r.nivel) || NIVELES_RENDIMIENTO[1];
+            return (
+              <Card key={r.id} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="px-2 py-0.5 rounded text-[10px] uppercase tracking-wider"
+                            style={{ background: `${nv.color}15`, color: nv.color, border: `1px solid ${nv.color}40` }}>
+                        {nv.label}
+                      </span>
+                      <span className="text-xs" style={{ color: C.textMuted }}>{r.date}</span>
+                    </div>
+                    <p className="text-sm" style={{ color: C.text }}>{r.comentario}</p>
+                  </div>
+                  <button onClick={() => removeRetro(r.id)}
+                          className="p-1.5 rounded hover:bg-white/5" style={{ color: C.textDim }}>
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// ADMIN VIEW — Vista directa de todas las tablas SQL (solo perfil ADMIN)
+// ============================================================================
+function AdminView({ db }) {
+  const [activeTable, setActiveTable] = useState('ventas');
+  const [queryText, setQueryText] = useState('');
+  const [queryResult, setQueryResult] = useState(null);
+  const [queryError, setQueryError] = useState('');
+  const [queryTime, setQueryTime] = useState(null);
+
+  const TABLES = ['usuarios','vendedores','promotores','modelos_moto','ventas','prospectos',
+                  'metas_mensuales','historico_global','retroalimentaciones','gastos','guardias_config'];
+
+  const tableData = useMemo(() => {
+    if (!db) return { columns: [], rows: [] };
+    try {
+      const r = db.exec(`SELECT * FROM ${activeTable} LIMIT 500`);
+      return r[0] ? { columns: r[0].columns, rows: r[0].values } : { columns: [], rows: [] };
+    } catch (e) { return { columns: [], rows: [], error: e.message }; }
+  }, [db, activeTable]);
+
+  const rowCount = useMemo(() => {
+    if (!db) return 0;
+    try { return db.exec(`SELECT COUNT(*) FROM ${activeTable}`)[0]?.values[0]?.[0] || 0; }
+    catch (_) { return 0; }
+  }, [db, activeTable]);
+
+  const runQuery = () => {
+    if (!db || !queryText.trim()) return;
+    const t0 = Date.now();
+    try {
+      const result = db.exec(queryText);
+      setQueryTime(Date.now() - t0);
+      setQueryResult(result);
+      setQueryError('');
+    } catch (e) { setQueryError(e.message); setQueryResult(null); setQueryTime(null); }
+  };
+
+  if (!db) {
+    return (
+      <div className="pt-fade-in flex items-center justify-center min-h-[300px]">
+        <div className="text-sm" style={{ color: C.textDim }}>Inicializando base de datos…</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-fade-in">
+      <SectionHeader
+        title="Base de Datos"
+        subtitle="Vista y consulta directa de todas las tablas SQL · Solo perfil ADMIN"
+        info="Acceso completo al esquema relacional SQLite. Puedes inspeccionar cualquier tabla o ejecutar consultas SQL personalizadas (Ctrl+Enter para ejecutar)."
+      />
+
+      {/* Selector de tabla */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {TABLES.map(t => (
+          <button key={t} onClick={() => setActiveTable(t)}
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-mono uppercase tracking-wide transition"
+                  style={{
+                    background: activeTable === t ? C.goldFaint : 'rgba(255,255,255,0.025)',
+                    color: activeTable === t ? C.gold : C.textMuted,
+                    border: `1px solid ${activeTable === t ? C.goldBorder : C.borderStrong}`
+                  }}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {/* Tabla de datos */}
+      <Card className="p-0 mb-6">
+        <div className="flex items-center gap-3 px-5 py-3 border-b" style={{ borderColor: C.border }}>
+          <Database size={14} style={{ color: C.gold }} />
+          <span className="pt-display text-sm" style={{ color: C.gold }}>{activeTable}</span>
+          <span className="text-[11px] px-2 py-0.5 rounded font-mono"
+                style={{ background: C.goldFaint, color: C.gold }}>
+            {rowCount} {rowCount === 1 ? 'fila' : 'filas'}
+          </span>
+        </div>
+        <div className="overflow-x-auto pt-scroll" style={{ maxHeight: 420 }}>
+          {tableData.error ? (
+            <div className="p-5 text-sm" style={{ color: C.danger }}>{tableData.error}</div>
+          ) : tableData.columns.length === 0 ? (
+            <div className="p-12 text-center text-sm" style={{ color: C.textDim }}>
+              Tabla vacía
+            </div>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="sticky top-0">
+                <tr>
+                  {tableData.columns.map(col => (
+                    <th key={col} className="px-4 py-2.5 text-left font-medium font-mono text-[11px] tracking-wider whitespace-nowrap"
+                        style={{ color: C.textMuted, background: C.bgCard, borderBottom: `1px solid ${C.border}` }}>
+                      {col}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tableData.rows.map((row, i) => (
+                  <tr key={i} className="border-t hover:bg-white/[0.015] transition"
+                      style={{ borderColor: C.border }}>
+                    {row.map((cell, j) => (
+                      <td key={j} className="px-4 py-2 font-mono whitespace-nowrap"
+                          style={{
+                            color: cell === null ? C.textDim : C.text,
+                            maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis',
+                            display: 'table-cell'
+                          }}>
+                        {cell === null ? <span style={{ color: C.textDim, fontStyle: 'italic' }}>NULL</span>
+                          : String(cell).length > 100
+                            ? String(cell).substring(0, 97) + '…'
+                            : String(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </Card>
+
+      {/* Editor de consulta SQL */}
+      <Card className="p-5">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-xs uppercase tracking-wider" style={{ color: C.textMuted }}>
+            Consulta SQL personalizada
+          </span>
+          {queryTime !== null && (
+            <span className="text-[11px] px-2 py-0.5 rounded"
+                  style={{ background: 'rgba(74,222,128,0.1)', color: C.success }}>
+              {queryTime}ms
+            </span>
+          )}
+        </div>
+        <textarea
+          value={queryText}
+          onChange={e => setQueryText(e.target.value)}
+          onKeyDown={e => { if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); runQuery(); } }}
+          className="pt-input w-full rounded-lg p-3 mb-3 font-mono resize-none"
+          style={{ fontSize: 12, height: 88, lineHeight: 1.5 }}
+          placeholder="SELECT v.vendedor, COUNT(*) as ventas FROM ventas v GROUP BY v.vendedor ORDER BY ventas DESC;"
+        />
+        <div className="flex items-center gap-2">
+          <Button onClick={runQuery} disabled={!queryText.trim()}>
+            Ejecutar <span className="text-[10px] opacity-50 ml-1">Ctrl+Enter</span>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => { setQueryText(''); setQueryResult(null); setQueryError(''); setQueryTime(null); }}>
+            Limpiar
+          </Button>
+        </div>
+
+        {queryError && (
+          <div className="mt-3 p-3 rounded-lg text-xs font-mono"
+               style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', color: C.danger }}>
+            {queryError}
+          </div>
+        )}
+
+        {queryResult && queryResult.length > 0 && queryResult[0] && (
+          <div className="mt-4">
+            <div className="text-xs mb-2" style={{ color: C.textMuted }}>
+              {queryResult[0].values.length} {queryResult[0].values.length === 1 ? 'resultado' : 'resultados'}
+            </div>
+            <div className="overflow-x-auto pt-scroll rounded-xl" style={{ border: `1px solid ${C.border}`, maxHeight: 320 }}>
+              <table className="w-full text-xs">
+                <thead className="sticky top-0">
+                  <tr>
+                    {queryResult[0].columns.map(col => (
+                      <th key={col} className="px-4 py-2.5 text-left font-mono text-[11px]"
+                          style={{ color: C.textMuted, background: C.bgCard, borderBottom: `1px solid ${C.border}` }}>
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {queryResult[0].values.slice(0, 200).map((row, i) => (
+                    <tr key={i} style={{ borderTop: `1px solid ${C.border}` }}>
+                      {row.map((cell, j) => (
+                        <td key={j} className="px-4 py-2 font-mono whitespace-nowrap"
+                            style={{ color: cell === null ? C.textDim : C.text }}>
+                          {cell === null ? <span style={{ fontStyle: 'italic' }}>NULL</span> : String(cell).substring(0, 200)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {queryResult[0].values.length > 200 && (
+              <p className="text-xs mt-2" style={{ color: C.textDim }}>
+                Mostrando primeros 200 de {queryResult[0].values.length} resultados
+              </p>
+            )}
+          </div>
+        )}
+
+        {queryResult && queryResult.length === 0 && (
+          <div className="mt-3 flex items-center gap-2 text-xs"
+               style={{ color: C.success }}>
+            <CheckCircle2 size={13} /> Comando ejecutado correctamente (sin filas devueltas)
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// MAIN APP — Sidebar + Routing
+// ============================================================================
+const NAV_ITEMS = [
+  { id: 'dashboard', label: 'Vista general', icon: LayoutDashboard },
+  { id: 'guardias', label: 'Guardias', icon: Calendar },
+  { id: 'metricos', label: 'Métricos de venta', icon: BarChart3 },
+  { id: 'comisiones', label: 'Comisiones', icon: DollarSign },
+  { id: 'pagos', label: 'Pagos', icon: CreditCard },
+  { id: 'financiero', label: 'Financiero', icon: TrendingUp },
+  { id: 'retros', label: 'Retros', icon: MessageSquare }
+];
+
+function MainApp({ onLogout, isAdmin }) {
+  const [data, setData] = useState(DEFAULT_DATA);
+  const [loaded, setLoaded] = useState(false);
+  const [active, setActive] = useState('dashboard');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [db, setDb] = useState(null);
+  const [dbError, setDbError] = useState('');
+
+  useEffect(() => {
+    // DB ya fue inicializada en App; solo leer datos
+    try {
+      setDb(DB);
+      setData(dbToAppData());
+    } catch (e) {
+      console.error('DB load en MainApp:', e);
+      setDbError(e.message);
+      setData(DEFAULT_DATA);
+    }
+    setLoaded(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (loaded && DB) appDataToDB(data);
+  }, [data, loaded]);
+
+  const renderView = () => {
+    switch (active) {
+      case 'dashboard':  return <DashboardView data={data} />;
+      case 'guardias':   return <GuardiasView data={data} setData={setData} />;
+      case 'metricos':   return <MetricosView data={data} setData={setData} />;
+      case 'comisiones': return <ComisionesView data={data} setData={setData} />;
+      case 'pagos':      return <PagosView data={data} setData={setData} />;
+      case 'financiero': return <FinancieroView data={data} setData={setData} />;
+      case 'retros':     return <RetrosView data={data} setData={setData} />;
+      case 'admin':      return isAdmin ? <AdminView db={db} /> : null;
+      default: return null;
+    }
+  };
+
+  if (!loaded) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center pt-body" style={{ background: C.bg }}>
+        <div className="pt-display tracking-[0.3em] text-sm mb-2" style={{ color: C.gold }}>CARGANDO…</div>
+        <div className="text-xs" style={{ color: C.textDim }}>Inicializando base de datos SQL</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex pt-body" style={{ background: C.bg, color: C.text }}>
+      {/* Sidebar */}
+      <aside className={`fixed lg:sticky top-0 left-0 h-screen w-64 flex flex-col z-40 transition-transform ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+             style={{ background: C.bgCard, borderRight: `1px solid ${C.border}` }}>
+        <div className="p-5 border-b" style={{ borderColor: C.border }}>
+          <div className="flex items-center gap-3">
+            <img src={LOGO_PT} alt="Prospect Team" className="w-10 h-10 object-contain rounded-lg"
+                 style={{ filter: 'drop-shadow(0 4px 12px rgba(212,162,76,0.25))' }} />
+            <div>
+              <div className="pt-display text-sm pt-grad-text font-semibold">PROSPECT TEAM</div>
+              <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.textDim }}>Admin · Dinamo</div>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 p-3 pt-scroll overflow-y-auto">
+          {NAV_ITEMS.map(item => {
+            const Icon = item.icon;
+            const isActive = active === item.id;
+            return (
+              <button key={item.id}
+                      onClick={() => { setActive(item.id); setMobileNavOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-1 transition relative ${isActive ? 'pt-shine' : ''}`}
+                      style={{
+                        background: isActive ? C.goldFaint : 'transparent',
+                        color: isActive ? C.gold : C.textMuted,
+                        border: `1px solid ${isActive ? C.goldBorder : 'transparent'}`
+                      }}>
+                <Icon size={16} />
+                <span>{item.label}</span>
+                {isActive && <span className="absolute right-3 w-1.5 h-1.5 rounded-full" style={{ background: C.gold, boxShadow: `0 0 8px ${C.gold}` }}></span>}
+              </button>
+            );
+          })}
+
+        </nav>
+
+        <div className="p-3 border-t" style={{ borderColor: C.border }}>
+          {/* Pestaña Base de datos — solo perfil ADMIN, en el footer para siempre visible */}
+          {isAdmin && (
+            <button onClick={() => { setActive('admin'); setMobileNavOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-3 transition relative ${active === 'admin' ? 'pt-shine' : ''}`}
+                    style={{
+                      background: active === 'admin' ? 'rgba(79,195,247,0.08)' : 'rgba(79,195,247,0.03)',
+                      color: active === 'admin' ? C.cyan : C.textMuted,
+                      border: `1px solid ${active === 'admin' ? 'rgba(79,195,247,0.35)' : 'rgba(79,195,247,0.15)'}`
+                    }}>
+              <Database size={15} />
+              <span className="text-xs">Base de datos</span>
+              {active === 'admin'
+                ? <span className="absolute right-3 w-1.5 h-1.5 rounded-full" style={{ background: C.cyan, boxShadow: `0 0 8px ${C.cyan}` }}></span>
+                : <span className="absolute right-3 text-[9px] uppercase tracking-wider" style={{ color: 'rgba(79,195,247,0.5)' }}>ADMIN</span>
+              }
+            </button>
+          )}
+          <div className="px-3 py-2 mb-2">
+            <div className="text-[10px] uppercase tracking-wider" style={{ color: C.textDim }}>Admin</div>
+            <div className="text-xs truncate" style={{ color: C.textMuted }}>{ADMIN_EMAIL}</div>
+            {db && (
+              <div className="flex items-center gap-1 mt-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.success }}></span>
+                <span className="text-[9px] uppercase tracking-wider" style={{ color: C.success }}>SQL activo</span>
+              </div>
+            )}
+            {dbError && (
+              <div className="flex items-center gap-1 mt-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.warning }}></span>
+                <span className="text-[9px] uppercase tracking-wider" style={{ color: C.warning }}>Modo local</span>
+              </div>
+            )}
+          </div>
+          <button onClick={onLogout}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs uppercase tracking-wider transition"
+                  style={{ color: C.textMuted, border: `1px solid ${C.border}` }}>
+            <LogOut size={14} />
+            Cerrar sesión
+          </button>
+          <p className="text-center text-[9px] mt-3 pt-display tracking-[0.25em]" style={{ color: C.textDim }}>
+            PERSEVERA PARA TRIUNFAR
+          </p>
+        </div>
+      </aside>
+
+      {/* Mobile nav backdrop */}
+      {mobileNavOpen && (
+        <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setMobileNavOpen(false)}></div>
+      )}
+
+      {/* Main content */}
+      <main className="flex-1 lg:ml-0 min-h-screen pt-scroll overflow-x-hidden">
+        <div className="lg:hidden sticky top-0 z-20 px-4 py-3 flex items-center justify-between"
+             style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+          <button onClick={() => setMobileNavOpen(true)}
+                  className="px-3 py-1.5 rounded-lg text-xs uppercase tracking-wider"
+                  style={{ color: C.gold, border: `1px solid ${C.goldBorder}` }}>
+            ≡ Menú
+          </button>
+          <span className="pt-display text-sm pt-grad-text">PROSPECT TEAM</span>
+        </div>
+        <div className="p-5 lg:p-8 max-w-[1500px]">
+          {renderView()}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ============================================================================
+// ROOT
+// ============================================================================
+function App() {
+  useGlobalStyles();
+  const [authed, setAuthed] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [dbReady, setDbReady] = useState(false);
+
+  // Inicializar BD antes de mostrar el login para que dbVerifyLogin funcione
+  useEffect(() => {
+    initDB()
+      .then(() => setDbReady(true))
+      .catch(e => { console.error('DB init en App:', e); setDbReady(true); });
+  }, []);
+
+  if (!dbReady) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center pt-body" style={{ background: C.bg }}>
+        <img src={LOGO_PT} alt="Prospect Team" className="w-16 h-16 object-contain mb-4"
+             style={{ filter: 'drop-shadow(0 8px 24px rgba(212,162,76,0.35))' }} />
+        <div className="pt-display tracking-[0.3em] text-sm mb-1" style={{ color: C.gold }}>PROSPECT TEAM</div>
+        <div className="text-xs mt-2" style={{ color: C.textDim }}>Inicializando base de datos…</div>
+      </div>
+    );
+  }
+
+  if (!authed) return <LoginScreen onLogin={(admin) => { setIsAdmin(!!admin); setAuthed(true); }} />;
+  return <MainApp onLogout={() => { setIsAdmin(false); setAuthed(false); }} isAdmin={isAdmin} />;
+}
+// Montar la aplicación React
+ReactDOM.createRoot(document.getElementById('root')).render(
+  React.createElement(React.StrictMode, null, React.createElement(App, null))
+);
+    </script>
+  </body>
+</html>
