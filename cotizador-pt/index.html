@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <meta name="theme-color" content="#060709"/>
-<<link rel="icon" type="image/png" href="img/LOGO PT(1).png">
+<link rel="icon" type="image/png" href="Assets/LOGO PT(1).png">
 <title>Cotizador · Prospect Team</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -636,6 +636,17 @@ tbody tr:hover{background:rgba(201,154,59,.04);}
             <div class="sc-meta">Enganche 50% – 75%</div>
             <div class="sc-tag">✓ Seleccionado</div>
           </div>
+          <div class="sc-card" data-sc="credinamo_flex" onclick="selectScheme(this)">
+            <div class="sc-name">Credinamo Flex</div>
+            <div class="sc-meta">Enganche 10% – 75% · Semanal</div>
+            <div class="sc-tag">✓ Seleccionado</div>
+          </div>
+          <div class="sc-card" data-sc="motoxpress_flex" onclick="selectScheme(this)">
+            <div class="sc-name">Motoxpress Flex</div>
+            <div class="sc-meta">Enganche 15% – 75% · Semanal</div>
+            <div class="sc-tag">✓ Seleccionado</div>
+          </div>
+
         </div>
         <div class="nav-row">
           <button class="btn-back" onclick="goStep(0)">← Volver</button>
@@ -863,7 +874,14 @@ const SCHEMES={
   ]},
   enganche50:{label:"50% de Enganche",min:50,max:75,termUnit:"quincenas",terms:[12,18,24,36,48,60,72],levels:[
     {range:[0,100],     m:{12:.101456,18:.074419,24:.060489,36:.048456,48:.043838,60:.042265,72:.040492}}
-  ]}
+  ]},
+  credinamo_flex:{label:"Credinamo Flex",min:10,max:75,termUnit:"semanas",terms:[52,65,96,128,142,154,170],levels:[
+    {range:[10,49.99],  m:{52:.029317,65:.025751,96:.021436,128:.019474,142:.018972,154:.018641,170:.018290}},
+    {range:[50,75],     m:{52:.028701,65:.025090,96:.020707,128:.018693,142:.018158,154:.017806,170:.017467}}
+  ]},
+  motoxpress_flex:{label:"Motoxpress Flex",min:15,max:75,termUnit:"semanas",terms:[52,65,96,128,142,154,170],levels:[
+    {range:[0,100],     m:{52:.029955,65:.026416,96:.022169,128:.020269,142:.019777,154:.019470,170:.019148}}
+  ]},
 };
 
 /* ─── FORMATTERS ─── */
