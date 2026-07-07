@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #0a1428;
+  color: #f8fafc;
+  font-family: 'Inter', system-ui, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Custom scrollbars that fit the dark theme */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #25406c transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #25406c;
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #38bdf8;
+}
+
+/* Reusable component classes (prefixed to avoid collisions) */
+@layer components {
+  .m-glass {
+    @apply bg-navy-800/70 backdrop-blur-md border border-white/5 shadow-card;
+  }
+  .m-input {
+    @apply w-full rounded-lg bg-navy-900/60 border border-white/10 px-3 py-2 text-sm text-ink
+      placeholder:text-ink-faint outline-none transition
+      focus:border-sky2 focus:ring-2 focus:ring-sky2/30;
+  }
+  .m-label {
+    @apply block text-xs font-medium text-ink-muted mb-1.5;
+  }
+  .m-chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium;
+  }
+}
+
+/* dnd-kit: prevent the browser's native scroll from hijacking touch drags */
+.m-draggable {
+  touch-action: manipulation;
+}
+
+/* Respect users who prefer reduced motion: freeze background + card animations */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

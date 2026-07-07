@@ -1,0 +1,42 @@
+// Small formatting helpers shared across views.
+
+const dateTimeFmt = new Intl.DateTimeFormat('es-MX', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+const dateFmt = new Intl.DateTimeFormat('es-MX', {
+  day: '2-digit',
+  month: 'long',
+  year: 'numeric',
+});
+
+/** Timestamp (ms) → "12 feb 2026, 14:30". Empty string for falsy input. */
+export function formatDateTime(ts) {
+  if (!ts) return '';
+  return dateTimeFmt.format(new Date(ts));
+}
+
+/** Timestamp (ms) → "12 de febrero de 2026". Empty string for falsy input. */
+export function formatDate(ts) {
+  if (!ts) return '';
+  return dateFmt.format(new Date(ts));
+}
+
+/** Timestamp (ms) → value for an <input type="date"> (YYYY-MM-DD), local time. */
+export function toDateInput(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const off = d.getTimezoneOffset() * 60000;
+  return new Date(ts - off).toISOString().slice(0, 10);
+}
+
+/** "YYYY-MM-DD" from an <input type="date"> → timestamp (ms) at local midnight. */
+export function fromDateInput(value) {
+  if (!value) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  return new Date(y, m - 1, d).getTime();
+}
