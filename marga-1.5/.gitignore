@@ -1,0 +1,13 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Firebase CLI artifacts (config snippets and logs must never reach the public repo)
+firebase-debug.log
+firebase-config.js
+.firebase/
