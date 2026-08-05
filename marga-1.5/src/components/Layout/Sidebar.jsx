@@ -11,8 +11,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useData } from '../../context/DataContext.jsx';
-import { SECTIONS, ROLE_LABELS } from '../../lib/constants.js';
+import { SECTIONS, ROLE_LABELS, userColor } from '../../lib/constants.js';
 import { visibleSections, canManageUsers, canViewAdminPanel } from '../../lib/permissions.js';
+import Avatar from '../ui/Avatar.jsx';
 
 const ICONS = {
   prospectos: UserPlus,
@@ -39,9 +40,9 @@ function NavButton({ icon: Icon, label, badge, isActive, onClick }) {
   );
 }
 
-export default function Sidebar({ active, onNavigate, open, onClose }) {
+export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClose }) {
   const { user, role, logout } = useAuth();
-  const { clients, citas } = useData();
+  const { clients, citas, myProfile } = useData();
 
   const counts = clients.reduce((acc, c) => {
     acc[c.section] = (acc[c.section] ?? 0) + 1;
@@ -110,8 +111,21 @@ export default function Sidebar({ active, onNavigate, open, onClose }) {
       </nav>
 
       <div className="border-t border-white/5 p-3">
-        <div className="mb-2 flex items-center justify-between gap-2 px-2 text-xs text-ink-faint">
-          <span className="truncate">
+        {/* Pressing the session block opens the profile sheet, where each user
+            sets their own picture. */}
+        <button
+          onClick={onOpenProfile}
+          aria-label={`Abrir mi perfil (${user?.username ?? ''})`}
+          className="mb-2 flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-xs text-ink-faint transition hover:bg-white/5"
+        >
+          <Avatar
+            photo={myProfile?.photo}
+            name={user?.username}
+            color={userColor(myProfile ?? user)}
+            size={26}
+            fallback="icon"
+          />
+          <span className="min-w-0 flex-1 truncate text-left">
             Sesión: <span className="text-ink-muted">{user?.username}</span>
           </span>
           <span
@@ -121,7 +135,7 @@ export default function Sidebar({ active, onNavigate, open, onClose }) {
           >
             {ROLE_LABELS[role] ?? role}
           </span>
-        </div>
+        </button>
         <button
           onClick={logout}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-state-danger/10 hover:text-state-danger"

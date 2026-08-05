@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { useData } from '../context/DataContext.jsx';
+import { sellerColor } from '../lib/constants.js';
 import { formatDate, formatDateTime, toDateInput, fromDateInput } from '../lib/format.js';
 import { compressImage } from '../lib/image.js';
 import { downloadCitaSummary } from '../lib/citaSummary.js';
@@ -25,6 +26,7 @@ import Modal from '../components/ui/Modal.jsx';
 import Checkbox from '../components/ui/Checkbox.jsx';
 import Input, { Textarea } from '../components/ui/Input.jsx';
 import CopyButton from '../components/ui/CopyButton.jsx';
+import Avatar from '../components/ui/Avatar.jsx';
 
 // Period filters for the shared agenda. Week runs Monday–Sunday (es-MX).
 const FILTERS = [
@@ -349,6 +351,7 @@ function AttendModal({ cita, onClose, onConfirm }) {
 }
 
 function CitaRow({ cita, onEdit, onDelete, onToggleAttended, onReagendar }) {
+  const { sellerColors, sellerAvatars } = useData();
   const [downloading, setDownloading] = useState(false);
   // A cita counts as past once its day (or exact time) has gone by.
   const cutoff = cita.hasTime ? cita.fechaCita : cita.fechaCita + 86_399_999;
@@ -401,6 +404,12 @@ function CitaRow({ cita, onEdit, onDelete, onToggleAttended, onReagendar }) {
             )}
             {cita.createdBy && (
               <span className="flex items-center gap-1">
+                <Avatar
+                  photo={sellerAvatars[cita.createdBy]}
+                  name={cita.createdBy}
+                  color={sellerColor(cita.createdBy, sellerColors)}
+                  size={18}
+                />
                 <UserRound size={11} className="text-sky2" /> Agendó: {cita.createdBy}
               </span>
             )}

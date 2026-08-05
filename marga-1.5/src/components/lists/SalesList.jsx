@@ -5,11 +5,13 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
 import { canEditClient } from '../../lib/permissions.js';
 import { fullName } from '../../lib/clients.js';
+import { sellerColor } from '../../lib/constants.js';
 import { formatDate, toDateInput, fromDateInput } from '../../lib/format.js';
 import Card from '../ui/Card.jsx';
 import Button from '../ui/Button.jsx';
 import Input, { Textarea } from '../ui/Input.jsx';
 import CopyButton from '../ui/CopyButton.jsx';
+import Avatar from '../ui/Avatar.jsx';
 
 function Field({ label, children }) {
   return (
@@ -21,7 +23,7 @@ function Field({ label, children }) {
 }
 
 function SaleRow({ client }) {
-  const { updateClient } = useData();
+  const { updateClient, sellerColors, sellerAvatars } = useData();
   const { user, role } = useAuth();
   const { openEditClient, openCancelClient } = useUI();
   const [open, setOpen] = useState(false);
@@ -44,6 +46,13 @@ function SaleRow({ client }) {
           className="absolute inset-0"
         />
         <CheckCircle2 size={18} className="pointer-events-none relative shrink-0 text-state-success" />
+        <Avatar
+          photo={sellerAvatars[client.createdBy]}
+          name={client.createdBy}
+          color={sellerColor(client.createdBy, sellerColors)}
+          size={22}
+          className="pointer-events-none relative"
+        />
         <div className="pointer-events-none relative min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-ink">{fullName(client)}</p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-ink-muted">

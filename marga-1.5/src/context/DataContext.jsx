@@ -36,8 +36,9 @@ export function DataProvider({ children }) {
   useEffect(() => store.onCitasChange(setCitas), []);
 
   // Every role subscribes to the users collection, because the per-vendedor
-  // accent colour lives there and tints cards for everyone. Only admins get the
-  // full records (they carry password hashes) — see `users` in the value below.
+  // accent colour and profile picture live there and mark cards for everyone.
+  // Only admins get the full records (they carry password hashes) — see `users`
+  // in the value below.
   useEffect(() => store.onUsersChange(setUsers), []);
   const admin = canManageUsers(user?.role);
 
@@ -48,6 +49,21 @@ export function DataProvider({ children }) {
     for (const u of users) if (u.username && u.color) map[u.username] = u.color;
     return map;
   }, [users]);
+
+  // username → profile picture (data URL). Same idea as sellerColors: shared
+  // with every role so avatars appear on the cards each person registered.
+  const sellerAvatars = useMemo(() => {
+    const map = {};
+    for (const u of users) if (u.username && u.photo) map[u.username] = u.photo;
+    return map;
+  }, [users]);
+
+  // Live record of the signed-in user. The session only stores id/username/role,
+  // so the profile modal reads from here to reflect a freshly saved photo.
+  const myProfile = useMemo(
+    () => (user ? (users.find((u) => u.id === user.id) ?? null) : null),
+    [users, user],
+  );
 
   const teamUsernames = useMemo(() => users.map((u) => u.username).filter(Boolean), [users]);
 
@@ -70,10 +86,19 @@ export function DataProvider({ children }) {
       updateCita,
       deleteCita,
 
-      // --- seller colours (readable by every role) ---
+      // --- seller colours & avatars (readable by every role) ---
       sellerColors,
+      sellerAvatars,
       // Names of everyone who can register clients, for the Panel ADMIN filter.
       teamUsernames,
+
+      // --- own profile (any role edits only their own record) ---
+      myProfile,
+      /** Set or clear the signed-in user's profile picture ('' removes it). */
+      updateOwnPhoto(dataUrl) {
+        if (!user?.id) throw new Error('No hay una sesión activa.');
+        return store.patchUser(user.id, { photo: dataUrl || '' });
+      },
 
       // --- user management (UI restricted to admins) ---
       users: admin ? users : [],
@@ -86,6 +111,7 @@ export function DataProvider({ children }) {
           username: name,
           role,
           color: color || '',
+          photo: '',
           passwordHash: await hashPassword(password),
           createdAt: Date.now(),
         });
@@ -94,13 +120,15 @@ export function DataProvider({ children }) {
         const name = username.trim();
         const existing = await store.getUserByUsername(name);
         if (existing && existing.id !== id) throw new Error('Ya existe un usuario con ese nombre.');
+        // `photo` is deliberately absent: an admin editing a role or colour must
+        // not wipe the picture the user set for themselves.
         const patch = { username: name, role, color: color || '' };
         if (password) patch.passwordHash = await hashPassword(password);
         await store.patchUser(id, patch);
       },
       deleteUser: (id) => store.deleteUser(id),
     }),
-    [clients, users, citas, admin, user, sellerColors, teamUsernames],
+    [clients, users, citas, admin, user, sellerColors, sellerAvatars, myProfile, teamUsernames],
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

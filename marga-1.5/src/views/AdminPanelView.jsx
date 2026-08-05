@@ -31,6 +31,7 @@ import {
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import Input from '../components/ui/Input.jsx';
+import Avatar from '../components/ui/Avatar.jsx';
 import BarChart from '../components/charts/BarChart.jsx';
 import LineChart from '../components/charts/LineChart.jsx';
 import DonutChart from '../components/charts/DonutChart.jsx';
@@ -93,7 +94,7 @@ function Section({ title, hint, children, right }) {
 
 export default function AdminPanelView() {
   const { role } = useAuth();
-  const { clients, citas, sellerColors, teamUsernames } = useData();
+  const { clients, citas, sellerColors, sellerAvatars, teamUsernames } = useData();
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   // Empty selection means "todo el equipo".
@@ -111,6 +112,8 @@ export default function AdminPanelView() {
 
   const colorOf = (key) =>
     key === UNASSIGNED_KEY ? UNASSIGNED_COLOR : sellerColor(key, sellerColors);
+  // The unassigned bucket is not a person, so it never carries a picture.
+  const avatarOf = (key) => (key === UNASSIGNED_KEY ? '' : sellerAvatars[key]);
 
   const { from, to } = useMemo(
     () => resolveRange(fromDateInput(desde), fromDateInput(hasta), clients, citas),
@@ -190,20 +193,25 @@ export default function AdminPanelView() {
             {sellers.map((key) => {
               const on = selected.includes(key);
               const color = colorOf(key);
+              const photo = avatarOf(key);
               return (
                 <button
                   key={key}
                   onClick={() => toggleSeller(key)}
                   aria-pressed={on}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition ${
-                    on ? 'text-ink' : 'text-ink-muted hover:text-ink'
-                  }`}
+                  className={`flex items-center gap-1.5 rounded-full py-1 pr-3 text-xs font-medium transition ${
+                    photo ? 'pl-1' : 'pl-3'
+                  } ${on ? 'text-ink' : 'text-ink-muted hover:text-ink'}`}
                   style={{ backgroundColor: on ? `${color}33` : 'rgba(255,255,255,0.05)' }}
                 >
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: color }}
-                  />
+                  {photo ? (
+                    <Avatar photo={photo} name={sellerLabel(key)} color={color} size={18} />
+                  ) : (
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: color }}
+                    />
+                  )}
                   {sellerLabel(key)}
                 </button>
               );
@@ -412,10 +420,19 @@ export default function AdminPanelView() {
                   <tr key={r.key} className="border-b border-white/5">
                     <td className="py-2 pr-3">
                       <span className="flex items-center gap-2">
-                        <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: colorOf(r.key) }}
-                        />
+                        {avatarOf(r.key) ? (
+                          <Avatar
+                            photo={avatarOf(r.key)}
+                            name={r.label}
+                            color={colorOf(r.key)}
+                            size={20}
+                          />
+                        ) : (
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: colorOf(r.key) }}
+                          />
+                        )}
                         <span className="text-ink">{r.label}</span>
                       </span>
                     </td>

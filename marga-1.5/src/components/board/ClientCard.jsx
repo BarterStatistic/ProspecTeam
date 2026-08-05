@@ -23,6 +23,7 @@ import { fullName } from '../../lib/clients.js';
 import { formatDateTime } from '../../lib/format.js';
 import Checkbox from '../ui/Checkbox.jsx';
 import CopyButton from '../ui/CopyButton.jsx';
+import Avatar from '../ui/Avatar.jsx';
 
 // Stops press events from bubbling to the drag sensors, so interactive controls
 // (checkbox, menu) keep working without starting a drag. MouseSensor listens to
@@ -31,7 +32,7 @@ const stopPress = (e) => e.stopPropagation();
 const noDrag = { onPointerDown: stopPress, onMouseDown: stopPress, onTouchStart: stopPress };
 
 export function CardBody({ client, dragging = false }) {
-  const { updateClient, deleteClient, moveClient, sellerColors } = useData();
+  const { updateClient, deleteClient, moveClient, sellerColors, sellerAvatars } = useData();
   const { user, role } = useAuth();
   const { openEditClient, openCancelClient } = useUI();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -55,7 +56,15 @@ export function CardBody({ client, dragging = false }) {
         ${dragging ? 'ring-2 ring-sky2/60' : 'hover:border-white/20'}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <h4 className="min-w-0 break-words pr-1 text-sm font-semibold text-ink">
+        {/* Profile picture of whoever registered the client, when they set one */}
+        <Avatar
+          photo={sellerAvatars[client.createdBy]}
+          name={client.createdBy}
+          color={accent}
+          size={22}
+          className="mt-0.5"
+        />
+        <h4 className="min-w-0 flex-1 break-words pr-1 text-sm font-semibold text-ink">
           {fullName(client) || 'Sin nombre'}
         </h4>
         {hasMenu && (

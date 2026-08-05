@@ -58,6 +58,7 @@ export function createFirestoreStore(config) {
         username: seed.username,
         role: seed.role,
         color: seed.color ?? '',
+        photo: '',
         passwordHash: await hashPassword(seed.password),
         createdAt: Date.now(),
       });

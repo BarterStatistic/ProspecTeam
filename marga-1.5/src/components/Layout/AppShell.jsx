@@ -14,6 +14,7 @@ import UsuariosView from '../../views/UsuariosView.jsx';
 import AdminPanelView from '../../views/AdminPanelView.jsx';
 import ClientFormModal from '../forms/ClientFormModal.jsx';
 import CancelModal from '../forms/CancelModal.jsx';
+import ProfileModal from '../forms/ProfileModal.jsx';
 import GlobalSearch from '../Search/GlobalSearch.jsx';
 
 const VIEWS = {
@@ -33,6 +34,7 @@ export default function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [form, setForm] = useState({ open: false, initial: null });
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // If the role loses access to the current view (e.g. after a role change),
   // fall back to the board everyone can see.
@@ -57,6 +59,7 @@ export default function AppShell() {
       openEditClient: (client) => setForm({ open: true, initial: client }),
       openCancelClient: (client) => setCancelTarget(client),
       openSearch: () => setSearchOpen(true),
+      openProfile: () => setProfileOpen(true),
     }),
     [active, goToSection],
   );
@@ -73,6 +76,10 @@ export default function AppShell() {
         <Sidebar
           active={active}
           onNavigate={goToSection}
+          onOpenProfile={() => {
+            setProfileOpen(true);
+            setSidebarOpen(false);
+          }}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
@@ -96,6 +103,7 @@ export default function AppShell() {
       />
       <CancelModal client={cancelTarget} onClose={() => setCancelTarget(null)} />
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
     </UIProvider>
   );
 }

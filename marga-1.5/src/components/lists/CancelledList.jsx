@@ -2,14 +2,16 @@ import { useMemo, useState } from 'react';
 import { XCircle, Trash2, Phone, Bike, RotateCcw, CalendarX } from 'lucide-react';
 import { useData } from '../../context/DataContext.jsx';
 import { fullName } from '../../lib/clients.js';
+import { sellerColor } from '../../lib/constants.js';
 import { formatDateTime } from '../../lib/format.js';
 import Card from '../ui/Card.jsx';
 import Button from '../ui/Button.jsx';
 import { Textarea } from '../ui/Input.jsx';
 import CopyButton from '../ui/CopyButton.jsx';
+import Avatar from '../ui/Avatar.jsx';
 
 function CancelledRow({ client }) {
-  const { updateClient, deleteClient, moveClient } = useData();
+  const { updateClient, deleteClient, moveClient, sellerColors, sellerAvatars } = useData();
   const [notas, setNotas] = useState(client.notasRechazo ?? '');
 
   // Puts the credit process back on track: the client returns to the Procesos
@@ -24,6 +26,12 @@ function CancelledRow({ client }) {
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-sm font-semibold text-ink">
             <XCircle size={16} className="shrink-0 text-state-danger" />
+            <Avatar
+              photo={sellerAvatars[client.createdBy]}
+              name={client.createdBy}
+              color={sellerColor(client.createdBy, sellerColors)}
+              size={22}
+            />
             {fullName(client)}
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-ink-muted">
