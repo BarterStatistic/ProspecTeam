@@ -101,6 +101,8 @@ function SaleRow({ client }) {
               )}
             </Field>
             <Field label="Vendedor Prospect Team">{client.prospectTeamSeller}</Field>
+            {/* Kept from the Procesos board so the sale records who followed it up. */}
+            <Field label="Promotor encargado">{client.promotorEncargado}</Field>
           </div>
 
           {client.notes && (

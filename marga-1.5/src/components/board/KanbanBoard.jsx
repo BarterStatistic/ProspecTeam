@@ -28,13 +28,56 @@ import { CardBody } from './ClientCard.jsx';
 const ALL = '__all__';
 const UNASSIGNED = '__unassigned__';
 
+/** One row of filter chips ("Todos" + one per name), tinted by `colorOf`. */
+function FilterRow({ label, items, value, onChange, colorOf }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="mr-1 text-xs font-medium text-ink-faint">{label}</span>
+      <button
+        onClick={() => onChange(ALL)}
+        className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+          value === ALL
+            ? 'bg-gold/20 text-gold'
+            : 'bg-white/5 text-ink-muted hover:bg-white/10 hover:text-ink'
+        }`}
+      >
+        Todos
+      </button>
+      {items.map((item) => {
+        const active = value === item.value;
+        const color = colorOf(item.value);
+        return (
+          <button
+            key={item.value}
+            onClick={() => onChange(active ? ALL : item.value)}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition ${
+              active ? 'text-ink' : 'text-ink-muted hover:text-ink'
+            }`}
+            style={{ backgroundColor: active ? `${color}33` : 'rgba(255,255,255,0.05)' }}
+          >
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: color }}
+            />
+            {item.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function KanbanBoard({ section }) {
   const { clients, moveClient, applyBoardReorder, sellerColors } = useData();
   const { user, role } = useAuth();
   const [activeId, setActiveId] = useState(null);
   // Filter the board by who captured the client (createdBy). Local per board.
   const [sellerFilter, setSellerFilter] = useState(ALL);
+  // Procesos only: filter by the promotor following the process up.
+  const [promotorFilter, setPromotorFilter] = useState(ALL);
   const columns = BOARD_COLUMNS[section];
+  const isProcesos = section === 'procesos';
 
   // Distinct sellers present in this section, known ones first, then extras
   // (alphabetical), then an "Sin asignar" bucket if any card lacks createdBy.
@@ -53,10 +96,37 @@ export default function KanbanBoard({ section }) {
     return list;
   }, [clients, section]);
 
+  // Distinct promotores assigned on this board (alphabetical), plus a
+  // "Sin promotor" bucket when some card is still unassigned.
+  const promotores = useMemo(() => {
+    if (!isProcesos) return [];
+    const present = new Set();
+    let hasUnassigned = false;
+    for (const c of clients) {
+      if (c.section !== section) continue;
+      if (c.promotorEncargado) present.add(c.promotorEncargado);
+      else hasUnassigned = true;
+    }
+    const list = [...present]
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => ({ value: name, label: name }));
+    if (hasUnassigned) list.push({ value: UNASSIGNED, label: 'Sin promotor' });
+    return list;
+  }, [clients, section, isProcesos]);
+
   const matchesFilter = (c) => {
-    if (sellerFilter === ALL) return true;
-    if (sellerFilter === UNASSIGNED) return !c.createdBy;
-    return c.createdBy === sellerFilter;
+    if (sellerFilter !== ALL) {
+      if (sellerFilter === UNASSIGNED ? !!c.createdBy : c.createdBy !== sellerFilter) return false;
+    }
+    if (promotorFilter !== ALL) {
+      if (
+        promotorFilter === UNASSIGNED
+          ? !!c.promotorEncargado
+          : c.promotorEncargado !== promotorFilter
+      )
+        return false;
+    }
+    return true;
   };
 
   // Group this section's clients by stage, each column sorted by `order`.
@@ -68,7 +138,7 @@ export default function KanbanBoard({ section }) {
     }
     for (const col of columns) map[col.id].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     return map;
-  }, [clients, section, columns, sellerFilter]);
+  }, [clients, section, columns, sellerFilter, promotorFilter]);
 
   const activeClient = activeId ? clients.find((c) => c.id === activeId) : null;
 
@@ -148,47 +218,26 @@ export default function KanbanBoard({ section }) {
       onDragEnd={handleDragEnd}
     >
       <div className="flex h-full flex-col">
-        {sellers.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3 sm:px-6">
-            <span className="mr-1 text-xs font-medium text-ink-faint">Vendedor:</span>
-            <button
-              onClick={() => setSellerFilter(ALL)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                sellerFilter === ALL
-                  ? 'bg-gold/20 text-gold'
-                  : 'bg-white/5 text-ink-muted hover:bg-white/10 hover:text-ink'
-              }`}
-            >
-              Todos
-            </button>
-            {sellers.map((s) => {
-              const active = sellerFilter === s.value;
-              return (
-                <button
-                  key={s.value}
-                  onClick={() => setSellerFilter(active ? ALL : s.value)}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition ${
-                    active ? 'text-ink' : 'text-ink-muted hover:text-ink'
-                  }`}
-                  style={{
-                    backgroundColor: active
-                      ? `${s.value === UNASSIGNED ? UNASSIGNED_COLOR : sellerColor(s.value, sellerColors)}33`
-                      : 'rgba(255,255,255,0.05)',
-                  }}
-                >
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{
-                      backgroundColor:
-                        s.value === UNASSIGNED
-                          ? UNASSIGNED_COLOR
-                          : sellerColor(s.value, sellerColors),
-                    }}
-                  />
-                  {s.label}
-                </button>
-              );
-            })}
+        {(sellers.length > 0 || promotores.length > 0) && (
+          <div className="space-y-1.5 px-4 pt-3 sm:px-6">
+            <FilterRow
+              label="Vendedor:"
+              items={sellers}
+              value={sellerFilter}
+              onChange={setSellerFilter}
+              colorOf={(v) =>
+                v === UNASSIGNED ? UNASSIGNED_COLOR : sellerColor(v, sellerColors)
+              }
+            />
+            <FilterRow
+              label="Promotor:"
+              items={promotores}
+              value={promotorFilter}
+              onChange={setPromotorFilter}
+              colorOf={(v) =>
+                v === UNASSIGNED ? UNASSIGNED_COLOR : sellerColor(v, sellerColors)
+              }
+            />
           </div>
         )}
 

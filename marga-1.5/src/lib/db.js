@@ -41,6 +41,7 @@ export async function createClient(values, actor = null) {
     creditScheme: values.creditScheme || '',
     motorcycles: (values.motorcycles ?? '').trim(),
     prospectTeamSeller: (values.prospectTeamSeller ?? '').trim(),
+    promotorEncargado: (values.promotorEncargado ?? '').trim(),
     notes: values.notes ?? '',
     buroAutorizado: !!values.buroAutorizado,
     engancheDejado: !!values.engancheDejado,
@@ -188,6 +189,7 @@ export async function importAll(data, mode = 'merge') {
     createdBy: '',
     fechaCancelacion: null,
     prospectTeamSeller: '',
+    promotorEncargado: '',
     ...c,
   }));
   if (mode === 'replace') await store.clearClients();

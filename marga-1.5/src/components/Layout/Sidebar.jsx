@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useData } from '../../context/DataContext.jsx';
-import { SECTIONS, ROLE_LABELS, userColor } from '../../lib/constants.js';
+import { SECTIONS, ROLE_LABELS, ROLE_CHIP_CLASSES, userColor } from '../../lib/constants.js';
 import { visibleSections, canManageUsers, canViewAdminPanel } from '../../lib/permissions.js';
 import Avatar from '../ui/Avatar.jsx';
 
@@ -130,7 +130,7 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
           </span>
           <span
             className={`m-chip shrink-0 ${
-              role === 'admin' ? 'bg-gold/15 text-gold' : 'bg-sky2/15 text-sky2-light'
+              ROLE_CHIP_CLASSES[role] ?? ROLE_CHIP_CLASSES.vendedor
             }`}
           >
             {ROLE_LABELS[role] ?? role}

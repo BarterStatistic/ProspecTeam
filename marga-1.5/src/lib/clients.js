@@ -53,6 +53,9 @@ export function emptyClient(section = 'prospectos') {
     creditScheme: '',
     motorcycles: '',
     prospectTeamSeller: '',
+    // Username of the promotor following up this proceso. Only meaningful in
+    // the Procesos board; empty means "Sin promotor".
+    promotorEncargado: '',
     notes: '',
     buroAutorizado: false,
     section,

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { UIProvider } from '../../context/UIContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { canViewSection } from '../../lib/permissions.js';
+import { canViewSection, visibleSections } from '../../lib/permissions.js';
 import { emptyClient } from '../../lib/clients.js';
 import Sidebar from './Sidebar.jsx';
 import TopBar from './TopBar.jsx';
@@ -29,7 +29,9 @@ const VIEWS = {
 
 export default function AppShell() {
   const { role } = useAuth();
-  const [active, setActive] = useState('prospectos');
+  // Land on the first section this role can actually open: a promotor has no
+  // access to Prospectos, so hardcoding it would leave them on a blank shell.
+  const [active, setActive] = useState(() => visibleSections(role)[0] ?? 'citas');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [form, setForm] = useState({ open: false, initial: null });
@@ -37,9 +39,9 @@ export default function AppShell() {
   const [profileOpen, setProfileOpen] = useState(false);
 
   // If the role loses access to the current view (e.g. after a role change),
-  // fall back to the board everyone can see.
+  // fall back to the first board this role can open.
   useEffect(() => {
-    if (!canViewSection(role, active)) setActive('prospectos');
+    if (!canViewSection(role, active)) setActive(visibleSections(role)[0] ?? 'citas');
   }, [role, active]);
 
   const goToSection = useCallback(

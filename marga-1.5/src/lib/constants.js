@@ -59,11 +59,21 @@ export const CREDIT_SCHEMES = ['Motonómina', 'Credinamo', 'Motoxpress'];
 // Roles & seed accounts
 // ---------------------------------------------------------------------------
 
-export const ROLES = { ADMIN: 'admin', VENDEDOR: 'vendedor' };
+export const ROLES = { ADMIN: 'admin', VENDEDOR: 'vendedor', PROMOTOR: 'promotor' };
 
 export const ROLE_LABELS = {
   admin: 'Administrador',
   vendedor: 'Vendedor',
+  promotor: 'Promotor',
+};
+
+// Tailwind classes for the role chip (sidebar + user manager), so the three
+// roles stay visually distinct: oro para admin, cian para vendedor, morado
+// para promotor.
+export const ROLE_CHIP_CLASSES = {
+  admin: 'bg-gold/15 text-gold',
+  vendedor: 'bg-sky2/15 text-sky2-light',
+  promotor: 'bg-purple-500/15 text-purple-300',
 };
 
 // Accounts created automatically the first time the app runs against an empty

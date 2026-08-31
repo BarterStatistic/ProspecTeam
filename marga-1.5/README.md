@@ -19,6 +19,16 @@ para que todo el equipo vea los mismos datos desde cualquier dispositivo, en tie
     del tablero Prospectos — incluida la entrega a *Proceso comenzado*; una vez en Procesos,
     solo el administrador los mueve. Los prospectos de otros vendedores (o del admin) le
     aparecen en solo lectura. No importa respaldos ni gestiona usuarios.
+  - **Promotor** — ve únicamente **Procesos** y la agenda de Citas. **Permisos por sección**,
+    no por propiedad: da seguimiento a *cualquier* proceso sin importar quién lo registró ni
+    quién sea el promotor asignado. Edita, arrastra entre columnas, agrega clientes en
+    Procesos, cancela, regresa a Prospectos y cierra la venta con *Moto entregada* (las
+    últimas cuatro acciones sacan la tarjeta de su tablero). **No elimina clientes**, no
+    importa respaldos, no gestiona usuarios ni abre el Panel ADMIN.
+- **Promotor encargado por proceso**: cada tarjeta de Procesos lleva el promotor que le da
+  seguimiento. Se asigna desde el formulario del cliente (admin y promotores), se ve en la
+  tarjeta con el color del promotor, filtra el tablero con la fila *Promotor:* y queda
+  registrado en el detalle de la venta al concretarse. Vacío se muestra como *Sin promotor*.
 - **Gestor de usuarios** (solo admin): agregar, editar rol/contraseña y eliminar cuentas.
 - **Notas visibles en cada tarjeta** del tablero, sin abrir el detalle.
 - Cada tarjeta muestra **quién registró** al cliente.

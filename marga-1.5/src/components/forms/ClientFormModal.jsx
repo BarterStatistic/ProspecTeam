@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../../context/DataContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { canAssignPromotor } from '../../lib/permissions.js';
 import { emptyClient, findDuplicate } from '../../lib/clients.js';
 import { SALE_TYPES, CREDIT_SCHEMES } from '../../lib/constants.js';
 import Modal from '../ui/Modal.jsx';
@@ -19,6 +21,7 @@ const EDITABLE = [
   'creditScheme',
   'motorcycles',
   'prospectTeamSeller',
+  'promotorEncargado',
   'notes',
   'buroAutorizado',
 ];
@@ -28,12 +31,26 @@ function pickEditable(values) {
 }
 
 export default function ClientFormModal({ open, initial, onClose }) {
-  const { clients, createClient, updateClient } = useData();
+  const { clients, createClient, updateClient, promotorUsernames } = useData();
+  const { role } = useAuth();
   const [values, setValues] = useState(emptyClient());
   const [error, setError] = useState('');
   const [dupMatch, setDupMatch] = useState(null);
 
   const isEdit = !!initial?.id;
+
+  // "Promotor encargado" only applies to the Procesos board.
+  const showPromotor = values.section === 'procesos' && canAssignPromotor(role);
+
+  // Keep a stored name that no longer matches a promotor account (renamed or
+  // deleted user) in the list, so opening the form doesn't silently clear it.
+  const promotorOptions = useMemo(() => {
+    const current = values.promotorEncargado;
+    if (current && !promotorUsernames.includes(current)) {
+      return [...promotorUsernames, current];
+    }
+    return promotorUsernames;
+  }, [promotorUsernames, values.promotorEncargado]);
 
   useEffect(() => {
     if (open) {
@@ -152,6 +169,23 @@ export default function ClientFormModal({ open, initial, onClose }) {
             onChange={setInput('prospectTeamSeller')}
             placeholder="Opcional"
           />
+
+          {showPromotor && (
+            <div>
+              <Select
+                label="Promotor encargado"
+                options={promotorOptions}
+                value={values.promotorEncargado ?? ''}
+                onChange={setInput('promotorEncargado')}
+                placeholder="Sin asignar"
+              />
+              {promotorOptions.length === 0 && (
+                <p className="mt-1 text-[11px] text-ink-faint">
+                  Aún no hay usuarios con rol Promotor. Créalos en el Gestor de usuarios.
+                </p>
+              )}
+            </div>
+          )}
 
           <Textarea
             label="Notas"

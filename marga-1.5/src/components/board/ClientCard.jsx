@@ -12,6 +12,7 @@ import {
   Clock,
   UserCheck,
   UserRound,
+  UserCog,
   StickyNote,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext.jsx';
@@ -200,6 +201,23 @@ export function CardBody({ client, dragging = false }) {
             <span className="truncate font-medium">Registró: {client.createdBy}</span>
           </div>
         )}
+        {/* Who follows up this proceso. Only meaningful on the Procesos board,
+            where an unassigned card is worth spotting at a glance. */}
+        {inProcesos &&
+          (client.promotorEncargado ? (
+            <div
+              className="flex items-center gap-1.5"
+              style={{ color: sellerColor(client.promotorEncargado, sellerColors) }}
+            >
+              <UserCog size={12} />
+              <span className="truncate font-medium">Promotor: {client.promotorEncargado}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-ink-faint">
+              <UserCog size={12} />
+              <span className="truncate italic">Sin promotor</span>
+            </div>
+          ))}
       </div>
 
       {client.notes && (

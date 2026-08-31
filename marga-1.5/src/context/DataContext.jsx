@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { store } from '../lib/store/index.js';
 import { useAuth } from './AuthContext.jsx';
 import { canManageUsers } from '../lib/permissions.js';
+import { ROLES } from '../lib/constants.js';
 import { hashPassword } from '../lib/auth.js';
 import {
   createClient as dbCreateClient,
@@ -65,7 +66,23 @@ export function DataProvider({ children }) {
     [users, user],
   );
 
-  const teamUsernames = useMemo(() => users.map((u) => u.username).filter(Boolean), [users]);
+  // Names offered by the Panel ADMIN "vendedor" filter. Promotores never
+  // register clients (they only work the Procesos board), so including them
+  // would add permanently empty columns to the comparison charts.
+  const teamUsernames = useMemo(
+    () => users.filter((u) => u.role !== ROLES.PROMOTOR).map((u) => u.username).filter(Boolean),
+    [users],
+  );
+
+  // Names offered by the "Promotor encargado" selector, alphabetical.
+  const promotorUsernames = useMemo(
+    () =>
+      users
+        .filter((u) => u.role === ROLES.PROMOTOR && u.username)
+        .map((u) => u.username)
+        .sort((a, b) => a.localeCompare(b)),
+    [users],
+  );
 
   const value = useMemo(
     () => ({
@@ -91,6 +108,8 @@ export function DataProvider({ children }) {
       sellerAvatars,
       // Names of everyone who can register clients, for the Panel ADMIN filter.
       teamUsernames,
+      // Names of the promotores, for the "Promotor encargado" selector/filter.
+      promotorUsernames,
 
       // --- own profile (any role edits only their own record) ---
       myProfile,
@@ -128,7 +147,18 @@ export function DataProvider({ children }) {
       },
       deleteUser: (id) => store.deleteUser(id),
     }),
-    [clients, users, citas, admin, user, sellerColors, sellerAvatars, myProfile, teamUsernames],
+    [
+      clients,
+      users,
+      citas,
+      admin,
+      user,
+      sellerColors,
+      sellerAvatars,
+      myProfile,
+      teamUsernames,
+      promotorUsernames,
+    ],
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { UserPlus, Pencil, Trash2, ShieldCheck, UserRound } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, ShieldCheck, UserRound, UserCog } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useData } from '../context/DataContext.jsx';
 import { canManageUsers } from '../lib/permissions.js';
@@ -9,6 +9,16 @@ import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import Modal from '../components/ui/Modal.jsx';
 import Input from '../components/ui/Input.jsx';
+
+// Text colour of the role label in the list, matching the sidebar chips.
+const ROLE_TEXT_CLASSES = {
+  admin: 'text-gold',
+  vendedor: 'text-sky2-light',
+  promotor: 'text-purple-300',
+};
+
+// Display order of the list: admins first, then promotores, then vendedores.
+const ROLE_RANK = { admin: 0, promotor: 1, vendedor: 2 };
 
 /** Swatch grid for the vendedor's accent colour. */
 function ColorPicker({ value, onChange }) {
@@ -35,7 +45,7 @@ function ColorPicker({ value, onChange }) {
       </div>
       <p className="mt-2 text-[11px] text-ink-faint">
         Tiñe las tarjetas que registra este usuario, el filtro por vendedor y las gráficas del
-        Panel ADMIN.
+        Panel ADMIN. En un promotor, tiñe además los procesos a su cargo.
       </p>
     </div>
   );
@@ -111,8 +121,15 @@ function UserFormModal({ open, initial, onClose, onSave }) {
             onChange={(e) => setRole(e.target.value)}
           >
             <option value={ROLES.VENDEDOR}>{ROLE_LABELS.vendedor}</option>
+            <option value={ROLES.PROMOTOR}>{ROLE_LABELS.promotor}</option>
             <option value={ROLES.ADMIN}>{ROLE_LABELS.admin}</option>
           </select>
+          {role === ROLES.PROMOTOR && (
+            <p className="mt-1 text-[11px] text-ink-faint">
+              Solo verá la pestaña Procesos y la agenda de Citas. Podrá dar seguimiento a
+              cualquier proceso, pero no eliminar clientes.
+            </p>
+          )}
         </div>
 
         <ColorPicker value={color} onChange={setColor} />
@@ -142,8 +159,10 @@ export default function UsuariosView() {
 
   const sorted = useMemo(
     () =>
-      [...users].sort(
-        (a, b) => (a.role === b.role ? a.username.localeCompare(b.username) : a.role === 'admin' ? -1 : 1),
+      [...users].sort((a, b) =>
+        a.role === b.role
+          ? a.username.localeCompare(b.username)
+          : (ROLE_RANK[a.role] ?? 9) - (ROLE_RANK[b.role] ?? 9),
       ),
     [users],
   );
@@ -219,7 +238,13 @@ export default function UsuariosView() {
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
                 style={{ backgroundColor: `${color}26`, color }}
               >
-                {u.role === ROLES.ADMIN ? <ShieldCheck size={18} /> : <UserRound size={18} />}
+                {u.role === ROLES.ADMIN ? (
+                  <ShieldCheck size={18} />
+                ) : u.role === ROLES.PROMOTOR ? (
+                  <UserCog size={18} />
+                ) : (
+                  <UserRound size={18} />
+                )}
               </span>
 
               <div className="min-w-0 flex-1">
@@ -228,7 +253,7 @@ export default function UsuariosView() {
                   {u.id === user.id && <span className="ml-2 text-xs text-ink-faint">(tú)</span>}
                 </p>
                 <p className="flex items-center gap-1.5 text-xs text-ink-faint">
-                  <span className={u.role === ROLES.ADMIN ? 'text-gold' : 'text-sky2-light'}>
+                  <span className={ROLE_TEXT_CLASSES[u.role] ?? 'text-sky2-light'}>
                     {ROLE_LABELS[u.role] ?? u.role}
                   </span>
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
