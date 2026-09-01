@@ -10,6 +10,7 @@ import {
   CalendarClock,
   Layers,
   Info,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useData } from '../context/DataContext.jsx';
@@ -27,6 +28,7 @@ import {
   bucketLabel,
   stageFunnel,
   rejectionNotes,
+  authorizationStats,
 } from '../lib/analytics.js';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
@@ -94,7 +96,8 @@ function Section({ title, hint, children, right }) {
 
 export default function AdminPanelView() {
   const { role } = useAuth();
-  const { clients, citas, sellerColors, sellerAvatars, teamUsernames } = useData();
+  const { clients, citas, buroAutorizaciones, sellerColors, sellerAvatars, teamUsernames } =
+    useData();
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   // Empty selection means "todo el equipo".
@@ -135,6 +138,17 @@ export default function AdminPanelView() {
   const rechazos = useMemo(
     () => rejectionNotes(clients, from, to, activeSellers),
     [clients, from, to, activeSellers],
+  );
+
+  // Autorizaciones generadas con el Buró Automático — mismo from/to/selected
+  // que el resto de la vista, sin UI de filtro propia.
+  const autorizacionCounts = useMemo(
+    () => authorizationStats(buroAutorizaciones, from, to, selected),
+    [buroAutorizaciones, from, to, selected],
+  );
+  const totalAutorizaciones = useMemo(
+    () => [...autorizacionCounts.values()].reduce((a, b) => a + b, 0),
+    [autorizacionCounts],
   );
 
   if (!canViewAdminPanel(role)) {
@@ -306,6 +320,12 @@ export default function AdminPanelView() {
             value={totals.enProceso}
             hint="Prospectos + procesos hoy"
           />
+          <StatCard
+            icon={ShieldCheck}
+            label="Autorizaciones (Buró)"
+            value={totalAutorizaciones}
+            hint="Llenados completos vía extensión o servicio"
+          />
         </div>
 
         {/* ---------------- Comparativa por vendedor ---------------- */}
@@ -412,7 +432,8 @@ export default function AdminPanelView() {
                   <th className="py-2 pr-3 text-right font-medium">Conversión</th>
                   <th className="py-2 pr-3 text-right font-medium">Cancelados</th>
                   <th className="py-2 pr-3 text-right font-medium">Citas</th>
-                  <th className="py-2 text-right font-medium">Cartera</th>
+                  <th className="py-2 pr-3 text-right font-medium">Cartera</th>
+                  <th className="py-2 text-right font-medium">Autorizaciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -444,7 +465,10 @@ export default function AdminPanelView() {
                       {r.citas}
                       <span className="text-ink-faint"> / {r.citasAtendidas}</span>
                     </td>
-                    <td className="py-2 text-right text-ink-muted">{r.enProceso}</td>
+                    <td className="py-2 pr-3 text-right text-ink-muted">{r.enProceso}</td>
+                    <td className="py-2 text-right text-sky2">
+                      {autorizacionCounts.get(r.key) ?? 0}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -459,7 +483,8 @@ export default function AdminPanelView() {
                     {totals.citas}
                     <span className="text-ink-faint"> / {totals.citasAtendidas}</span>
                   </td>
-                  <td className="py-2 text-right">{totals.enProceso}</td>
+                  <td className="py-2 pr-3 text-right">{totals.enProceso}</td>
+                  <td className="py-2 text-right">{totalAutorizaciones}</td>
                 </tr>
               </tfoot>
             </table>
@@ -467,6 +492,8 @@ export default function AdminPanelView() {
           <p className="mt-2 text-[11px] text-ink-faint">
             Citas se muestra como agendadas / atendidas. La conversión compara las ventas
             entregadas contra los prospectos registrados dentro del mismo periodo.
+            Autorizaciones cuenta llenados completos de la herramienta Buró Automático,
+            independiente de los clientes registrados en el tablero.
           </p>
         </Section>
 

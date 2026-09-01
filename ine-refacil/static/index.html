@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INE → Refácil</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+  <header class="cabecera">
+    <div class="marca">
+      <span class="marca-icono" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="5" width="20" height="14" rx="2"/>
+          <circle cx="8" cy="11" r="2"/>
+          <path d="M5 16c.7-1.3 1.8-2 3-2s2.3.7 3 2M14 10h5M14 14h3"/>
+        </svg>
+      </span>
+      <div>
+        <h1>INE <span aria-hidden="true">→</span> Refácil</h1>
+        <p class="subtitulo">Captura asistida para Agencia Dinamo Saltillo</p>
+      </div>
+    </div>
+
+    <ol class="pasos" id="pasos">
+      <li data-paso="1" class="activo"><span class="pasos-num">1</span> Credencial</li>
+      <li data-paso="2"><span class="pasos-num">2</span> Revisión</li>
+      <li data-paso="3"><span class="pasos-num">3</span> Llenado</li>
+    </ol>
+  </header>
+
+  <main>
+
+    <!-- Paso 1: la foto -->
+    <section class="tarjeta" aria-labelledby="t-foto">
+      <h2 id="t-foto">Foto de la INE</h2>
+
+      <label id="zona" for="archivo">
+        <input type="file" id="archivo" accept="image/*" hidden>
+
+        <div id="zona-vacia" class="zona-vacia">
+          <svg class="zona-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 16V4m0 0L8 8m4-4 4 4"/>
+            <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+          </svg>
+          <p class="grande">Arrastra el anverso de la credencial</p>
+          <p class="chico">o haz clic para elegir el archivo · JPG, PNG o WEBP</p>
+        </div>
+
+        <figure id="marco-previa" class="marco-previa" hidden>
+          <img id="vista-previa" alt="Anverso de la credencial cargada">
+          <figcaption id="nombre-archivo"></figcaption>
+        </figure>
+      </label>
+
+      <div class="acciones">
+        <button id="btn-leer" class="boton primario" disabled>
+          <span class="boton-texto">Leer credencial</span>
+          <span class="hilandero" aria-hidden="true"></span>
+        </button>
+        <button id="btn-otra" class="boton fantasma" hidden>Elegir otra foto</button>
+      </div>
+      <p id="estado-ocr" class="estado" role="status"></p>
+    </section>
+
+    <!-- Paso 2: revisión -->
+    <section class="tarjeta" id="seccion-datos" aria-labelledby="t-datos" hidden>
+      <h2 id="t-datos">Revisa los datos</h2>
+      <p class="nota">
+        El OCR se equivoca con fotos borrosas. Corrige aquí antes de continuar: es más
+        rápido que corregir dentro de Refácil.
+      </p>
+
+      <div id="avisos"></div>
+
+      <div class="leyenda">
+        <span><i class="punto ine"></i> leído de la INE</span>
+        <span><i class="punto calculado"></i> calculado</span>
+        <span><i class="punto constante"></i> constante del negocio</span>
+      </div>
+
+      <div id="formulario"></div>
+
+      <div class="acciones">
+        <button id="btn-llenar" class="boton primario">
+          <span class="boton-texto">Llenar en Refácil</span>
+          <span class="hilandero" aria-hidden="true"></span>
+        </button>
+      </div>
+      <p class="advertencia">
+        La app <strong>no envía</strong> la solicitud. Deja el formulario lleno y el
+        botón «Registrar» lo presionas tú, después de revisar.
+      </p>
+    </section>
+
+    <!-- Paso 3: bitácora -->
+    <section class="tarjeta" id="seccion-bitacora" aria-labelledby="t-bitacora" hidden>
+      <h2 id="t-bitacora">Llenado en vivo</h2>
+
+      <div class="progreso">
+        <div class="progreso-barra"><span id="progreso-relleno"></span></div>
+        <p class="progreso-texto"><strong id="progreso-num">0</strong> de 18 campos</p>
+      </div>
+
+      <ul id="bitacora" class="bitacora"></ul>
+    </section>
+
+    <!-- Paso 4: comprobante -->
+    <section class="tarjeta" id="seccion-comprobante" aria-labelledby="t-comprobante" hidden>
+      <h2 id="t-comprobante">Comprobante de captura</h2>
+      <p class="nota">
+        Se descarga solo al terminar el llenado; si tu navegador lo bloqueó, usa el botón.
+        Documenta qué se capturó y cuándo: no acredita la autorización del titular.
+      </p>
+
+      <div class="comprobante-caja">
+        <canvas id="lienzo" width="1240" height="1754" aria-label="Comprobante de captura"></canvas>
+      </div>
+
+      <div class="acciones">
+        <button id="btn-descargar" class="boton primario">Descargar de nuevo</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>
+      Consultar buró de crédito requiere autorización expresa del titular (LRSIC art. 28).
+      Esta herramienta no la recaba.
+    </p>
+  </footer>
+
+  <script src="comprobante.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

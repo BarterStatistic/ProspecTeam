@@ -11,9 +11,11 @@ export function createMemoryStore() {
   let clients = [];
   let users = [];
   let citas = [];
+  let buroAutorizaciones = [];
   const clientListeners = new Set();
   const userListeners = new Set();
   const citaListeners = new Set();
+  const buroAutorizacionListeners = new Set();
 
   function load() {
     try {
@@ -23,6 +25,9 @@ export function createMemoryStore() {
         clients = Array.isArray(parsed.clients) ? parsed.clients : [];
         users = Array.isArray(parsed.users) ? parsed.users : [];
         citas = Array.isArray(parsed.citas) ? parsed.citas : [];
+        buroAutorizaciones = Array.isArray(parsed.buroAutorizaciones)
+          ? parsed.buroAutorizaciones
+          : [];
       }
     } catch {
       /* corrupted storage — start clean */
@@ -31,7 +36,10 @@ export function createMemoryStore() {
 
   function persist() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ clients, users, citas }));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ clients, users, citas, buroAutorizaciones }),
+      );
     } catch {
       /* storage full/unavailable — keep working in memory */
     }
@@ -48,6 +56,10 @@ export function createMemoryStore() {
   const notifyCitas = () => {
     persist();
     for (const cb of citaListeners) cb(citas);
+  };
+  const notifyBuroAutorizaciones = () => {
+    persist();
+    for (const cb of buroAutorizacionListeners) cb(buroAutorizaciones);
   };
 
   async function init() {
@@ -159,6 +171,21 @@ export function createMemoryStore() {
         ...records.filter((r) => !citas.some((c) => c.id === r.id)),
       ];
       notifyCitas();
+    },
+
+    // --- buroAutorizaciones (log de solo-apéndice, sin patch/delete) ---
+    getBuroAutorizaciones: () => buroAutorizaciones,
+    onBuroAutorizacionesChange(cb) {
+      buroAutorizacionListeners.add(cb);
+      cb(buroAutorizaciones);
+      return () => buroAutorizacionListeners.delete(cb);
+    },
+    async setBuroAutorizacion(record) {
+      buroAutorizaciones = [
+        ...buroAutorizaciones.filter((a) => a.id !== record.id),
+        record,
+      ];
+      notifyBuroAutorizaciones();
     },
   };
 }

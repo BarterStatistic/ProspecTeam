@@ -25,7 +25,7 @@
 //     Panel ADMIN.
 // Admin: everything.
 
-import { ROLES, SECTION_ORDER } from './constants.js';
+import { ROLES, SECTION_ORDER, TOOL_IDS } from './constants.js';
 
 export function isAdmin(role) {
   return role === ROLES.ADMIN;
@@ -45,6 +45,7 @@ export function visibleSections(role) {
 export function canViewSection(role, section) {
   if (section === 'usuarios' || section === 'admin') return isAdmin(role);
   if (section === 'citas') return true; // shared agenda: every role manages citas fully
+  if (TOOL_IDS.includes(section)) return true; // tools: available to every role
   return visibleSections(role).includes(section);
 }
 

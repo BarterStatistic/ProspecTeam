@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Buró Automático — Marga",
+  "version": "1.0.3",
+  "description": "Llena el formulario de Refácil con los datos que preparó Marga. No envía la solicitud: eso lo hace una persona.",
+  "icons": {
+    "16": "iconos/icono-16.png",
+    "48": "iconos/icono-48.png",
+    "128": "iconos/icono-128.png"
+  },
+  "permissions": ["tabs", "storage"],
+  "host_permissions": [
+    "https://www.refacil.com.mx/*",
+    "https://marga-6bb72.web.app/*",
+    "https://marga-6bb72.firebaseapp.com/*",
+    "http://localhost:5174/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://marga-6bb72.web.app/*",
+        "https://marga-6bb72.firebaseapp.com/*",
+        "http://localhost:5174/*"
+      ],
+      "js": ["contenido-marga.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://www.refacil.com.mx/*"],
+      "js": ["hook-alertas.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://www.refacil.com.mx/*"],
+      "js": ["campos.js", "contenido-refacil.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

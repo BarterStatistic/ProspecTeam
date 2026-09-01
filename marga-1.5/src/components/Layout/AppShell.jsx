@@ -12,6 +12,7 @@ import CanceladosView from '../../views/CanceladosView.jsx';
 import CitasView from '../../views/CitasView.jsx';
 import UsuariosView from '../../views/UsuariosView.jsx';
 import AdminPanelView from '../../views/AdminPanelView.jsx';
+import BuroAutomaticoView from '../../views/BuroAutomaticoView.jsx';
 import ClientFormModal from '../forms/ClientFormModal.jsx';
 import CancelModal from '../forms/CancelModal.jsx';
 import ProfileModal from '../forms/ProfileModal.jsx';
@@ -25,6 +26,8 @@ const VIEWS = {
   citas: CitasView,
   usuarios: UsuariosView,
   admin: AdminPanelView,
+  // Tools (see TOOLS in constants.js) — keyed by tool id.
+  buro: BuroAutomaticoView,
 };
 
 export default function AppShell() {

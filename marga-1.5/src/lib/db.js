@@ -165,6 +165,26 @@ export async function deleteCita(id) {
   await store.deleteCita(id);
 }
 
+// ---------------------------------------------------------------------------
+// Buró Automático — log de solo-apéndice de autorizaciones generadas. No es
+// data operativa del Kanban: deliberadamente queda fuera de exportAll/importAll.
+// ---------------------------------------------------------------------------
+
+/** Registra una autorización de Buró generada (evento "fin" del llenado). */
+export async function createBuroAutorizacion(values, actor = null) {
+  const record = {
+    id: uuid(),
+    createdAt: now(),
+    createdBy: actor?.username ?? '',
+    nombreCompleto: (values.nombreCompleto ?? '').trim(),
+    rfc: values.rfc ?? '',
+    curp: values.curp ?? '',
+    via: values.via === 'servicio' ? 'servicio' : 'extension',
+  };
+  await store.setBuroAutorizacion(record);
+  return record;
+}
+
 /** Dump clients + citas for a JSON backup file (compatible with Marga v1 backups). */
 export async function exportAll() {
   return {

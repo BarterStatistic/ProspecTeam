@@ -252,6 +252,26 @@ export function rejectionNotes(clients, from, to, sellers = [], limit = 12) {
     .slice(0, limit);
 }
 
+/**
+ * Conteo de autorizaciones de Buró generadas por vendedor, dentro del rango.
+ * `sellers` restringe el resultado; vacío = todo el equipo presente en los datos.
+ * A diferencia de `sellerStats`, aquí solo hace falta un conteo (no una fila
+ * completa) y no se siembran vendedores en cero: la vista consumidora usa `?? 0`.
+ * Returns Map<sellerKey, count>.
+ */
+export function authorizationStats(autorizaciones, from, to, sellers = []) {
+  const want = new Set(sellers);
+  const include = (key) => want.size === 0 || want.has(key);
+  const counts = new Map();
+  for (const a of autorizaciones) {
+    const key = keyOf(a);
+    if (!include(key)) continue;
+    if (!inRange(a.createdAt, from, to)) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
 /** Every createdBy value present in the data, plus the unassigned bucket. */
 export function presentSellers(clients, citas) {
   const set = new Set();

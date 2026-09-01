@@ -37,13 +37,16 @@ export function createFirestoreStore(config) {
   const clientsCol = collection(db, 'clients');
   const usersCol = collection(db, 'users');
   const citasCol = collection(db, 'citas');
+  const buroAutorizacionesCol = collection(db, 'buroAutorizaciones');
 
   let clients = [];
   let users = [];
   let citas = [];
+  let buroAutorizaciones = [];
   const clientListeners = new Set();
   const userListeners = new Set();
   const citaListeners = new Set();
+  const buroAutorizacionListeners = new Set();
 
   function notify(listeners, data) {
     for (const cb of listeners) cb(data);
@@ -91,6 +94,10 @@ export function createFirestoreStore(config) {
     listen(citasCol, (snap) => {
       citas = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       notify(citaListeners, citas);
+    });
+    listen(buroAutorizacionesCol, (snap) => {
+      buroAutorizaciones = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      notify(buroAutorizacionListeners, buroAutorizaciones);
     });
   }
 
@@ -169,5 +176,14 @@ export function createFirestoreStore(config) {
         await batch.commit();
       }
     },
+
+    // --- buroAutorizaciones (log de solo-apéndice, sin patch/delete) ---
+    getBuroAutorizaciones: () => buroAutorizaciones,
+    onBuroAutorizacionesChange(cb) {
+      buroAutorizacionListeners.add(cb);
+      cb(buroAutorizaciones);
+      return () => buroAutorizacionListeners.delete(cb);
+    },
+    setBuroAutorizacion: (record) => setDoc(doc(buroAutorizacionesCol, record.id), record),
   };
 }

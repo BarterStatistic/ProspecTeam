@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Prueba de llenado — Buró Automático</title></head>
+<body>
+<!--
+  Réplica del formulario de Refácil para probar el llenado sin dispararle
+  consultas de buró al sitio real.
+
+  Copia lo que de verdad hace refacil.com.mx:
+
+    - El HTML inicial NO trae el formulario. Solo un <div id="datos"> vacío que
+      jQuery rellena por AJAX (`obtenerHTMLDinamo`). Aquí se simula ese retraso,
+      porque es justo lo que rompía la extensión: arrancaba a escribir cuando
+      los campos todavía no existían.
+    - Los mismos 18 ids, los cinco selects, y municipio y localidad poblados por
+      un AJAX encadenado.
+    - `rfc` y `curp` con el `oninput` que los pasa a mayúsculas y recorta;
+      `correo` con el suyo, que también sube a mayúsculas.
+    - Una objeción de RFC vía alert(), como validarRFCDINAMO().
+
+  Cómo correrla, desde la carpeta buro-extension:
+
+      python -m http.server 8899 --bind 127.0.0.1
+
+  Abre http://127.0.0.1:8899/pruebas/formulario-simulado.html y en la consola:
+
+      await window.__correr()
+
+  Después revisa window.__eventos, los valores del formulario y que
+  window.__registrarPresionado siga en false.
+
+  Ojo: sírvela por HTTP, no como file://. Y no la corras con jsdom: no
+  implementa `event.source` en postMessage, así que la captura de alertas
+  parece rota cuando en un navegador real funciona.
+-->
+<h1>Formulario simulado de Refácil</h1>
+<div id="datos"></div>
+
+<script>
+  // --- Simulacro del entorno de la extensión --------------------------------
+  window.__eventos = [];
+  window.__registrarPresionado = false;
+  window.__alertOriginalLlamado = false;
+  window.alert = function () { window.__alertOriginalLlamado = true; };
+
+  window.chrome = {
+    runtime: {
+      getManifest: () => ({ version: 'prueba' }),
+      sendMessage: (m) => {
+        if (m && m.tipo === 'evento-llenado') window.__eventos.push(m.evento);
+        return Promise.resolve({});
+      },
+      onMessage: { addListener: () => {} },
+    },
+  };
+
+  window.__CAMPOS = {
+    rfc: 'BAFJ701212TR8', correo: 'JUAN.BARRIOS472', cbCorreo: 'YOPMAIL.COM',
+    curp: 'BAFJ701212HDFRRN09', nombre: 'JUAN', paterno: 'BARRIOS',
+    materno: 'FERNÁNDEZ', cbEstado: 'COAHUILA DE ZARAGOZA',
+    cbMunicipio: 'SALTILLO', cbLocalidad: 'SALTILLO', calle: 'AV. UNIVERSIDAD',
+    numExt: '123', cp: '25000', colonia: 'ZONA CENTRO', numTelefono: '8441234567',
+    empresa: 'STELLANTIS', ingresoMensual: '20000', cbTipo_Venta: 'MOTO NOMINA',
+  };
+
+  // --- El formulario llega tarde, como en Refácil ---------------------------
+  // Este retraso es el corazón de la prueba: la extensión debe esperar a que
+  // los campos existan en vez de escribir en el vacío.
+  const RETRASO_AJAX = Number(new URLSearchParams(location.search).get('retraso') ?? 900);
+
+  const TEXTO = ['rfc','correo','curp','nombre','paterno','materno','calle',
+    'numExt','cp','colonia','numTelefono','empresa','ingresoMensual'];
+
+  const NORMALIZA = {
+    rfc: "this.value = this.value.toUpperCase().replace(/[^A-Z0-9Ñ]/g,'').slice(0,13);",
+    curp: "this.value = this.value.toUpperCase().replace(/[^A-Z0-9Ñ]/g,'').slice(0,18);",
+    correo: "this.value = this.value.toUpperCase().replace(/\\s/g,'');",
+  };
+
+  setTimeout(() => {
+    document.getElementById('datos').innerHTML = `
+      <form onsubmit="return false">
+        ${TEXTO.map((id) => `<input type="text" id="${id}"${NORMALIZA[id] ? ` oninput="${NORMALIZA[id]}"` : ''}>`).join('\n')}
+        <select id="cbCorreo"><option>-SELECCIONE-</option><option value="3">YOPMAIL.COM</option></select>
+        <select id="cbEstado"><option>-SELECCIONE-</option><option value="5">COAHUILA DE ZARAGOZA</option></select>
+        <select id="cbMunicipio"><option>-SELECCIONE-</option></select>
+        <select id="cbLocalidad"><option>-SELECCIONE-</option></select>
+        <select id="cbTipo_Venta"><option>-SELECCIONE-</option><option value="9">MOTO NOMINA</option></select>
+        <button id="btnRegistrar" type="submit">Registrar</button>
+      </form>`;
+
+    document.getElementById('btnRegistrar').addEventListener('click', () => {
+      window.__registrarPresionado = true;
+    });
+
+    // AJAX encadenado: estado puebla municipios; municipio puebla localidades.
+    document.getElementById('cbEstado').addEventListener('change', () => {
+      setTimeout(() => {
+        document.getElementById('cbMunicipio').innerHTML =
+          '<option>-SELECCIONE-</option><option value="30">SALTILLO</option>';
+      }, 500);
+    });
+    document.getElementById('cbMunicipio').addEventListener('change', () => {
+      setTimeout(() => {
+        document.getElementById('cbLocalidad').innerHTML =
+          '<option>-SELECCIONE-</option><option value="1">SALTILLO</option>';
+      }, 500);
+    });
+
+    // validarRFCDINAMO(): objeta el RFC cuando cambia.
+    document.getElementById('rfc').addEventListener('change', () => {
+      setTimeout(() => window.alert('El RFC no coincide con el registrado'), 50);
+    });
+  }, RETRASO_AJAX);
+</script>
+
+<script src="../hook-alertas.js"></script>
+<script src="../campos.js"></script>
+<script src="../contenido-refacil.js"></script>
+
+<script>
+  window.__correr = () => llenar(window.__CAMPOS);
+</script>
+</body>
+</html>

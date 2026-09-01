@@ -84,6 +84,74 @@ inicio de sesión, especialmente si el repositorio es público.
 `VITE_DEMO=1` en `.env.local` usa una base local del navegador (localStorage): útil para
 probar la interfaz, pero **los datos no se comparten entre dispositivos**.
 
+## Herramientas
+
+En el menú lateral, **Herramientas** agrupa utilidades que no son secciones de
+clientes. Están disponibles para **todos los roles**.
+
+### Buró Automático
+
+Captura asistida de INE hacia Refácil. Sustituye a la app suelta que vivía en
+`../ine-refacil/`: la interfaz ahora es parte de Marga y funciona en cualquier
+dispositivo.
+
+1. **Foto** — arrastra el anverso de la credencial.
+2. **Revisa** — los 18 campos aparecen poblados y editables, agrupados en
+   secciones. El punto junto a cada etiqueta dice de dónde salió el dato: azul =
+   leído de la INE, dorado = calculado, gris = constante del negocio. Corrige lo
+   que el OCR haya leído mal.
+3. **Llena** — se abre Edge y los campos se escriben uno por uno, con la
+   bitácora en vivo y la barra de progreso.
+4. **Comprobante** — al terminar se descarga un PNG con la foto, el nombre, el
+   RFC y la fecha de captura.
+
+**La app no envía la solicitud.** Deja el formulario lleno y el botón
+«Registrar» lo presionas tú, después de revisar. Una consulta de buró no se
+deshace.
+
+#### Qué necesita cada paso
+
+| Paso | Requisito |
+|---|---|
+| Foto, revisión y comprobante | Solo `VITE_GEMINI_API_KEY` (ver `.env.example`). Funciona en cualquier dispositivo, celular incluido. |
+| Llenado automático | Un motor de llenado instalado **en esa misma computadora** (ver abajo). |
+
+#### Los dos motores de llenado
+
+Escribir en el formulario real de Refácil no se puede hacer desde una página web
+cualquiera, así que cada computadora necesita una de estas dos piezas. Marga detecta cuál
+hay y usa la que encuentre, prefiriendo la extensión:
+
+| | Extensión de navegador | Servicio local |
+|---|---|---|
+| Dónde | [`../buro-extension/`](../buro-extension/README.md) | [`../ine-refacil/`](../ine-refacil/README.md) |
+| Necesita Python | No | Sí |
+| Instalación | Cargar la carpeta en `edge://extensions` | Doble clic en `iniciar-servicio.bat` |
+| Dónde se llena | En una pestaña del navegador | En una ventana de Edge que abre Selenium |
+| Hay que dejar algo abierto | No | Sí, la ventana negra |
+
+**La extensión es la vía recomendada.** El servicio local se conserva porque ya está
+funcionando y sirve de respaldo.
+
+Ninguno de los dos existe en celulares ni tablets: no admiten extensiones ni corren
+Python. Ahí la herramienta llega hasta el comprobante y ofrece «Copiar los 18 campos».
+
+Si el servicio no responde, la herramienta lo detecta y ofrece **«Copiar los 18
+campos»** para pegarlos a mano. Para que el servicio acepte peticiones desde la
+Marga publicada, agrega su dominio a `MARGA_ORIGENES` en el `.env` de
+`ine-refacil` (por omisión solo permite `localhost:5174` y `localhost:4173`).
+
+#### Paridad con el original
+
+`src/lib/buro/rfc.js` y `datos.js` son traducciones 1:1 de `ine-refacil/rfc.py`
+y `datos.py`. El script de paridad corre los mismos casos que las pruebas de
+Python y falla si los dos lados dejan de coincidir:
+
+```powershell
+node scripts/paridad-buro.mjs
+python -m pytest ../ine-refacil/tests -q
+```
+
 ## Desarrollo
 
 ```powershell
@@ -104,12 +172,15 @@ al momento de compilar.
 ```
 src/
   lib/
-    constants.js      # secciones, columnas, roles, cuentas semilla, transiciones
+    constants.js      # secciones, columnas, roles, cuentas semilla, transiciones, herramientas
     permissions.js    # reglas de qué puede hacer cada rol
     auth.js           # hash de contraseñas (SHA-256)
     db.js             # capa de dominio: crear/mover/cancelar clientes, respaldo
     store/            # backend intercambiable: Firestore o demo (localStorage)
+    buro/             # Buró Automático: rfc, datos, ocr, comprobante, servicio
   context/            # AuthContext (sesión + rol), DataContext (datos vivos)
-  components/         # Layout, tablero Kanban, formularios, UI base
-  views/              # Prospectos, Procesos, Ventas, Cancelados, Usuarios
+  components/         # Layout, tablero Kanban, formularios, UI base, buro/
+  views/              # Prospectos, Procesos, Ventas, Cancelados, Usuarios, BuroAutomatico
+scripts/
+  paridad-buro.mjs    # verifica que el port JS del buró coincide con el Python
 ```

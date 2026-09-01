@@ -12,12 +12,31 @@ export const SECTIONS = {
 // the admin-only "usuarios" view is rendered separately).
 export const SECTION_ORDER = ['prospectos', 'procesos', 'ventas', 'cancelados'];
 
+// Tools live in their own collapsible group in the sidebar and are visible to
+// every role. They are standalone utilities, not client sections: they don't
+// touch the clients collection and carry no badge count. Adding one is a single
+// entry here plus its component in AppShell's VIEWS map.
+export const TOOLS = [
+  {
+    id: 'buro',
+    label: 'Buró Automático',
+    // Reads an INE with Gemini, computes the RFC and hands the 18 fields to the
+    // local service that fills the Refácil form (see src/lib/buro/).
+    description: 'Captura asistida de INE hacia Refácil',
+  },
+];
+
+export const TOOL_IDS = TOOLS.map((t) => t.id);
+
 // Metadata for every navigable view, including non-client views.
 export const VIEW_META = {
   ...SECTIONS,
   citas: { id: 'citas', label: 'Citas', type: 'citas' },
   usuarios: { id: 'usuarios', label: 'Gestor de usuarios', type: 'users' },
   admin: { id: 'admin', label: 'Panel ADMIN', type: 'admin' },
+  ...Object.fromEntries(
+    TOOLS.map((t) => [t.id, { id: t.id, label: t.label, type: 'tool' }]),
+  ),
 };
 
 // Columns for each Kanban board section, in display order.

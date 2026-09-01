@@ -1,0 +1,588 @@
+/* Paleta tomada del dashboard de ProspecTeam para que se sienta de la misma casa.
+   Herramienta de trabajo: color contenido, jerarquía por peso y espacio. */
+:root {
+  --fondo: #050608;
+  --superficie: #0e1116;
+  --superficie-alta: #161b22;
+  --superficie-viva: #1c222c;
+  --borde: #232a34;
+  --borde-vivo: #333d4b;
+  --oro: #d4a24c;
+  --oro-tenue: rgba(212, 162, 76, 0.14);
+  --cian: #4fc3f7;
+  --texto: #e6e9ef;
+  --texto-medio: #b3bbc9;
+  --texto-tenue: #8b95a5;
+  --verde: #4ade80;
+  --ambar: #fbbf24;
+  --rojo: #f87171;
+
+  /* Escala de espaciado, para que el ritmo no sea improvisado. */
+  --e1: 0.25rem;
+  --e2: 0.5rem;
+  --e3: 0.75rem;
+  --e4: 1rem;
+  --e5: 1.5rem;
+  --e6: 2rem;
+  --e7: 3rem;
+
+  --radio: 10px;
+  --radio-chico: 6px;
+
+  /* Salida exponencial: rápida al inicio, se asienta sin rebote. */
+  --curva: cubic-bezier(0.22, 1, 0.36, 1);
+  --rapido: 160ms;
+  --medio: 220ms;
+
+  --z-contenido: 1;
+  --z-pegado: 10;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  padding: var(--e6) var(--e4) var(--e7);
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.cabecera, main, footer { max-width: 980px; margin: 0 auto; }
+
+/* --- Cabecera y pasos --- */
+
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e5);
+  margin-bottom: var(--e6);
+}
+
+.marca { display: flex; align-items: center; gap: var(--e3); }
+
+.marca-icono {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radio);
+  background: var(--oro-tenue);
+  color: var(--oro);
+}
+
+.marca-icono svg { width: 1.5rem; height: 1.5rem; }
+
+h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--texto);
+}
+
+h1 span { color: var(--oro); }
+
+.subtitulo { margin: 0; font-size: 0.85rem; color: var(--texto-tenue); }
+
+.pasos {
+  display: flex;
+  align-items: center;
+  gap: var(--e4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.83rem;
+  color: var(--texto-tenue);
+}
+
+.pasos li {
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+  transition: color var(--medio) var(--curva);
+}
+
+.pasos-num {
+  display: grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 50%;
+  border: 1px solid var(--borde-vivo);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  transition: background var(--medio) var(--curva), color var(--medio) var(--curva),
+              border-color var(--medio) var(--curva);
+}
+
+.pasos li.activo { color: var(--texto); }
+.pasos li.activo .pasos-num {
+  background: var(--oro);
+  border-color: var(--oro);
+  color: #14171c;
+  font-weight: 600;
+}
+
+.pasos li.hecho { color: var(--texto-medio); }
+.pasos li.hecho .pasos-num {
+  background: transparent;
+  border-color: var(--verde);
+  color: var(--verde);
+}
+
+/* Palomita en los pasos completados, sin cambiar el ancho del círculo. */
+.pasos li.hecho .pasos-num { font-size: 0; }
+.pasos li.hecho .pasos-num::after { content: "✓"; font-size: 0.8rem; }
+
+/* --- Tarjetas --- */
+
+h2 {
+  margin: 0 0 var(--e4);
+  font-size: 1.05rem;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+
+.tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  padding: var(--e5);
+  margin-bottom: var(--e4);
+}
+
+/* Las tarjetas nacen ocultas y se revelan al haber datos: el estado real es
+   `hidden`, así que la animación no puede dejar contenido invisible. */
+.tarjeta:not([hidden]) { animation: entrar var(--medio) var(--curva) both; }
+
+@keyframes entrar {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* --- Zona de carga --- */
+
+#zona {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+  padding: var(--e5);
+  border: 1.5px dashed var(--borde-vivo);
+  border-radius: var(--radio);
+  background: var(--superficie-alta);
+  cursor: pointer;
+  transition: border-color var(--rapido) var(--curva),
+              background var(--rapido) var(--curva);
+}
+
+#zona:hover { border-color: var(--oro); background: var(--superficie-viva); }
+
+#zona:focus-within {
+  outline: 2px solid var(--oro);
+  outline-offset: 2px;
+}
+
+/* Arrastre activo: el marco se cierra sobre el archivo. */
+#zona.encima {
+  border-color: var(--oro);
+  border-style: solid;
+  background: var(--oro-tenue);
+  transform: scale(1.006);
+}
+
+.zona-vacia { text-align: center; }
+
+.zona-icono {
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: var(--e2);
+  color: var(--texto-tenue);
+  transition: color var(--rapido) var(--curva), transform var(--medio) var(--curva);
+}
+
+#zona:hover .zona-icono { color: var(--oro); transform: translateY(-2px); }
+
+.zona-vacia .grande { margin: 0; font-size: 1rem; color: var(--texto); }
+.zona-vacia .chico { margin: var(--e1) 0 0; font-size: 0.85rem; color: var(--texto-tenue); }
+
+.marco-previa { margin: 0; text-align: center; animation: aparecer var(--medio) var(--curva) both; }
+
+.marco-previa img {
+  max-width: 100%;
+  max-height: 320px;
+  border-radius: var(--radio-chico);
+  border: 1px solid var(--borde-vivo);
+}
+
+.marco-previa figcaption {
+  margin-top: var(--e2);
+  font-size: 0.8rem;
+  color: var(--texto-tenue);
+}
+
+@keyframes aparecer {
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* --- Botones --- */
+
+.acciones { display: flex; flex-wrap: wrap; gap: var(--e3); margin-top: var(--e4); }
+
+.boton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e2);
+  padding: 0.65rem 1.35rem;
+  border: 1px solid transparent;
+  border-radius: var(--radio-chico);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--rapido) var(--curva), color var(--rapido) var(--curva),
+              border-color var(--rapido) var(--curva), transform var(--rapido) var(--curva);
+}
+
+.boton.primario { background: var(--oro); color: #14171c; }
+.boton.primario:hover:not(:disabled) { background: #e0b264; }
+.boton.primario:active:not(:disabled) { transform: translateY(1px); }
+
+.boton.fantasma {
+  background: transparent;
+  border-color: var(--borde-vivo);
+  color: var(--texto-medio);
+}
+
+.boton.fantasma:hover { border-color: var(--oro); color: var(--texto); }
+
+.boton:focus-visible { outline: 2px solid var(--cian); outline-offset: 2px; }
+.boton:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Estado de espera: el texto se apaga y gira un anillo en su lugar. */
+.hilandero {
+  position: absolute;
+  width: 1.05rem;
+  height: 1.05rem;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.boton.cargando .boton-texto { opacity: 0; }
+.boton.cargando .hilandero { opacity: 1; animation: girar 700ms linear infinite; }
+
+@keyframes girar { to { transform: rotate(360deg); } }
+
+/* --- Secciones del formulario --- */
+
+.nota, .advertencia {
+  margin: 0 0 var(--e4);
+  font-size: 0.88rem;
+  color: var(--texto-medio);
+  max-width: 68ch;
+}
+
+.advertencia { margin: var(--e3) 0 0; color: var(--texto-tenue); }
+.advertencia strong { color: var(--ambar); }
+
+.leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e4);
+  margin-bottom: var(--e4);
+  font-size: 0.8rem;
+  color: var(--texto-tenue);
+}
+
+.punto {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  margin-right: var(--e1);
+  vertical-align: 1px;
+}
+
+.punto.ine { background: var(--cian); }
+.punto.calculado { background: var(--oro); }
+.punto.constante { background: var(--texto-tenue); }
+
+.grupo { margin-bottom: var(--e5); }
+.grupo:last-of-type { margin-bottom: 0; }
+
+.grupo h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--e3);
+  margin: 0 0 var(--e3);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--oro);
+}
+
+.grupo h3::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--borde);
+}
+
+/* Una fila por sección: el JS fija --columnas según cuántos campos tenga. */
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(var(--columnas, 3), 1fr);
+  gap: var(--e3);
+}
+
+@media (max-width: 820px) { .rejilla { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .rejilla { grid-template-columns: 1fr; } }
+
+/* --- Campos --- */
+
+.campo { display: flex; flex-direction: column; gap: var(--e1); }
+
+/* El origen del dato se marca con un punto junto a la etiqueta. */
+.campo label {
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+  font-size: 0.76rem;
+  color: var(--texto-tenue);
+}
+
+.campo label::before {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--texto-tenue);
+  flex-shrink: 0;
+}
+
+.campo.ine label::before { background: var(--cian); }
+.campo.calculado label::before { background: var(--oro); }
+
+.campo input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  background: var(--superficie-alta);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-chico);
+  color: var(--texto);
+  font: inherit;
+  font-size: 0.93rem;
+  transition: border-color var(--rapido) var(--curva),
+              background var(--rapido) var(--curva);
+}
+
+.campo input:hover { border-color: var(--borde-vivo); }
+
+.campo input:focus {
+  outline: none;
+  border-color: var(--oro);
+  background: var(--superficie-viva);
+}
+
+.campo.vacio input { border-color: var(--rojo); }
+
+/* Campo que Selenium acaba de escribir: destello y se asienta en verde. */
+.campo.escrito input {
+  border-color: var(--verde);
+  background: rgba(74, 222, 128, 0.08);
+  animation: destello var(--medio) var(--curva);
+}
+
+@keyframes destello {
+  from { background: rgba(74, 222, 128, 0.3); }
+  to   { background: rgba(74, 222, 128, 0.08); }
+}
+
+/* --- Avisos --- */
+
+#avisos:empty { display: none; }
+
+.aviso {
+  display: flex;
+  gap: var(--e3);
+  padding: var(--e3) var(--e4);
+  margin-bottom: var(--e2);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: var(--radio-chico);
+  background: rgba(251, 191, 36, 0.08);
+  color: var(--texto);
+  font-size: 0.88rem;
+  animation: entrar var(--medio) var(--curva) both;
+}
+
+.aviso::before {
+  content: "!";
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--ambar);
+  color: #14171c;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.estado { margin: var(--e3) 0 0; font-size: 0.88rem; color: var(--texto-medio); min-height: 1.4em; }
+.estado.malo { color: var(--rojo); }
+
+/* --- Esqueleto de carga --- */
+
+.esqueleto { display: grid; gap: var(--e3); }
+
+.esqueleto-fila {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--e3);
+}
+
+.esqueleto-caja {
+  height: 3.2rem;
+  border-radius: var(--radio-chico);
+  background: linear-gradient(
+    100deg,
+    var(--superficie-alta) 30%,
+    var(--superficie-viva) 50%,
+    var(--superficie-alta) 70%
+  );
+  background-size: 240% 100%;
+  animation: barrer 1.3s ease-in-out infinite;
+}
+
+@keyframes barrer {
+  from { background-position: 180% 0; }
+  to   { background-position: -60% 0; }
+}
+
+@media (max-width: 560px) { .esqueleto-fila { grid-template-columns: 1fr; } }
+
+/* --- Progreso del llenado --- */
+
+.progreso {
+  display: flex;
+  align-items: center;
+  gap: var(--e4);
+  margin-bottom: var(--e4);
+}
+
+.progreso-barra {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--superficie-viva);
+  overflow: hidden;
+}
+
+.progreso-barra span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--oro);
+  transition: width var(--medio) var(--curva), background var(--medio) var(--curva);
+}
+
+.progreso.completo .progreso-barra span { background: var(--verde); }
+
+.progreso-texto {
+  margin: 0;
+  font-size: 0.83rem;
+  color: var(--texto-tenue);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.progreso-texto strong { color: var(--texto); font-weight: 600; }
+
+/* --- Bitácora --- */
+
+.bitacora {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.86rem;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.bitacora li {
+  display: flex;
+  gap: var(--e3);
+  padding: 0.42rem var(--e1);
+  border-bottom: 1px solid var(--borde);
+  animation: colar var(--rapido) var(--curva) both;
+}
+
+.bitacora li:last-child { border-bottom: none; }
+
+@keyframes colar {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.bitacora .icono { flex-shrink: 0; width: 1rem; text-align: center; color: var(--texto-tenue); }
+.bitacora .campo-ok .icono { color: var(--verde); }
+.bitacora .campo-aviso { color: var(--ambar); }
+.bitacora .campo-error { color: var(--rojo); }
+.bitacora .campo-fin { color: var(--oro); font-weight: 600; }
+
+/* --- Comprobante --- */
+
+.comprobante-caja {
+  padding: var(--e4);
+  background: var(--superficie-alta);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+
+#lienzo {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radio-chico);
+}
+
+footer {
+  margin-top: var(--e6);
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--texto-tenue);
+}
+
+/* --- Movimiento reducido --- */
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* El esqueleto y el hilandero dejan de girar, pero siguen siendo visibles. */
+  .esqueleto-caja { background: var(--superficie-viva); }
+  .hilandero { border-top-color: currentColor; opacity: 1; }
+}
+
+@media (max-width: 640px) {
+  .cabecera { flex-direction: column; align-items: flex-start; }
+  .pasos { font-size: 0.78rem; gap: var(--e3); }
+}

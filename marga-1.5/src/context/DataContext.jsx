@@ -14,6 +14,7 @@ import {
   createCita as dbCreateCita,
   updateCita,
   deleteCita,
+  createBuroAutorizacion as dbCreateBuroAutorizacion,
   exportAll,
   importAll,
 } from '../lib/db.js';
@@ -30,11 +31,15 @@ export function DataProvider({ children }) {
   const [clients, setClients] = useState(() => store.getClients());
   const [users, setUsers] = useState(() => store.getUsers());
   const [citas, setCitas] = useState(() => store.getCitas());
+  const [buroAutorizaciones, setBuroAutorizaciones] = useState(() =>
+    store.getBuroAutorizaciones(),
+  );
 
   // Live mirror of the shared database: any write (from this device or any
   // other) re-renders through these subscriptions.
   useEffect(() => store.onClientsChange(setClients), []);
   useEffect(() => store.onCitasChange(setCitas), []);
+  useEffect(() => store.onBuroAutorizacionesChange(setBuroAutorizaciones), []);
 
   // Every role subscribes to the users collection, because the per-vendedor
   // accent colour and profile picture live there and mark cards for everyone.
@@ -103,6 +108,10 @@ export function DataProvider({ children }) {
       updateCita,
       deleteCita,
 
+      // --- Buró Automático: log de autorizaciones generadas ---
+      buroAutorizaciones,
+      registrarAutorizacionBuro: (values) => dbCreateBuroAutorizacion(values, user),
+
       // --- seller colours & avatars (readable by every role) ---
       sellerColors,
       sellerAvatars,
@@ -151,6 +160,7 @@ export function DataProvider({ children }) {
       clients,
       users,
       citas,
+      buroAutorizaciones,
       admin,
       user,
       sellerColors,
