@@ -12,10 +12,18 @@ export function createMemoryStore() {
   let users = [];
   let citas = [];
   let buroAutorizaciones = [];
+  let comisiones = [];
+  let cotizaciones = [];
+  let notificaciones = [];
+  let config = {};
   const clientListeners = new Set();
   const userListeners = new Set();
   const citaListeners = new Set();
   const buroAutorizacionListeners = new Set();
+  const comisionListeners = new Set();
+  const cotizacionListeners = new Set();
+  const notificacionListeners = new Set();
+  const configListeners = new Set();
 
   function load() {
     try {
@@ -28,6 +36,10 @@ export function createMemoryStore() {
         buroAutorizaciones = Array.isArray(parsed.buroAutorizaciones)
           ? parsed.buroAutorizaciones
           : [];
+        comisiones = Array.isArray(parsed.comisiones) ? parsed.comisiones : [];
+        cotizaciones = Array.isArray(parsed.cotizaciones) ? parsed.cotizaciones : [];
+        notificaciones = Array.isArray(parsed.notificaciones) ? parsed.notificaciones : [];
+        config = parsed.config && typeof parsed.config === 'object' ? parsed.config : {};
       }
     } catch {
       /* corrupted storage — start clean */
@@ -38,7 +50,16 @@ export function createMemoryStore() {
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ clients, users, citas, buroAutorizaciones }),
+        JSON.stringify({
+          clients,
+          users,
+          citas,
+          buroAutorizaciones,
+          comisiones,
+          cotizaciones,
+          notificaciones,
+          config,
+        }),
       );
     } catch {
       /* storage full/unavailable — keep working in memory */
@@ -60,6 +81,22 @@ export function createMemoryStore() {
   const notifyBuroAutorizaciones = () => {
     persist();
     for (const cb of buroAutorizacionListeners) cb(buroAutorizaciones);
+  };
+  const notifyComisiones = () => {
+    persist();
+    for (const cb of comisionListeners) cb(comisiones);
+  };
+  const notifyCotizaciones = () => {
+    persist();
+    for (const cb of cotizacionListeners) cb(cotizaciones);
+  };
+  const notifyNotificaciones = () => {
+    persist();
+    for (const cb of notificacionListeners) cb(notificaciones);
+  };
+  const notifyConfig = () => {
+    persist();
+    for (const cb of configListeners) cb(config);
   };
 
   async function init() {
@@ -186,6 +223,81 @@ export function createMemoryStore() {
         record,
       ];
       notifyBuroAutorizaciones();
+    },
+
+    // --- comisiones ---
+    getComisiones: () => comisiones,
+    onComisionesChange(cb) {
+      comisionListeners.add(cb);
+      cb(comisiones);
+      return () => comisionListeners.delete(cb);
+    },
+    async setComision(record) {
+      comisiones = [...comisiones.filter((c) => c.id !== record.id), record];
+      notifyComisiones();
+    },
+    async patchComision(id, patch) {
+      comisiones = comisiones.map((c) => (c.id === id ? { ...c, ...patch } : c));
+      notifyComisiones();
+    },
+    async deleteComision(id) {
+      comisiones = comisiones.filter((c) => c.id !== id);
+      notifyComisiones();
+    },
+    async patchComisiones(patches) {
+      const byId = new Map(patches.map((p) => [p.id, p.patch]));
+      comisiones = comisiones.map((c) => (byId.has(c.id) ? { ...c, ...byId.get(c.id) } : c));
+      notifyComisiones();
+    },
+
+    // --- cotizaciones (log de solo-apéndice) ---
+    getCotizaciones: () => cotizaciones,
+    onCotizacionesChange(cb) {
+      cotizacionListeners.add(cb);
+      cb(cotizaciones);
+      return () => cotizacionListeners.delete(cb);
+    },
+    async setCotizacion(record) {
+      cotizaciones = [...cotizaciones.filter((c) => c.id !== record.id), record];
+      notifyCotizaciones();
+    },
+
+    // --- notificaciones ---
+    getNotificaciones: () => notificaciones,
+    onNotificacionesChange(cb) {
+      notificacionListeners.add(cb);
+      cb(notificaciones);
+      return () => notificacionListeners.delete(cb);
+    },
+    async setNotificacion(record) {
+      notificaciones = [...notificaciones.filter((n) => n.id !== record.id), record];
+      notifyNotificaciones();
+    },
+    async patchNotificaciones(patches) {
+      if (!patches.length) return;
+      const byId = new Map(patches.map((p) => [p.id, p.patch]));
+      notificaciones = notificaciones.map((n) =>
+        byId.has(n.id) ? { ...n, ...byId.get(n.id) } : n,
+      );
+      notifyNotificaciones();
+    },
+    async deleteNotificaciones(ids) {
+      if (!ids.length) return;
+      const idSet = new Set(ids);
+      notificaciones = notificaciones.filter((n) => !idSet.has(n.id));
+      notifyNotificaciones();
+    },
+
+    // --- config (documento único config/comisiones) ---
+    getConfig: () => config,
+    onConfigChange(cb) {
+      configListeners.add(cb);
+      cb(config);
+      return () => configListeners.delete(cb);
+    },
+    async setConfig(patch) {
+      config = { ...config, ...patch };
+      notifyConfig();
     },
   };
 }
