@@ -58,6 +58,9 @@ export function emptyClient(section = 'prospectos') {
     promotorEncargado: '',
     notes: '',
     buroAutorizado: false,
+    // Marca de facturación (columna "Moto Facturada") y la comisión que generó.
+    fechaFacturacion: null,
+    comisionId: null,
     section,
     stage: DEFAULT_STAGE[section] ?? '',
   };

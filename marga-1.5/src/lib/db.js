@@ -56,6 +56,8 @@ export async function createClient(values, actor = null) {
     notasPostVenta: '',
     notasRechazo: '',
     fechaCancelacion: null,
+    fechaFacturacion: null,
+    comisionId: null,
   };
   await store.setClient(record);
   return record;
@@ -210,6 +212,8 @@ export async function importAll(data, mode = 'merge') {
     fechaCancelacion: null,
     prospectTeamSeller: '',
     promotorEncargado: '',
+    fechaFacturacion: null,
+    comisionId: null,
     ...c,
   }));
   if (mode === 'replace') await store.clearClients();

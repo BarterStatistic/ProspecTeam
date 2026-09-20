@@ -1,6 +1,8 @@
 // Domain constants for Marga 1.5: sections, board columns, select options,
 // auto-transition rules, roles and the seed accounts for the shared database.
 
+import { SCHEMES, SCHEME_IDS } from './motos.js';
+
 export const SECTIONS = {
   prospectos: { id: 'prospectos', label: 'Prospectos', type: 'board' },
   procesos: { id: 'procesos', label: 'Procesos', type: 'board' },
@@ -24,6 +26,13 @@ export const TOOLS = [
     // local service that fills the Refácil form (see src/lib/buro/).
     description: 'Captura asistida de INE hacia Refácil',
   },
+  {
+    id: 'cotizador',
+    label: 'Cotizador PT',
+    // Port a React del cotizador estático de cotizador-pt/. Cada cotización
+    // generada se registra para poder contarlas por vendedor en el Panel ADMIN.
+    description: 'Cotizaciones de financiamiento de motos',
+  },
 ];
 
 export const TOOL_IDS = TOOLS.map((t) => t.id);
@@ -34,6 +43,7 @@ export const VIEW_META = {
   citas: { id: 'citas', label: 'Citas', type: 'citas' },
   usuarios: { id: 'usuarios', label: 'Gestor de usuarios', type: 'users' },
   admin: { id: 'admin', label: 'Panel ADMIN', type: 'admin' },
+  comisiones: { id: 'comisiones', label: 'Comisiones', type: 'comisiones' },
   ...Object.fromEntries(
     TOOLS.map((t) => [t.id, { id: t.id, label: t.label, type: 'tool' }]),
   ),
@@ -53,6 +63,7 @@ export const BOARD_COLUMNS = {
     { id: 'bnc', label: 'BNC' },
     { id: 'vfs_call_center', label: 'VFS / Call center' },
     { id: 'ec', label: 'EC' },
+    { id: 'moto_facturada', label: 'Moto Facturada' },
     { id: 'entrega_agendada', label: 'Entrega agendada' },
     { id: 'moto_entregada', label: 'Moto entregada' },
   ],
@@ -72,7 +83,14 @@ export const AUTO_TRANSITIONS = {
 };
 
 export const SALE_TYPES = ['Crédito', 'Contado', 'MSI'];
-export const CREDIT_SCHEMES = ['Motonómina', 'Credinamo', 'Motoxpress'];
+
+// Los siete esquemas del cotizador, como { value, label } para <Select>.
+// Marga 1.5 guardaba la etiqueta en texto; normalizarEsquema() en motos.js
+// mapea esos valores viejos a su id al leerlos.
+export const CREDIT_SCHEMES = SCHEME_IDS.map((id) => ({
+  value: id,
+  label: SCHEMES[id].label,
+}));
 
 // ---------------------------------------------------------------------------
 // Roles & seed accounts
