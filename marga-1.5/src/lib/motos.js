@@ -109,7 +109,7 @@ export function motoPorNombre(nombre) {
 function slug(str) {
   return String(str)
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036F]/g, '')
     .toLowerCase()
     .trim();
 }
