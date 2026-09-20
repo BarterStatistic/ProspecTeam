@@ -40,3 +40,15 @@ export function fromDateInput(value) {
   const [y, m, d] = value.split('-').map(Number);
   return new Date(y, m - 1, d).getTime();
 }
+
+const mxn = new Intl.NumberFormat('es-MX', {
+  style: 'currency',
+  currency: 'MXN',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/** 1386.55 → "$1,386.55". Intl añade el prefijo "MX$"; aquí sobra. */
+export function formatMXN(n) {
+  return mxn.format(n ?? 0).replace(/^MX\$\s*/, '$');
+}
