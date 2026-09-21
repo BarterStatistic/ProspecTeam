@@ -18,6 +18,7 @@ import {
 import { useData } from '../../context/DataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
+import { etiquetaEsquema } from '../../lib/motos.js';
 import {
   canDeleteClient,
   canDropTo,
@@ -240,7 +241,7 @@ export function CardBody({ client, dragging = false }) {
             <span className="m-chip bg-sky2/15 text-sky2-light">{client.saleType}</span>
           )}
           {client.creditScheme && (
-            <span className="m-chip bg-white/5 text-ink-muted">{client.creditScheme}</span>
+            <span className="m-chip bg-white/5 text-ink-muted">{etiquetaEsquema(client.creditScheme)}</span>
           )}
           {client.comisionId &&
             (canRegistrarFacturacion(role) ? (

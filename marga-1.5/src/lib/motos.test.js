@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { MODELS, SCHEMES, SCHEME_IDS, motoPorNombre, normalizarEsquema } from './motos.js';
+import {
+  MODELS,
+  SCHEMES,
+  SCHEME_IDS,
+  motoPorNombre,
+  normalizarEsquema,
+  etiquetaEsquema,
+} from './motos.js';
 
 describe('catálogo de motos', () => {
   it('trae los 37 modelos del cotizador', () => {
@@ -89,5 +96,24 @@ describe('normalizarEsquema', () => {
   it('devuelve el valor original cuando no lo reconoce', () => {
     expect(normalizarEsquema('Plan raro')).toBe('Plan raro');
     expect(normalizarEsquema('')).toBe('');
+  });
+});
+
+describe('etiquetaEsquema', () => {
+  it('devuelve la etiqueta legible de un id', () => {
+    expect(etiquetaEsquema('motonomina_flex')).toBe('Motonómina Flex');
+    expect(etiquetaEsquema('enganche50')).toBe('50% de Enganche');
+  });
+
+  it('normaliza las etiquetas viejas de Marga 1.5', () => {
+    expect(etiquetaEsquema('Motonómina')).toBe('Motonómina');
+    expect(etiquetaEsquema('motonomina')).toBe('Motonómina');
+    expect(etiquetaEsquema('CREDINAMO')).toBe('Credinamo');
+  });
+
+  it('devuelve intacto un valor que no reconoce', () => {
+    expect(etiquetaEsquema('Plan raro')).toBe('Plan raro');
+    expect(etiquetaEsquema('')).toBe('');
+    expect(etiquetaEsquema(undefined)).toBeUndefined();
   });
 });

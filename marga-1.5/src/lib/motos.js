@@ -126,3 +126,12 @@ export function normalizarEsquema(valor) {
   if (!valor) return valor;
   return BY_SLUG.get(slug(valor)) ?? valor;
 }
+
+/**
+ * Etiqueta legible de un esquema ('motonomina_flex' → 'Motonómina Flex').
+ * Acepta ids y etiquetas viejas de Marga 1.5; un valor desconocido se
+ * devuelve intacto.
+ */
+export function etiquetaEsquema(valor) {
+  return SCHEMES[normalizarEsquema(valor)]?.label ?? valor;
+}
