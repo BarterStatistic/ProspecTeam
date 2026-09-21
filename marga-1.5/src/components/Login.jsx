@@ -32,7 +32,7 @@ export default function Login() {
       >
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-extrabold tracking-tight">
-            <span className="text-gold">Marga 1.5</span>
+            <span className="text-gold">Marga 2.0</span>
           </h1>
           <p className="mt-1 text-sm text-ink-muted">Organizador de clientes · Dinamo Saltillo</p>
         </div>
