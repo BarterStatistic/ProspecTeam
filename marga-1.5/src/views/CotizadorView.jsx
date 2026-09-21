@@ -54,6 +54,11 @@ export default function CotizadorView() {
     setGenerada(false);
     setError('');
     setEsquemaId(id);
+    // El enganche arranca en el mínimo permitido del esquema elegido (decisión
+    // del dueño), en vez de quedar vacío/en 0 y forzar al vendedor a mirar el
+    // mínimo aparte. Sigue siendo editable; cambiar de esquema lo reajusta al
+    // mínimo del esquema nuevo, porque esta función corre en cada elección.
+    setEnganchePct(SCHEMES[id].min);
     setPaso(2);
   }
 
