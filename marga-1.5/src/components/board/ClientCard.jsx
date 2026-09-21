@@ -18,7 +18,12 @@ import {
 import { useData } from '../../context/DataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
-import { canDeleteClient, canDropTo, canEditClient } from '../../lib/permissions.js';
+import {
+  canDeleteClient,
+  canDropTo,
+  canEditClient,
+  canRegistrarFacturacion,
+} from '../../lib/permissions.js';
 import { BOARD_COLUMNS, sellerColor } from '../../lib/constants.js';
 import { fullName } from '../../lib/clients.js';
 import { formatDateTime } from '../../lib/format.js';
@@ -35,7 +40,7 @@ const noDrag = { onPointerDown: stopPress, onMouseDown: stopPress, onTouchStart:
 export function CardBody({ client, dragging = false }) {
   const { updateClient, deleteClient, moveClient, sellerColors, sellerAvatars } = useData();
   const { user, role } = useAuth();
-  const { openEditClient, openCancelClient } = useUI();
+  const { openEditClient, openCancelClient, openFacturacion } = useUI();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const editable = canEditClient(role, client, user?.username);
@@ -229,7 +234,7 @@ export function CardBody({ client, dragging = false }) {
         </div>
       )}
 
-      {(client.saleType || client.creditScheme) && (
+      {(client.saleType || client.creditScheme || client.comisionId) && (
         <div className="mt-2 flex flex-wrap gap-1">
           {client.saleType && (
             <span className="m-chip bg-sky2/15 text-sky2-light">{client.saleType}</span>
@@ -237,6 +242,23 @@ export function CardBody({ client, dragging = false }) {
           {client.creditScheme && (
             <span className="m-chip bg-white/5 text-ink-muted">{client.creditScheme}</span>
           )}
+          {client.comisionId &&
+            (canRegistrarFacturacion(role) ? (
+              <button
+                type="button"
+                {...noDrag}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openFacturacion(client);
+                }}
+                title="Editar la facturación de esta venta"
+                className="m-chip bg-state-success/15 text-state-success transition hover:bg-state-success/25"
+              >
+                Facturada
+              </button>
+            ) : (
+              <span className="m-chip bg-state-success/15 text-state-success">Facturada</span>
+            ))}
         </div>
       )}
 

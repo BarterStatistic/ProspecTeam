@@ -12,6 +12,7 @@ import {
   Wrench,
   ScanLine,
   ChevronDown,
+  Wallet,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useData } from '../../context/DataContext.jsx';
@@ -22,7 +23,12 @@ import {
   ROLE_CHIP_CLASSES,
   userColor,
 } from '../../lib/constants.js';
-import { visibleSections, canManageUsers, canViewAdminPanel } from '../../lib/permissions.js';
+import {
+  visibleSections,
+  canManageUsers,
+  canViewAdminPanel,
+  canViewComisiones,
+} from '../../lib/permissions.js';
 import Avatar from '../ui/Avatar.jsx';
 
 const ICONS = {
@@ -133,6 +139,15 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
           isActive={active === 'citas'}
           onClick={() => onNavigate('citas')}
         />
+
+        {canViewComisiones(role) && (
+          <NavButton
+            icon={Wallet}
+            label="Comisiones"
+            isActive={active === 'comisiones'}
+            onClick={() => onNavigate('comisiones')}
+          />
+        )}
 
         {canManageUsers(role) && (
           <>
