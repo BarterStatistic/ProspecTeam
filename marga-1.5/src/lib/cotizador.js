@@ -19,12 +19,24 @@ function esquemaPara(esquemaId) {
 }
 
 /**
+ * Porcentaje de enganche redondeado a 2 decimales. Las bandas del catálogo
+ * tienen huecos ([0, 24.99] / [25, 29.99]): un enganche capturado en pesos da
+ * un porcentaje como 29.9968% que no cae en ninguna. El cotizador vigente
+ * (Cotizadores/cotizador-pt) redondea igual: Math.round(dp * 100) / 100.
+ */
+export function redondearPct(pct) {
+  return Math.round(pct * 100) / 100;
+}
+
+/**
  * Nivel de factores que corresponde a un porcentaje de enganche.
  * Se valida primero contra el min/max del esquema: motonómina arranca su
  * primer nivel en 0 pero no acepta menos de 5% de enganche.
+ * El porcentaje se redondea a 2 decimales antes de validar y de buscar nivel.
  */
-export function nivelPara(esquemaId, enganchePct) {
+export function nivelPara(esquemaId, pct) {
   const esquema = esquemaPara(esquemaId);
+  const enganchePct = redondearPct(pct);
   if (enganchePct < esquema.min || enganchePct > esquema.max) {
     throw new RangeError(
       `${esquema.label} acepta enganches entre ${esquema.min}% y ${esquema.max}%; ` +
@@ -70,7 +82,8 @@ export function calcularFinanciamiento({
   if (!moto) throw new Error(`La moto "${motoNombre}" no está en el catálogo.`);
 
   const precio = precioEfectivo(moto, !!incluyeServicio);
-  const enganchePct = (enganche / precio) * 100;
+  // Redondeado aquí para que el porcentaje devuelto sea el mismo que eligió el nivel.
+  const enganchePct = redondearPct((enganche / precio) * 100);
   const plazoMax = plazoMaximo(esquemaId);
   const factor = nivelPara(esquemaId, enganchePct).m[plazoMax];
   const montoACredito = precio - enganche;

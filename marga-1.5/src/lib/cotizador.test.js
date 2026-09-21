@@ -152,3 +152,44 @@ describe('calcularFinanciamiento', () => {
     ).toThrow(/esquema/i);
   });
 });
+
+describe('enganche redondeado a 2 decimales (huecos entre bandas)', () => {
+  it('24.995 cae en la banda de 25% de motonómina', () => {
+    expect(nivelPara('motonomina', 24.995).m[72]).toBe(0.040493);
+  });
+
+  it('29.996 cae en la banda de 30% de motonómina', () => {
+    expect(nivelPara('motonomina', 29.996).m[72]).toBe(0.035218);
+  });
+
+  it('19.995 cae en la banda de 20% de credinamo', () => {
+    expect(nivelPara('credinamo', 19.995).m[72]).toBe(0.040490);
+  });
+
+  it('49.998 cae en la banda de 50% de credinamo', () => {
+    expect(nivelPara('credinamo', 49.998).m[72]).toBe(0.040489);
+  });
+
+  it('METRO con $9,418 de enganche en Credinamo calcula sin error', () => {
+    // 9418 / 31395 = 29.9984...% → se redondea a 30.00% → banda [30, 49.99].
+    const r = calcularFinanciamiento({
+      motoNombre: 'METRO',
+      incluyeServicio: false,
+      esquemaId: 'credinamo',
+      enganche: 9418,
+    });
+    expect(r.enganchePct).toBe(30);
+    expect(r.factor).toBe(0.035218);
+    expect(r.parcialidad).toBeCloseTo((31395 - 9418) * 0.035218, 6);
+  });
+
+  it('devuelve el mismo porcentaje redondeado que eligió el nivel', () => {
+    const r = calcularFinanciamiento({
+      motoNombre: 'U2',
+      incluyeServicio: false,
+      esquemaId: 'motonomina',
+      enganche: 5000, // 22.7842...%
+    });
+    expect(r.enganchePct).toBe(22.78);
+  });
+});

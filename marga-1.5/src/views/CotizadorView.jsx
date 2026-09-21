@@ -26,6 +26,7 @@ export default function CotizadorView() {
   const [enganchePct, setEnganchePct] = useState(0);
   const [incluyeServicio, setIncluyeServicio] = useState(false);
   const [generada, setGenerada] = useState(false);
+  const [error, setError] = useState('');
   const [descargando, setDescargando] = useState(false);
   const cotizacionRef = useRef(null);
 
@@ -38,17 +39,20 @@ export default function CotizadorView() {
   // que nadie descargue una imagen que no corresponde a lo que ve.
   const invalidar = (fn) => (v) => {
     setGenerada(false);
+    setError('');
     fn(v);
   };
 
   function elegirMoto(nombre) {
     setGenerada(false);
+    setError('');
     setMotoNombre(nombre);
     setPaso(1);
   }
 
   function elegirEsquema(id) {
     setGenerada(false);
+    setError('');
     setEsquemaId(id);
     setPaso(2);
   }
@@ -60,6 +64,21 @@ export default function CotizadorView() {
     if (!puedeGenerar || generada) return;
     const precio = precioEfectivo(moto, incluyeServicio);
     const plazo = esquema.terms.at(-1);
+    const montoACredito = precio - (precio * enganchePct) / 100;
+    // Se valida ANTES de marcar la cotización como generada: si el cálculo
+    // falla (enganche sin nivel de factores, plazo inexistente), se muestra el
+    // mensaje y no se registra nada ni se pinta una cotización rota.
+    let pagoPlazoMax;
+    try {
+      // Todos los plazos, igual que Cotizacion.jsx; el último es `plazo`.
+      for (const p of esquema.terms) {
+        pagoPlazoMax = parcialidad({ esquemaId, montoACredito, enganchePct, plazo: p });
+      }
+    } catch (e) {
+      setError(e?.message || 'No se pudo calcular la cotización con estos datos.');
+      return;
+    }
+    setError('');
     setGenerada(true);
     registrarCotizacion({
       moto: motoNombre,
@@ -69,14 +88,7 @@ export default function CotizadorView() {
       plazo,
       // Redondeado al peso: es el mismo valor que Cotizacion.jsx muestra, para
       // que el registro coincida con lo que vio el vendedor.
-      parcialidad: Math.round(
-        parcialidad({
-          esquemaId,
-          montoACredito: precio - (precio * enganchePct) / 100,
-          enganchePct,
-          plazo,
-        }),
-      ),
+      parcialidad: Math.round(pagoPlazoMax),
     });
   }
 
@@ -139,6 +151,8 @@ export default function CotizadorView() {
             />
           )}
         </Card>
+
+        {error && <p className="text-right text-sm text-state-danger">{error}</p>}
 
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="gold" onClick={generar} disabled={!puedeGenerar || generada}>

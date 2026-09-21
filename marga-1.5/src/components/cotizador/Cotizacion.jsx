@@ -29,14 +29,30 @@ const Cotizacion = forwardRef(function Cotizacion(
   ref,
 ) {
   const esquema = SCHEMES[esquemaId];
-  const precio = precioEfectivo(moto, incluyeServicio);
-  const enganche = (precio * enganchePct) / 100;
-  const montoACredito = precio - enganche;
-
-  const filas = esquema.terms.map((plazo) => {
-    const pago = Math.round(parcialidad({ esquemaId, montoACredito, enganchePct, plazo }));
-    return { plazo, pago };
-  });
+  let precio;
+  let enganche;
+  let montoACredito;
+  let filas;
+  // El cálculo nunca debe tumbar la pantalla (no hay ErrorBoundary): si algo
+  // falla, se pinta un mensaje legible en lugar de lanzar durante el render.
+  try {
+    if (!esquema) throw new Error(`Esquema de crédito desconocido: "${esquemaId}".`);
+    precio = precioEfectivo(moto, incluyeServicio);
+    enganche = (precio * enganchePct) / 100;
+    montoACredito = precio - enganche;
+    filas = esquema.terms.map((plazo) => {
+      const pago = Math.round(parcialidad({ esquemaId, montoACredito, enganchePct, plazo }));
+      return { plazo, pago };
+    });
+  } catch (e) {
+    return (
+      <div className="rounded-2xl border border-white/5 bg-navy-800 p-5">
+        <p className="text-sm text-state-danger">
+          No se pudo calcular la cotización. {e?.message || ''}
+        </p>
+      </div>
+    );
+  }
   const pagoMax = Math.max(...filas.map((f) => f.pago));
 
   return (
