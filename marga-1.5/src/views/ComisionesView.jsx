@@ -231,8 +231,12 @@ export default function ComisionesView() {
                       <th className="py-2 pr-3 font-medium">Cliente</th>
                       {admin && <th className="py-2 pr-3 font-medium">Promotor</th>}
                       <th className="py-2 pr-3 font-medium">Moto</th>
-                      <th className="py-2 pr-3 text-right font-medium">Monto financiado</th>
-                      <th className="py-2 pr-3 text-right font-medium">Comisión total</th>
+                      {admin && (
+                        <th className="py-2 pr-3 text-right font-medium">Monto financiado</th>
+                      )}
+                      {admin && (
+                        <th className="py-2 pr-3 text-right font-medium">Comisión total</th>
+                      )}
                       <th className="py-2 pr-3 text-right font-medium">Comisión vendedor</th>
                       <th className="py-2 pr-3 text-right font-medium">Fecha de pago</th>
                       {admin && <th className="py-2 font-medium" />}
@@ -262,12 +266,16 @@ export default function ComisionesView() {
                           </td>
                         )}
                         <td className="py-2 pr-3 text-ink-muted">{c.moto}</td>
-                        <td className="py-2 pr-3 text-right text-sky2">
-                          {formatMXN(c.montoFinanciado)}
-                        </td>
-                        <td className="py-2 pr-3 text-right text-ink-muted">
-                          {formatMXN(c.comisionTotal)}
-                        </td>
+                        {admin && (
+                          <td className="py-2 pr-3 text-right text-sky2">
+                            {formatMXN(c.montoFinanciado)}
+                          </td>
+                        )}
+                        {admin && (
+                          <td className="py-2 pr-3 text-right text-ink-muted">
+                            {formatMXN(c.comisionTotal)}
+                          </td>
+                        )}
                         <td className="py-2 pr-3 text-right font-semibold text-gold">
                           {formatMXN(c.comisionVendedor)}
                         </td>
