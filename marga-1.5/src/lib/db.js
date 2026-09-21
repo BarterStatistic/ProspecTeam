@@ -119,11 +119,46 @@ export async function createClient(values, actor = null) {
   return record;
 }
 
-/** Patch user-editable fields; always refreshes updatedAt ("última modificación"). */
+/**
+ * Patch user-editable fields; always refreshes updatedAt ("última modificación").
+ *
+ * El promotor no es un precio: es un dato de la venta, no algo que se congele
+ * al facturar. Si el patch cambia `promotorEncargado` de un cliente que ya
+ * tiene `comisionId`, recalcula en esa comisión SOLO `promotor`,
+ * `comisionPromotor` y `netoAdmin`, con `calcularComision` sobre el
+ * `montoFinanciado`, `esquemaId` y `numeroVenta` ya congelados de la
+ * comisión — ningún otro importe se toca.
+ */
 export async function updateClient(id, patch, actor = null) {
   const current = store.getClients().find((c) => c.id === id);
   await store.patchClient(id, { ...patch, updatedAt: now() });
   if (!current) return;
+
+  if (
+    Object.prototype.hasOwnProperty.call(patch, 'promotorEncargado') &&
+    current.comisionId
+  ) {
+    const promotorNuevo = (patch.promotorEncargado ?? '').trim();
+    if (promotorNuevo !== (current.promotorEncargado ?? '')) {
+      const comisionPrevia = store
+        .getComisiones()
+        .find((c) => c.id === current.comisionId);
+      if (comisionPrevia) {
+        const recalc = calcularComision({
+          montoFinanciado: comisionPrevia.montoFinanciado,
+          esquemaId: comisionPrevia.esquemaId,
+          numeroVenta: comisionPrevia.numeroVenta,
+          tienePromotor: !!promotorNuevo,
+        });
+        await store.patchComision(current.comisionId, {
+          promotor: promotorNuevo,
+          comisionPromotor: recalc.comisionPromotor,
+          netoAdmin: recalc.netoAdmin,
+        });
+      }
+    }
+  }
+
   await notificar({
     destinatario: current.createdBy,
     actor: actor?.username ?? '',

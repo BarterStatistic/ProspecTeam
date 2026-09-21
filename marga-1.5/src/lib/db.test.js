@@ -209,6 +209,68 @@ describe('actualizarFacturacion', () => {
   });
 });
 
+describe('updateClient — promotor de una venta ya facturada', () => {
+  it('asignar un promotor después de facturar pone su 10% y baja el neto admin', async () => {
+    const cliente = await sembrarCliente();
+    const comision = await db.registrarFacturacion(cliente.id, facturacion(at(2026, 9, 20)), ADMIN);
+    expect(comision.promotor).toBe('');
+    expect(comision.comisionPromotor).toBe(0);
+
+    await db.updateClient(cliente.id, { promotorEncargado: 'Promotor Nuevo' }, ADMIN);
+
+    const actualizada = comisionesDe(cliente.id)[0];
+    const esperado = calcularComision({
+      montoFinanciado: comision.montoFinanciado,
+      esquemaId: comision.esquemaId,
+      numeroVenta: comision.numeroVenta,
+      tienePromotor: true,
+    });
+    expect(actualizada.promotor).toBe('Promotor Nuevo');
+    expect(actualizada.comisionPromotor).toBeCloseTo(esperado.comisionPromotor, 6);
+    expect(actualizada.netoAdmin).toBeCloseTo(esperado.netoAdmin, 6);
+    expect(actualizada.netoAdmin).toBeLessThan(comision.netoAdmin);
+    // Nada más se toca: vendedor y comisión total quedan congelados.
+    expect(actualizada.comisionVendedor).toBeCloseTo(comision.comisionVendedor, 6);
+    expect(actualizada.comisionTotal).toBeCloseTo(comision.comisionTotal, 6);
+    expect(actualizada.montoFinanciado).toBeCloseTo(comision.montoFinanciado, 6);
+  });
+
+  it('quitar el promotor de una venta facturada regresa su comisión a 0', async () => {
+    const cliente = await sembrarCliente({ promotorEncargado: 'Promotor Viejo' });
+    const comision = await db.registrarFacturacion(cliente.id, facturacion(at(2026, 9, 20)), ADMIN);
+    expect(comision.promotor).toBe('Promotor Viejo');
+    expect(comision.comisionPromotor).toBeGreaterThan(0);
+
+    await db.updateClient(cliente.id, { promotorEncargado: '' }, ADMIN);
+
+    const actualizada = comisionesDe(cliente.id)[0];
+    expect(actualizada.promotor).toBe('');
+    expect(actualizada.comisionPromotor).toBe(0);
+    expect(actualizada.netoAdmin).toBeCloseTo(
+      actualizada.comisionTotal - actualizada.comisionVendedor,
+      6,
+    );
+  });
+
+  it('cambiar otro campo del cliente no toca su comisión', async () => {
+    const cliente = await sembrarCliente({ promotorEncargado: 'Promotor Fijo' });
+    const comision = await db.registrarFacturacion(cliente.id, facturacion(at(2026, 9, 20)), ADMIN);
+
+    await db.updateClient(cliente.id, { notes: 'Cliente contento' }, ADMIN);
+
+    const sinCambios = comisionesDe(cliente.id)[0];
+    expect(sinCambios).toEqual(comision);
+    expect(tarjeta(cliente.id).notes).toBe('Cliente contento');
+  });
+
+  it('no toca la comisión de un cliente sin facturar aunque cambie su promotor', async () => {
+    const cliente = await sembrarCliente();
+    await db.updateClient(cliente.id, { promotorEncargado: 'Promotor Nuevo' }, ADMIN);
+    expect(comisionesDe(cliente.id)).toHaveLength(0);
+    expect(tarjeta(cliente.id).promotorEncargado).toBe('Promotor Nuevo');
+  });
+});
+
 describe('eliminarComision', () => {
   it('borra la comisión y limpia la marca de facturación de la tarjeta', async () => {
     const cliente = await sembrarCliente();
