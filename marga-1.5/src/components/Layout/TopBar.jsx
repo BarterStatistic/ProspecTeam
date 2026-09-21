@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
 import { canAddClient } from '../../lib/permissions.js';
 import Button from '../ui/Button.jsx';
+import NotificationBell from './NotificationBell.jsx';
 import BackupMenu from './BackupMenu.jsx';
 
 export default function TopBar({ section, onOpenSidebar, onOpenSearch }) {
@@ -35,6 +36,7 @@ export default function TopBar({ section, onOpenSidebar, onOpenSearch }) {
         <span className="hidden sm:inline">Buscar…</span>
       </button>
 
+      <NotificationBell />
       <BackupMenu />
 
       {showAdd && (
