@@ -109,7 +109,7 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
     <div className="flex h-full w-64 flex-col border-r border-white/5 bg-navy-800/80 backdrop-blur-md">
       <div className="flex items-center justify-between px-5 py-5">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-gold">Marga 1.5</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-gold">Marga 2.0</h1>
           <p className="text-[11px] text-ink-faint">Dinamo Saltillo</p>
         </div>
         <button

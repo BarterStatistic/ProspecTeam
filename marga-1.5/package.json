@@ -1,9 +1,9 @@
 {
   "name": "marga-15",
   "private": true,
-  "version": "1.5.0",
+  "version": "2.0.0",
   "type": "module",
-  "description": "Marga 1.5 — organizador de clientes multiusuario para el equipo de ventas de Dinamo Saltillo",
+  "description": "Marga 2.0 — organizador de clientes multiusuario para el equipo de ventas de Dinamo Saltillo",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
