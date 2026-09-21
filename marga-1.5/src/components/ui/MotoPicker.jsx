@@ -97,6 +97,7 @@ export default function MotoPicker({ label = 'Moto(s)', value = '', onChange }) 
               if (resultados.length > 0) {
                 toggle(resultados[0].nombre);
                 setQuery('');
+                setOpen(false);
               }
               return;
             }
@@ -129,7 +130,11 @@ export default function MotoPicker({ label = 'Moto(s)', value = '', onChange }) 
                 <button
                   key={m.nombre}
                   type="button"
-                  onClick={() => toggle(m.nombre)}
+                  onClick={() => {
+                    toggle(m.nombre);
+                    setQuery('');
+                    setOpen(false);
+                  }}
                   className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs transition
                     ${on ? 'bg-gold/15 text-gold' : 'text-ink-muted hover:bg-white/5 hover:text-ink'}`}
                 >
