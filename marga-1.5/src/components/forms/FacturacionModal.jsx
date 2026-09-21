@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../../context/DataContext.jsx';
 import { MODELS, SCHEMES, SCHEME_IDS, normalizarEsquema } from '../../lib/motos.js';
 import { calcularFinanciamiento } from '../../lib/cotizador.js';
-import { calcularComision, fechaPago, mesVenta } from '../../lib/comisiones.js';
+import {
+  calcularComision,
+  fechaPago,
+  mesVenta,
+  numeroVentaPara,
+} from '../../lib/comisiones.js';
 import { formatMXN, formatDate, toDateInput, fromDateInput } from '../../lib/format.js';
 import Modal from '../ui/Modal.jsx';
 import Button from '../ui/Button.jsx';
@@ -90,23 +95,20 @@ export default function FacturacionModal({ cliente, onClose }) {
         enganche: monto,
       });
       const clave = mesVenta(fechaFacturacion, configComisiones);
-      // Espeja el criterio de `actualizarFacturacion`/`ventasDelMes` en
-      // `src/lib/db.js`: si la edición no cambia de mes de venta, conserva el
-      // número de venta original; si cambia, recuenta las ventas de ese
-      // vendedor en el mes nuevo EXCLUYENDO la propia comisión que se edita
-      // (si no se excluyera, se contaría a sí misma dos veces).
+      // Mismo criterio que `actualizarFacturacion`/`registrarFacturacion` en
+      // `src/lib/db.js`, vía `numeroVentaPara`: si la edición no cambia de mes
+      // de venta, conserva el número de venta original; si cambia, recuenta
+      // las ventas de ese vendedor en el mes nuevo EXCLUYENDO la propia
+      // comisión que se edita.
       const numeroVenta = esEdicion
         ? clave === comisionPrevia.mesVenta
           ? comisionPrevia.numeroVenta
-          : comisiones.filter(
-              (c) =>
-                c.vendedor === comisionPrevia.vendedor &&
-                c.mesVenta === clave &&
-                c.id !== comisionPrevia.id,
-            ).length + 1
-        : comisiones.filter(
-            (c) => c.vendedor === (cliente.createdBy ?? '') && c.mesVenta === clave,
-          ).length + 1;
+          : numeroVentaPara(comisiones, {
+              vendedor: comisionPrevia.vendedor,
+              clave,
+              excluirId: comisionPrevia.id,
+            })
+        : numeroVentaPara(comisiones, { vendedor: cliente.createdBy ?? '', clave });
       const com = calcularComision({
         montoFinanciado: fin.montoFinanciado,
         esquemaId,

@@ -161,3 +161,19 @@ export function fechaPago(ts, config = CONFIG_DEFAULT) {
 
   return semana + (diaPago - 1) * DAY;
 }
+
+/**
+ * Número de venta (posición en la racha) que le toca a una comisión nueva o
+ * movida de mes: las comisiones que ya lleva `vendedor` en el mes de venta
+ * `clave`, más uno. `excluirId` deja fuera la propia comisión cuando se edita,
+ * para que no se cuente a sí misma. Fuente única para db.js, el modal de
+ * facturación y la racha del panel de Comisiones.
+ */
+export function numeroVentaPara(comisiones, { vendedor, clave, excluirId = null }) {
+  const lista = Array.isArray(comisiones) ? comisiones : [];
+  const previas = lista.filter(
+    (c) =>
+      c.vendedor === vendedor && c.mesVenta === clave && (excluirId == null || c.id !== excluirId),
+  );
+  return previas.length + 1;
+}

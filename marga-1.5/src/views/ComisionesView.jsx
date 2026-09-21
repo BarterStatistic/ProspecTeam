@@ -4,7 +4,13 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useData } from '../context/DataContext.jsx';
 import { canViewComisiones, isAdmin } from '../lib/permissions.js';
 import { sellerColor } from '../lib/constants.js';
-import { fechaPago, mesVenta, PROMOTOR_DEFAULT, NIVELES_RACHA } from '../lib/comisiones.js';
+import {
+  fechaPago,
+  mesVenta,
+  numeroVentaPara,
+  PROMOTOR_DEFAULT,
+  NIVELES_RACHA,
+} from '../lib/comisiones.js';
 import { formatMXN, formatDate } from '../lib/format.js';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
@@ -76,7 +82,8 @@ export default function ComisionesView() {
   const rachaActual = useMemo(() => {
     if (admin || !user?.username) return 0;
     const clave = mesVenta(Date.now(), configComisiones);
-    return conPago.filter((c) => c.vendedor === user.username && c.mesVenta === clave).length;
+    // Ventas que ya lleva = el número que le tocaría a la siguiente, menos uno.
+    return numeroVentaPara(conPago, { vendedor: user.username, clave }) - 1;
   }, [admin, user, conPago, configComisiones]);
 
   if (!canViewComisiones(role)) {

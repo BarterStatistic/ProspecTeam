@@ -12,6 +12,7 @@ import {
   calcularComision,
   mesVenta,
   fechaPago,
+  numeroVentaPara,
 } from './comisiones.js';
 import { motoPorNombre } from './motos.js';
 import {
@@ -301,13 +302,6 @@ export function guardarConfigComisiones(patch) {
   return store.setConfig(patch);
 }
 
-/** Cuántas comisiones lleva un vendedor en un mes de venta. */
-function ventasDelMes(vendedor, clave, excluirId = null) {
-  return store
-    .getComisiones()
-    .filter((c) => c.vendedor === vendedor && c.mesVenta === clave && c.id !== excluirId);
-}
-
 /** Arma el objeto de comisión a partir de los datos capturados al facturar. */
 function construirComision({ cliente, values, config, numeroVenta, id, actor }) {
   const moto = motoPorNombre(values.motoNombre);
@@ -366,7 +360,7 @@ function construirComision({ cliente, values, config, numeroVenta, id, actor }) 
  * notificación) no son atómicas — si una llamada anterior alcanzó a crear la
  * comisión pero se cortó antes de estampar la tarjeta (p. ej. se cayó la
  * conexión entre el `setComision` y el `patchClient`), un reintento con el
- * mismo `clienteId` NO debe crear una segunda comisión: `ventasDelMes` la
+ * mismo `clienteId` NO debe crear una segunda comisión: `numeroVentaPara` la
  * contaría, e infla el `numeroVenta` —y por tanto la racha— tanto de esta
  * venta como, vía `renumerarMes`, de TODAS las ventas de ese vendedor en el
  * mes. La comisión huérfana además nunca se limpiaría sola.
@@ -389,7 +383,10 @@ export async function registrarFacturacion(clienteId, values, actor = null) {
     comision = await actualizarFacturacion(existente.id, values, actor);
   } else {
     const clave = mesVenta(values.fechaFacturacion, config);
-    const numeroVenta = ventasDelMes(cliente.createdBy ?? '', clave).length + 1;
+    const numeroVenta = numeroVentaPara(store.getComisiones(), {
+      vendedor: cliente.createdBy ?? '',
+      clave,
+    });
     comision = construirComision({
       cliente,
       values,
@@ -446,7 +443,11 @@ export async function actualizarFacturacion(comisionId, values, actor = null) {
   const numeroVenta =
     claveNueva === previa.mesVenta
       ? previa.numeroVenta
-      : ventasDelMes(previa.vendedor, claveNueva, comisionId).length + 1;
+      : numeroVentaPara(store.getComisiones(), {
+          vendedor: previa.vendedor,
+          clave: claveNueva,
+          excluirId: comisionId,
+        });
 
   const comision = construirComision({
     cliente,

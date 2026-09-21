@@ -8,6 +8,7 @@ import {
   calcularComision,
   mesVenta,
   fechaPago,
+  numeroVentaPara,
 } from './comisiones.js';
 
 const at = (y, m, d) => new Date(y, m - 1, d).getTime();
@@ -245,5 +246,34 @@ describe('fechaPago con excepciones mal formadas', () => {
       ],
     };
     expect(fechaPago(at(2026, 9, 22), config)).toBe(at(2026, 9, 30));
+  });
+});
+
+describe('numeroVentaPara', () => {
+  const comisiones = [
+    { id: 'a', vendedor: 'ana', mesVenta: '2026-09' },
+    { id: 'b', vendedor: 'ana', mesVenta: '2026-09' },
+    { id: 'c', vendedor: 'ana', mesVenta: '2026-08' },
+    { id: 'd', vendedor: 'beto', mesVenta: '2026-09' },
+  ];
+
+  it('es la siguiente venta del vendedor en ese mes', () => {
+    expect(numeroVentaPara(comisiones, { vendedor: 'ana', clave: '2026-09' })).toBe(3);
+    expect(numeroVentaPara(comisiones, { vendedor: 'beto', clave: '2026-09' })).toBe(2);
+  });
+
+  it('es 1 cuando el vendedor no lleva ventas en el mes', () => {
+    expect(numeroVentaPara(comisiones, { vendedor: 'ana', clave: '2026-10' })).toBe(1);
+    expect(numeroVentaPara([], { vendedor: 'ana', clave: '2026-09' })).toBe(1);
+  });
+
+  it('no cuenta la comisión excluida (la que se está editando)', () => {
+    expect(
+      numeroVentaPara(comisiones, { vendedor: 'ana', clave: '2026-09', excluirId: 'b' }),
+    ).toBe(2);
+  });
+
+  it('tolera una lista ausente', () => {
+    expect(numeroVentaPara(undefined, { vendedor: 'ana', clave: '2026-09' })).toBe(1);
   });
 });
