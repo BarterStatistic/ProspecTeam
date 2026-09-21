@@ -188,26 +188,28 @@ export default function ReglasPagoCard() {
               return (
                 <li
                   key={e.id}
-                  className="grid grid-cols-1 gap-2 rounded-lg bg-navy-900/50 p-3 sm:grid-cols-4"
+                  className="space-y-2 rounded-lg bg-navy-900/50 p-3"
                 >
-                  <Input
-                    label="Desde"
-                    type="date"
-                    value={toDateInput(e.desde)}
-                    onChange={(ev) => editarFecha(e.id, 'desde', ev.target.value)}
-                  />
-                  <Input
-                    label="Hasta"
-                    type="date"
-                    value={toDateInput(e.hasta)}
-                    onChange={(ev) => editarFecha(e.id, 'hasta', ev.target.value)}
-                  />
-                  <Input
-                    label="Se paga el"
-                    type="date"
-                    value={toDateInput(e.fechaPago)}
-                    onChange={(ev) => editarFecha(e.id, 'fechaPago', ev.target.value)}
-                  />
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <Input
+                      label="Desde"
+                      type="date"
+                      value={toDateInput(e.desde)}
+                      onChange={(ev) => editarFecha(e.id, 'desde', ev.target.value)}
+                    />
+                    <Input
+                      label="Hasta"
+                      type="date"
+                      value={toDateInput(e.hasta)}
+                      onChange={(ev) => editarFecha(e.id, 'hasta', ev.target.value)}
+                    />
+                    <Input
+                      label="Se paga el"
+                      type="date"
+                      value={toDateInput(e.fechaPago)}
+                      onChange={(ev) => editarFecha(e.id, 'fechaPago', ev.target.value)}
+                    />
+                  </div>
                   <div className="flex items-end gap-2">
                     <NotaExcepcion
                       valor={e.nota}
@@ -223,7 +225,7 @@ export default function ReglasPagoCard() {
                     </Button>
                   </div>
                   {invertida && (
-                    <p className="col-span-full flex items-center gap-1.5 text-[11px] text-state-warning">
+                    <p className="flex items-center gap-1.5 text-[11px] text-state-warning">
                       <AlertTriangle size={12} />
                       La fecha final es anterior a la inicial: esta excepción no se aplicará.
                     </p>
