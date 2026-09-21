@@ -59,7 +59,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="m-glass fixed inset-x-4 top-16 z-40 w-auto animate-fadeIn rounded-xl p-1 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80">
+        <div className="fixed inset-x-4 top-16 z-40 w-auto animate-fadeIn rounded-xl border border-white/5 bg-navy-800 p-1 shadow-card sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80">
           <p className="px-3 py-2 text-xs font-semibold text-ink">Notificaciones</p>
           <div className="max-h-80 overflow-y-auto">
             {misNotificaciones.length === 0 ? (
