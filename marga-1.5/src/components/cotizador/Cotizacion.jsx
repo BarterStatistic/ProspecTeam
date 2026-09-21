@@ -1,16 +1,7 @@
 import { forwardRef } from 'react';
 import { SCHEMES } from '../../lib/motos.js';
 import { precioEfectivo, parcialidad } from '../../lib/cotizador.js';
-import { formatMXN, formatMXN0, formatDate } from '../../lib/format.js';
-
-/**
- * 20 → "20%"; 15.5 → "15.50%". Igual que `pct()` del cotizador original
- * (`Cotizadores/cotizador-pt/index.html`, línea 747): dos decimales,
- * recortando el ".00" exacto — no cualquier cero de cola.
- */
-function pct(n) {
-  return `${Number(n).toFixed(2).replace(/\.00$/, '')}%`;
-}
+import { formatMXN, formatMXN0, formatDate, formatPct as pct } from '../../lib/format.js';
 
 /**
  * Resultado del cotizador: una fila por plazo del esquema.

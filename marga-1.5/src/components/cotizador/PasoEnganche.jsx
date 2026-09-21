@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { SCHEMES } from '../../lib/motos.js';
 import { precioEfectivo } from '../../lib/cotizador.js';
-import { formatMXN } from '../../lib/format.js';
+import { formatMXN, formatPct } from '../../lib/format.js';
 import Checkbox from '../ui/Checkbox.jsx';
 
 const MODOS = [
@@ -81,7 +81,7 @@ export default function PasoEnganche({
       <p className={`text-[11px] ${fueraDeRango ? 'text-state-danger' : 'text-ink-faint'}`}>
         {fueraDeRango
           ? `${esquema.label} acepta enganches entre ${esquema.min}% y ${esquema.max}%.`
-          : `${enganchePct.toFixed(2)}% · ${formatMXN(enganche)} sobre ${formatMXN(precio)}`}
+          : `${formatPct(enganchePct)} · ${formatMXN(enganche)} sobre ${formatMXN(precio)}`}
       </p>
 
       {moto.servicio > 0 && (

@@ -68,3 +68,14 @@ const mxn0 = new Intl.NumberFormat('es-MX', {
 export function formatMXN0(n) {
   return mxn0.format(n ?? 0).replace(/^MX\$\s*/, '$');
 }
+
+/**
+ * 20 → "20%"; 15.5 → "15.50%". Dos decimales, recortando el ".00" exacto
+ * (no cualquier cero de cola: "15.10%" se queda con su cero). Mismo criterio
+ * que `pct()` del cotizador original (`Cotizadores/cotizador-pt/index.html`,
+ * línea 747) — usado en todo lo que muestra un porcentaje de enganche, para
+ * que el cotizador y el modal de facturación lean el mismo formato.
+ */
+export function formatPct(n) {
+  return `${Number(n).toFixed(2).replace(/\.00$/, '')}%`;
+}
