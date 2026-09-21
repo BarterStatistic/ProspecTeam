@@ -280,6 +280,16 @@ export default function FacturacionModal({ cliente, onClose }) {
               <dd className="text-right font-semibold text-gold">
                 {formatMXN(preview.com.comisionVendedor)}
               </dd>
+              <dt className="text-ink-faint">
+                {cliente?.promotorEncargado
+                  ? `Comisión del promotor (${cliente.promotorEncargado})`
+                  : 'Sin promotor'}
+              </dt>
+              <dd className="text-right text-ink">
+                {formatMXN(preview.com.comisionPromotor)}
+              </dd>
+              <dt className="text-ink-faint">Neto admin</dt>
+              <dd className="text-right text-ink">{formatMXN(preview.com.netoAdmin)}</dd>
               <dt className="text-ink-faint">Se paga el</dt>
               <dd className="text-right text-ink">{formatDate(preview.pago)}</dd>
             </dl>
