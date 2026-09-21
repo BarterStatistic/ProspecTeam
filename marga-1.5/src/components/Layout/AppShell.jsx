@@ -14,6 +14,7 @@ import UsuariosView from '../../views/UsuariosView.jsx';
 import AdminPanelView from '../../views/AdminPanelView.jsx';
 import BuroAutomaticoView from '../../views/BuroAutomaticoView.jsx';
 import ComisionesView from '../../views/ComisionesView.jsx';
+import CotizadorView from '../../views/CotizadorView.jsx';
 import ClientFormModal from '../forms/ClientFormModal.jsx';
 import CancelModal from '../forms/CancelModal.jsx';
 import ProfileModal from '../forms/ProfileModal.jsx';
@@ -31,6 +32,7 @@ const VIEWS = {
   comisiones: ComisionesView,
   // Tools (see TOOLS in constants.js) — keyed by tool id.
   buro: BuroAutomaticoView,
+  cotizador: CotizadorView,
 };
 
 export default function AppShell() {

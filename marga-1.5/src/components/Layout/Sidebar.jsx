@@ -13,6 +13,7 @@ import {
   ScanLine,
   ChevronDown,
   Wallet,
+  Calculator,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useData } from '../../context/DataContext.jsx';
@@ -41,6 +42,7 @@ const ICONS = {
 // Per-tool icon, keyed by the tool id in constants.js.
 const TOOL_ICONS = {
   buro: ScanLine,
+  cotizador: Calculator,
 };
 
 function NavButton({ icon: Icon, label, badge, isActive, onClick, nested = false }) {

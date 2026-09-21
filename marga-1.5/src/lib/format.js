@@ -52,3 +52,19 @@ const mxn = new Intl.NumberFormat('es-MX', {
 export function formatMXN(n) {
   return mxn.format(n ?? 0).replace(/^MX\$\s*/, '$');
 }
+
+const mxn0 = new Intl.NumberFormat('es-MX', {
+  style: 'currency',
+  currency: 'MXN',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+/**
+ * 1386.55 → "$1,387" (sin decimales). Mismo tratamiento del prefijo "MX$" que
+ * formatMXN. Usada donde el dinero debe verse en pesos enteros — p. ej. el
+ * cotizador, que reproduce al peso las cifras del cotizador original.
+ */
+export function formatMXN0(n) {
+  return mxn0.format(n ?? 0).replace(/^MX\$\s*/, '$');
+}
