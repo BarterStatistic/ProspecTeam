@@ -57,6 +57,11 @@ export default function FacturacionModal({ cliente, onClose }) {
   const [esquemaId, setEsquemaId] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
+  // El enganche llega vacío al registrar una facturación nueva: sin esto, la
+  // vista previa marca "Captura el enganche en pesos." en rojo desde antes de
+  // que el usuario haya tecleado nada. Se enciende con la primera
+  // interacción del campo y se apaga cada vez que el modal se reabre.
+  const [engancheTocado, setEngancheTocado] = useState(false);
 
   useEffect(() => {
     if (!cliente) return;
@@ -71,6 +76,7 @@ export default function FacturacionModal({ cliente, onClose }) {
     );
     setError('');
     setGuardando(false);
+    setEngancheTocado(false);
   }, [cliente, comisionPrevia]);
 
   const fechaFacturacion = useMemo(() => {
@@ -86,7 +92,10 @@ export default function FacturacionModal({ cliente, onClose }) {
     const monto = Number(enganche);
     if (!motoNombre || !esquemaId || !fechaFacturacion) return { error: '' };
     if (!Number.isFinite(monto) || monto <= 0) {
-      return { error: 'Captura el enganche en pesos.' };
+      // No es un error de cálculo (rango/banda): es que todavía no hay
+      // enganche capturado. Se marca `esVacio` para que la vista solo lo
+      // muestre en rojo después de que el usuario haya tocado el campo.
+      return { error: 'Captura el enganche en pesos.', esVacio: true };
     }
     try {
       const fin = calcularFinanciamiento({
@@ -228,7 +237,11 @@ export default function FacturacionModal({ cliente, onClose }) {
           step="1"
           required
           value={enganche}
-          onChange={(e) => setEnganche(e.target.value)}
+          onChange={(e) => {
+            setEnganche(e.target.value);
+            setEngancheTocado(true);
+          }}
+          onBlur={() => setEngancheTocado(true)}
           placeholder="Ej. 15000"
         />
 
@@ -238,7 +251,9 @@ export default function FacturacionModal({ cliente, onClose }) {
           label="Incluye servicio preventivo"
         />
 
-        {preview.error && <p className="text-sm text-state-danger">{preview.error}</p>}
+        {preview.error && (!preview.esVacio || engancheTocado) && (
+          <p className="text-sm text-state-danger">{preview.error}</p>
+        )}
 
         {preview.fin && (
           <div className="rounded-xl border border-white/10 bg-navy-900/60 p-4">
