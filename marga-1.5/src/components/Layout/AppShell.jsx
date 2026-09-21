@@ -16,6 +16,7 @@ import BuroAutomaticoView from '../../views/BuroAutomaticoView.jsx';
 import ClientFormModal from '../forms/ClientFormModal.jsx';
 import CancelModal from '../forms/CancelModal.jsx';
 import ProfileModal from '../forms/ProfileModal.jsx';
+import FacturacionModal from '../forms/FacturacionModal.jsx';
 import GlobalSearch from '../Search/GlobalSearch.jsx';
 
 const VIEWS = {
@@ -40,6 +41,9 @@ export default function AppShell() {
   const [form, setForm] = useState({ open: false, initial: null });
   const [cancelTarget, setCancelTarget] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  // `onCancel` deja al que abrió el modal deshacer lo que lo provocó: el
+  // tablero lo usa para regresar la tarjeta a su columna anterior.
+  const [factura, setFactura] = useState({ cliente: null, onCancel: null });
 
   // If the role loses access to the current view (e.g. after a role change),
   // fall back to the first board this role can open.
@@ -65,6 +69,7 @@ export default function AppShell() {
       openCancelClient: (client) => setCancelTarget(client),
       openSearch: () => setSearchOpen(true),
       openProfile: () => setProfileOpen(true),
+      openFacturacion: (cliente, onCancel = null) => setFactura({ cliente, onCancel }),
     }),
     [active, goToSection],
   );
@@ -109,6 +114,13 @@ export default function AppShell() {
       <CancelModal client={cancelTarget} onClose={() => setCancelTarget(null)} />
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <FacturacionModal
+        cliente={factura.cliente}
+        onClose={(guardado) => {
+          if (!guardado) factura.onCancel?.();
+          setFactura({ cliente: null, onCancel: null });
+        }}
+      />
     </UIProvider>
   );
 }
