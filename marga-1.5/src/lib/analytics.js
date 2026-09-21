@@ -52,6 +52,29 @@ export function startOfThisWeek(now = Date.now()) {
   return startOfWeek(now);
 }
 
+/**
+ * Domingo 00:00 de la semana que contiene `now` (último día de la semana
+ * lunes–domingo). Se arma con el calendario, no sumando 6 × 24 h, para que un
+ * cambio de horario no lo corra al sábado.
+ */
+export function endOfThisWeek(now = Date.now()) {
+  const lunes = new Date(startOfWeek(now));
+  return new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + 6).getTime();
+}
+
+/**
+ * Límites para los KPIs de dinero, que filtran por fecha de PAGO. A diferencia
+ * de `resolveRange`, no se derivan de los datos ni se cortan en "hoy": sin
+ * fecha final, cuentan también los pagos futuros. `null` = sin límite
+ * (mismo contrato que `inRange`). `hasta` incluye el día completo.
+ */
+export function rangoPagos(desde, hasta) {
+  return {
+    from: desde ?? null,
+    to: hasta != null ? hasta + (DAY - 1) : null,
+  };
+}
+
 function startOfMonth(ts) {
   const d = new Date(ts);
   return new Date(d.getFullYear(), d.getMonth(), 1).getTime();

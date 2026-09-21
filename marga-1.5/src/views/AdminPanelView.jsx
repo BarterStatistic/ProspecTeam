@@ -35,6 +35,9 @@ import {
   authorizationStats,
   cotizacionStats,
   startOfThisWeek,
+  endOfThisWeek,
+  rangoPagos,
+  inRange,
 } from '../lib/analytics.js';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
@@ -53,7 +56,9 @@ function quickRange(id) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   if (id === 'hoy') return [today, today];
-  if (id === 'semana_actual') return [startOfThisWeek(), today];
+  // Lunes a domingo: los pagos caen en viernes, así que cortar en "hoy"
+  // dejaba los KPIs de dinero en $0 de lunes a jueves.
+  if (id === 'semana_actual') return [startOfThisWeek(), endOfThisWeek()];
   if (id === 'semana') return [today - 6 * DAY, today];
   if (id === 'mes') return [new Date(now.getFullYear(), now.getMonth(), 1).getTime(), today];
   if (id === 'trimestre') return [new Date(now.getFullYear(), now.getMonth() - 2, 1).getTime(), today];
@@ -118,7 +123,7 @@ export default function AdminPanelView() {
     promotorUsernames,
   } = useData();
   const [desde, setDesde] = useState(() => toDateInput(startOfThisWeek()));
-  const [hasta, setHasta] = useState(() => toDateInput(Date.now()));
+  const [hasta, setHasta] = useState(() => toDateInput(endOfThisWeek()));
   // Empty selection means "todo el equipo".
   const [selected, setSelected] = useState([]);
   // '' significa "todos los promotores".
@@ -195,17 +200,24 @@ export default function AdminPanelView() {
 
   // KPIs de dinero: cuentan por fecha de PAGO derivada, no de facturación, así
   // que "esta semana" muestra lo que sale esta semana, no lo que se facturó.
+  // Usan su propio rango (`rangoPagos`), no el `from`/`to` de las demás
+  // métricas: sin fecha final no se cortan en hoy, porque los pagos de lo ya
+  // facturado caen en el futuro.
   // Respeta también el filtro de promotor, igual que el resto del panel: de lo
   // contrario los KPIs se contradicen con la tabla y las gráficas.
+  const pagos = useMemo(
+    () => rangoPagos(fromDateInput(desde), fromDateInput(hasta)),
+    [desde, hasta],
+  );
   const comisionesEnRango = useMemo(() => {
     const activos = selected.length ? new Set(selected) : null;
     return comisiones.filter((c) => {
       if (activos && !activos.has(c.vendedor)) return false;
       if (promotorSel && c.promotor !== promotorSel) return false;
       const pago = fechaPago(c.fechaFacturacion, configComisiones);
-      return pago >= from && pago <= to;
+      return inRange(pago, pagos.from, pagos.to);
     });
-  }, [comisiones, configComisiones, from, to, selected, promotorSel]);
+  }, [comisiones, configComisiones, pagos, selected, promotorSel]);
 
   const dinero = useMemo(
     () =>
@@ -443,21 +455,21 @@ export default function AdminPanelView() {
             icon={Wallet}
             label="Ingreso total global"
             value={formatMXN(dinero.ingreso)}
-            hint="Comisiones totales pagadas en el periodo"
+            hint="Comisiones con fecha de pago dentro del periodo"
             tone="gold"
           />
           <StatCard
             icon={TrendingUp}
             label="Neto admin"
             value={formatMXN(dinero.neto)}
-            hint="Total menos vendedor y promotor"
+            hint="Total menos vendedor y promotor, por fecha de pago"
             tone="success"
           />
           <StatCard
             icon={Banknote}
             label="Total monto financiado"
             value={formatMXN(dinero.financiado)}
-            hint={`${comisionesEnRango.length} venta${comisionesEnRango.length === 1 ? '' : 's'} facturada${comisionesEnRango.length === 1 ? '' : 's'}`}
+            hint={`${comisionesEnRango.length} pago${comisionesEnRango.length === 1 ? '' : 's'} dentro del periodo`}
           />
         </div>
 

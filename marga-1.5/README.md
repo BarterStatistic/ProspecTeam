@@ -125,7 +125,7 @@ tablas oficiales con vigencia **25/08/2026**.
 npm test
 ```
 
-Corre **116 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
+Corre **121 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
 snapshot del catálogo completo, y `src/lib/cotizador.js`), comisiones
 (`src/lib/comisiones.js`), textos de notificaciones (`src/lib/notificaciones.js`),
 analítica del Panel ADMIN (`src/lib/analytics.js`) y la capa de dominio
