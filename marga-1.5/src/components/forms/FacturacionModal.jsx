@@ -70,6 +70,7 @@ export default function FacturacionModal({ cliente, onClose }) {
       comisionPrevia?.esquemaId ?? normalizarEsquema(cliente.creditScheme ?? ''),
     );
     setError('');
+    setGuardando(false);
   }, [cliente, comisionPrevia]);
 
   const fechaFacturacion = useMemo(() => {
@@ -154,6 +155,7 @@ export default function FacturacionModal({ cliente, onClose }) {
     try {
       if (esEdicion) await actualizarFacturacion(comisionPrevia.id, values);
       else await registrarFacturacion(cliente.id, values);
+      setGuardando(false);
       onClose(true);
     } catch (e) {
       setError(e.message);
