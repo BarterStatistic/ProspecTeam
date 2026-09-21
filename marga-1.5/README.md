@@ -13,9 +13,12 @@ para que todo el equipo vea los mismos datos desde cualquier dispositivo, en tie
 
 El tablero de **Procesos** suma una columna entre **EC** y **Entrega agendada**:
 **Moto Facturada** (`src/lib/constants.js`, `BOARD_COLUMNS.procesos`). Soltar ahí una
-tarjeta abre el modal de facturación (moto, esquema de crédito y enganche en pesos); si
-se cancela el modal, la tarjeta regresa a su columna de origen. Una vez facturada, la
-tarjeta muestra un chip **"Facturada"** que reabre el mismo modal para editar los datos.
+tarjeta —o llevarla con el menú **"Mover a"**— abre el modal de facturación (moto,
+esquema de crédito y enganche en pesos); si se cancela el modal, la tarjeta regresa a su
+columna de origen. Una vez facturada, la tarjeta muestra un chip **"Facturada"** que
+reabre el mismo modal para editar los datos. Si una tarjeta queda en Moto Facturada sin
+comisión (movida antes de Marga 2.0, escritura parcial sin conexión o comisión
+eliminada), muestra un chip **"Sin facturar"** que abre la captura.
 Capturan la facturación **admin y promotor** (`src/lib/permissions.js`,
 `canRegistrarFacturacion`) — los mismos roles que ya podían mover tarjetas en Procesos.
 
@@ -125,7 +128,7 @@ tablas oficiales con vigencia **25/08/2026**.
 npm test
 ```
 
-Corre **121 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
+Corre **124 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
 snapshot del catálogo completo, y `src/lib/cotizador.js`), comisiones
 (`src/lib/comisiones.js`), textos de notificaciones (`src/lib/notificaciones.js`),
 analítica del Panel ADMIN (`src/lib/analytics.js`) y la capa de dominio

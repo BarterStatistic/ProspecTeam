@@ -22,6 +22,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
 import { canDropTo, canEditClient, canRegistrarFacturacion } from '../../lib/permissions.js';
 import { resolveTransition } from '../../lib/db.js';
+import { regresoAColumna } from '../../lib/clients.js';
 import Column, { COLUMN_PREFIX } from './Column.jsx';
 import { CardBody } from './ClientCard.jsx';
 
@@ -212,19 +213,8 @@ export default function KanbanBoard({ section }) {
       // Caer en "Moto Facturada" abre la captura. Si el modal se cancela, la
       // tarjeta vuelve a la columna de donde salió y no se crea comisión.
       if (toStage === 'moto_facturada' && canRegistrarFacturacion(role)) {
-        openFacturacion(
-          clients.find((c) => c.id === draggedId),
-          () => applyBoardReorder(
-            {
-              movedId: draggedId,
-              toStage: fromStage,
-              stageChanged: true,
-              orderedIds: [
-                ...grouped[fromStage].filter((c) => c.id !== draggedId).map((c) => c.id),
-                draggedId,
-              ],
-            },
-          ),
+        openFacturacion(clients.find((c) => c.id === draggedId), () =>
+          applyBoardReorder(regresoAColumna(grouped[fromStage], draggedId, fromStage)),
         );
       }
     }
