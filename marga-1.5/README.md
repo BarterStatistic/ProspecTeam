@@ -200,10 +200,23 @@ inicio de sesión, especialmente si el repositorio es público.
    }
    ```
 
-   ⚠️ Estas reglas dejan la base abierta a quien tenga la configuración web. Es aceptable
-   para una herramienta interna con datos no sensibles, pero **no publiques las llaves**
-   (por eso van en `.env.local`, ignorado por git). Para endurecerla más adelante:
-   Firebase Auth + reglas por usuario.
+   ⚠️ **Estas reglas dejan la base abierta.** La configuración web de Firebase viaja
+   dentro del JavaScript de la app ya compilada, así que **cualquiera con la URL** puede
+   leer y modificar todas las colecciones, sin iniciar sesión: el login de Marga valida
+   usuarios contra la propia base, no con Firebase Auth, y no protege los datos.
+
+   **Desde Marga 2.0 la base contiene información sensible**: las colecciones
+   `comisiones` y `config` guardan lo que gana cada vendedor y promotor (sueldos), el
+   neto del admin y las reglas de pago. Mientras las reglas sigan abiertas, esos importes
+   son **legibles y editables por cualquiera con la URL**; ocultarlos en la interfaz
+   (p. ej. que un vendedor solo vea sus comisiones) no cambia eso, porque la app descarga
+   la colección completa. Mantener las llaves en `.env.local` (ignorado por git) evita
+   publicarlas en el repositorio, pero no las oculta del sitio desplegado.
+
+   La corrección real requiere **Firebase Auth** (cada usuario de Marga con su cuenta) más
+   **reglas de Firestore por rol** (p. ej. que un vendedor solo lea sus propias comisiones
+   y solo el admin escriba en `comisiones` y `config`). Es un proyecto aparte y queda
+   pendiente de decisión del dueño.
 
 4. En **Configuración del proyecto → Tus apps → </> (app web)**, registra una app y copia
    el objeto de configuración.
