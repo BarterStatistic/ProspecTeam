@@ -125,10 +125,13 @@ tablas oficiales con vigencia **25/08/2026**.
 npm test
 ```
 
-Corre **61 pruebas** con Vitest sobre la lógica pura del proyecto: catálogo y cotizador
-(`src/lib/motos.js`, `src/lib/cotizador.js`), comisiones (`src/lib/comisiones.js`),
-notificaciones (`src/lib/db.js`) y analítica del Panel ADMIN. El proyecto no tiene
-entorno de render configurado, así que no hay pruebas de componentes React.
+Corre **110 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
+snapshot del catálogo completo, y `src/lib/cotizador.js`), comisiones
+(`src/lib/comisiones.js`), textos de notificaciones (`src/lib/notificaciones.js`),
+analítica del Panel ADMIN (`src/lib/analytics.js`) y la capa de dominio
+(`src/lib/db.js`: facturación, comisiones y renumeración), esta última contra el store
+de memoria del modo demo. El proyecto no tiene entorno de render configurado, así que no
+hay pruebas de componentes React.
 
 ## Novedades frente a Marga 1.0
 
