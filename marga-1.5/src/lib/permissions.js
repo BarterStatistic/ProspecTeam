@@ -46,6 +46,7 @@ export function canViewSection(role, section) {
   if (section === 'usuarios' || section === 'admin') return isAdmin(role);
   if (section === 'citas') return true; // shared agenda: every role manages citas fully
   if (TOOL_IDS.includes(section)) return true; // tools: available to every role
+  if (section === 'comisiones') return canViewComisiones(role);
   return visibleSections(role).includes(section);
 }
 
@@ -106,4 +107,26 @@ export function canManageUsers(role) {
 /** Can this role open the Panel ADMIN (team performance monitoring)? */
 export function canViewAdminPanel(role) {
   return isAdmin(role);
+}
+
+/**
+ * Panel de Comisiones. El admin ve todo el equipo; el vendedor solo las suyas
+ * (el filtro por nombre se aplica en la vista). El promotor no entra: su
+ * comisión no se gestiona desde Marga.
+ */
+export function canViewComisiones(role) {
+  return isAdmin(role) || role === ROLES.VENDEDOR;
+}
+
+/** Reglas de corte, mes de venta, nota y renumeración: solo el admin. */
+export function canConfigurarComisiones(role) {
+  return isAdmin(role);
+}
+
+/**
+ * Quién captura una facturación. Coincide con quién puede mover tarjetas en
+ * Procesos (canDropTo), que es donde vive la columna "Moto Facturada".
+ */
+export function canRegistrarFacturacion(role) {
+  return isAdmin(role) || isPromotor(role);
 }

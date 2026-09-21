@@ -17,6 +17,14 @@ import {
   createBuroAutorizacion as dbCreateBuroAutorizacion,
   exportAll,
   importAll,
+  registrarFacturacion as dbRegistrarFacturacion,
+  actualizarFacturacion as dbActualizarFacturacion,
+  eliminarComision,
+  renumerarMes,
+  registrarCotizacion as dbRegistrarCotizacion,
+  guardarConfigComisiones,
+  marcarNotificacionesLeidas,
+  configComisiones as leerConfigComisiones,
 } from '../lib/db.js';
 
 const DataContext = createContext(null);
@@ -40,6 +48,16 @@ export function DataProvider({ children }) {
   useEffect(() => store.onClientsChange(setClients), []);
   useEffect(() => store.onCitasChange(setCitas), []);
   useEffect(() => store.onBuroAutorizacionesChange(setBuroAutorizaciones), []);
+
+  const [comisiones, setComisiones] = useState(() => store.getComisiones());
+  const [cotizaciones, setCotizaciones] = useState(() => store.getCotizaciones());
+  const [notificaciones, setNotificaciones] = useState(() => store.getNotificaciones());
+  const [configRaw, setConfigRaw] = useState(() => store.getConfig());
+
+  useEffect(() => store.onComisionesChange(setComisiones), []);
+  useEffect(() => store.onCotizacionesChange(setCotizaciones), []);
+  useEffect(() => store.onNotificacionesChange(setNotificaciones), []);
+  useEffect(() => store.onConfigChange(setConfigRaw), []);
 
   // Every role subscribes to the users collection, because the per-vendedor
   // accent colour and profile picture live there and mark cards for everyone.
@@ -89,15 +107,31 @@ export function DataProvider({ children }) {
     [users],
   );
 
+  // Cada quien ve solo las suyas, más recientes primero.
+  const misNotificaciones = useMemo(() => {
+    if (!user?.username) return [];
+    return notificaciones
+      .filter((n) => n.destinatario === user.username)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }, [notificaciones, user]);
+
+  const noLeidas = useMemo(
+    () => misNotificaciones.filter((n) => !n.leida).length,
+    [misNotificaciones],
+  );
+
+  // configRaw entra en la dependencia para que un cambio de reglas re-renderice.
+  const configComisiones = useMemo(() => leerConfigComisiones(), [configRaw]);
+
   const value = useMemo(
     () => ({
       clients,
       loading: false,
       createClient: (values) => dbCreateClient(values, user),
-      updateClient,
+      updateClient: (id, patch) => updateClient(id, patch, user),
       deleteClient,
-      moveClient,
-      applyBoardReorder,
+      moveClient: (id, toSection, toStage) => moveClient(id, toSection, toStage, user),
+      applyBoardReorder: (args) => applyBoardReorder(args, user),
       cancelClient,
       exportAll,
       importAll,
@@ -111,6 +145,26 @@ export function DataProvider({ children }) {
       // --- Buró Automático: log de autorizaciones generadas ---
       buroAutorizaciones,
       registrarAutorizacionBuro: (values) => dbCreateBuroAutorizacion(values, user),
+
+      // --- comisiones y facturación ---
+      comisiones,
+      configComisiones,
+      registrarFacturacion: (clienteId, values) =>
+        dbRegistrarFacturacion(clienteId, values, user),
+      actualizarFacturacion: (comisionId, values) =>
+        dbActualizarFacturacion(comisionId, values, user),
+      eliminarComision,
+      renumerarMes,
+      guardarConfigComisiones,
+
+      // --- cotizador ---
+      cotizaciones,
+      registrarCotizacion: (values) => dbRegistrarCotizacion(values, user),
+
+      // --- notificaciones ---
+      misNotificaciones,
+      noLeidas,
+      marcarNotificacionesLeidas,
 
       // --- seller colours & avatars (readable by every role) ---
       sellerColors,
@@ -168,6 +222,13 @@ export function DataProvider({ children }) {
       myProfile,
       teamUsernames,
       promotorUsernames,
+      comisiones,
+      cotizaciones,
+      notificaciones,
+      configRaw,
+      misNotificaciones,
+      noLeidas,
+      configComisiones,
     ],
   );
 
