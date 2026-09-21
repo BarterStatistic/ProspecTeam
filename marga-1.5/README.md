@@ -125,7 +125,7 @@ tablas oficiales con vigencia **25/08/2026**.
 npm test
 ```
 
-Corre **110 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
+Corre **116 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
 snapshot del catálogo completo, y `src/lib/cotizador.js`), comisiones
 (`src/lib/comisiones.js`), textos de notificaciones (`src/lib/notificaciones.js`),
 analítica del Panel ADMIN (`src/lib/analytics.js`) y la capa de dominio
@@ -158,8 +158,11 @@ hay pruebas de componentes React.
 - **Gestor de usuarios** (solo admin): agregar, editar rol/contraseña y eliminar cuentas.
 - **Notas visibles en cada tarjeta** del tablero, sin abrir el detalle.
 - Cada tarjeta muestra **quién registró** al cliente.
-- Se mantiene el **respaldo**: exportar la lista de clientes a JSON (importar: solo admin).
-  Los respaldos de Marga 1.0 son compatibles al importar.
+- Se mantiene el **respaldo**: exportar la lista de clientes y citas a JSON (importar: solo
+  admin). Desde Marga 2.0 (formato v3), cuando exporta un **admin** el archivo incluye
+  además comisiones, la configuración de pagos y cotizaciones; los demás roles exportan
+  solo clientes y citas. Los respaldos de Marga 1.0 y 1.5 siguen siendo compatibles al
+  importar.
 
 ### Cuentas iniciales
 

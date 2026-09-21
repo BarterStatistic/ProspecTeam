@@ -15,6 +15,7 @@ import {
   numeroVentaPara,
 } from './comisiones.js';
 import { motoPorNombre } from './motos.js';
+import { isAdmin } from './permissions.js';
 import {
   TIPOS,
   mensajeColumna,
@@ -549,15 +550,29 @@ export async function registrarCotizacion(values, actor = null) {
   return record;
 }
 
-/** Dump clients + citas for a JSON backup file (compatible with Marga v1 backups). */
-export async function exportAll() {
-  return {
+/** Versión del formato de respaldo. v3 agrega el dinero (solo para admin). */
+export const BACKUP_VERSION = 3;
+
+/**
+ * Respaldo JSON. Cualquier rol exporta clientes y citas (compatible con los
+ * respaldos de Marga v1/v2). Comisiones, su configuración y cotizaciones van
+ * SOLO cuando exporta un admin: exportarlas para cualquier rol convertiría el
+ * botón de respaldo en otra vía para sacar la nómina.
+ */
+export async function exportAll(role) {
+  const data = {
     app: 'marga',
-    version: 2,
+    version: BACKUP_VERSION,
     exportedAt: now(),
     clients: store.getClients(),
     citas: store.getCitas(),
   };
+  if (isAdmin(role)) {
+    data.comisiones = store.getComisiones();
+    data.configComisiones = store.getConfig() ?? {};
+    data.cotizaciones = store.getCotizaciones();
+  }
+  return data;
 }
 
 /**
@@ -583,6 +598,18 @@ export async function importAll(data, mode = 'merge') {
   // Older backups (v1) have no citas array; restore it when present.
   if (Array.isArray(data.citas) && data.citas.length) {
     await store.bulkSetCitas(data.citas);
+  }
+  // v3 (exportado por un admin): el dinero. Los respaldos v1/v2 no lo traen y
+  // entonces no se toca lo que ya hay. Se restaura por id (upsert), también en
+  // modo 'replace': ese modo solo vacía la colección de clientes.
+  if (Array.isArray(data.comisiones)) {
+    for (const c of data.comisiones) if (c?.id) await store.setComision(c);
+  }
+  if (Array.isArray(data.cotizaciones)) {
+    for (const c of data.cotizaciones) if (c?.id) await store.setCotizacion(c);
+  }
+  if (data.configComisiones && typeof data.configComisiones === 'object') {
+    await store.setConfig(data.configComisiones);
   }
   return records.length;
 }

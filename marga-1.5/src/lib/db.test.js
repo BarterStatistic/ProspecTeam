@@ -269,3 +269,82 @@ describe('renumerarMes', () => {
     }
   });
 });
+
+describe('respaldo (exportAll / importAll)', () => {
+  async function sembrarDinero() {
+    const cliente = await sembrarCliente();
+    const comision = await db.registrarFacturacion(cliente.id, facturacion(at(2026, 9, 20)), ADMIN);
+    await db.guardarConfigComisiones({ diaPago: 4, notaVendedores: 'Pago los jueves' });
+    await db.registrarCotizacion(
+      { moto: 'U2', esquemaId: 'motonomina', precioEfectivo: 21945, enganchePct: 10, plazo: 72, parcialidad: 800 },
+      { username: VENDEDOR },
+    );
+    return { cliente, comision };
+  }
+
+  it('un admin exporta también comisiones, su configuración y cotizaciones', async () => {
+    await sembrarDinero();
+    const data = await db.exportAll('admin');
+
+    expect(data.version).toBe(3);
+    expect(data.clients).toHaveLength(1);
+    expect(data.comisiones).toHaveLength(1);
+    expect(data.cotizaciones).toHaveLength(1);
+    expect(data.configComisiones).toMatchObject({ diaPago: 4, notaVendedores: 'Pago los jueves' });
+  });
+
+  it.each(['vendedor', 'promotor', undefined])(
+    'el rol %s exporta solo clientes y citas (sin nómina)',
+    async (role) => {
+      await sembrarDinero();
+      const data = await db.exportAll(role);
+
+      expect(data.version).toBe(3);
+      expect(data.clients).toHaveLength(1);
+      expect(Array.isArray(data.citas)).toBe(true);
+      expect(data).not.toHaveProperty('comisiones');
+      expect(data).not.toHaveProperty('configComisiones');
+      expect(data).not.toHaveProperty('cotizaciones');
+    },
+  );
+
+  it('importAll restaura comisiones, configuración y cotizaciones cuando vienen en el archivo', async () => {
+    await sembrarDinero();
+    const respaldo = JSON.parse(JSON.stringify(await db.exportAll('admin')));
+
+    // Store vacío nuevo, como en otro dispositivo.
+    vi.stubGlobal('localStorage', localStorageDeMentira());
+    vi.resetModules();
+    db = await import('./db.js');
+    ({ store } = await import('./store/index.js'));
+    await store.init();
+    expect(store.getComisiones()).toHaveLength(0);
+
+    const n = await db.importAll(respaldo, 'replace');
+
+    expect(n).toBe(1);
+    expect(store.getClients()).toHaveLength(1);
+    expect(store.getComisiones()).toEqual(respaldo.comisiones);
+    expect(store.getCotizaciones()).toEqual(respaldo.cotizaciones);
+    expect(store.getConfig()).toMatchObject({ diaPago: 4, notaVendedores: 'Pago los jueves' });
+  });
+
+  it('acepta un respaldo viejo (v2) sin esas colecciones y no toca las existentes', async () => {
+    const { comision } = await sembrarDinero();
+    const viejo = {
+      app: 'marga',
+      version: 2,
+      exportedAt: at(2026, 9, 1),
+      clients: [{ id: 'viejo-1', firstName: 'Viejo', section: 'prospectos', stage: 'nuevo' }],
+      citas: [],
+    };
+
+    const n = await db.importAll(viejo, 'merge');
+
+    expect(n).toBe(1);
+    expect(store.getClients()).toHaveLength(2);
+    expect(store.getComisiones().map((c) => c.id)).toEqual([comision.id]);
+    expect(store.getCotizaciones()).toHaveLength(1);
+    expect(store.getConfig()).toMatchObject({ diaPago: 4 });
+  });
+});
