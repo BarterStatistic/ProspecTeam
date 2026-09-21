@@ -47,6 +47,11 @@ function startOfWeek(ts) {
   return d.getTime() - dow * DAY;
 }
 
+/** Lunes 00:00 de la semana que contiene `now`. */
+export function startOfThisWeek(now = Date.now()) {
+  return startOfWeek(now);
+}
+
 function startOfMonth(ts) {
   const d = new Date(ts);
   return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
@@ -272,8 +277,27 @@ export function authorizationStats(autorizaciones, from, to, sellers = []) {
   return counts;
 }
 
-/** Every createdBy value present in the data, plus the unassigned bucket. */
-export function presentSellers(clients, citas) {
+/**
+ * Cotizaciones generadas por vendedor dentro del rango.
+ * `sellers` vacío incluye a todos. Misma forma que authorizationStats.
+ */
+export function cotizacionStats(cotizaciones, from, to, sellers = []) {
+  const want = new Set(sellers);
+  const counts = new Map();
+  for (const c of cotizaciones) {
+    const key = c.createdBy || UNASSIGNED_KEY;
+    if (want.size && !want.has(key)) continue;
+    if (!inRange(c.createdAt, from, to)) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/**
+ * Every createdBy value present in the data, plus the unassigned bucket
+ * (omitted when `incluirSinAsignar` is false).
+ */
+export function presentSellers(clients, citas, { incluirSinAsignar = true } = {}) {
   const set = new Set();
   let unassigned = false;
   for (const list of [clients, citas]) {
@@ -283,5 +307,5 @@ export function presentSellers(clients, citas) {
     }
   }
   const names = [...set].sort((a, b) => a.localeCompare(b));
-  return unassigned ? [...names, UNASSIGNED_KEY] : names;
+  return unassigned && incluirSinAsignar ? [...names, UNASSIGNED_KEY] : names;
 }

@@ -14,7 +14,7 @@ export default function Select({
         </label>
       )}
       <select id={id} className="m-input appearance-none pr-8" {...props}>
-        <option value="">{placeholder}</option>
+        {placeholder !== null && <option value="">{placeholder}</option>}
         {options.map((opt) => {
           const value = typeof opt === 'string' ? opt : opt.value;
           const label = typeof opt === 'string' ? opt : opt.label;

@@ -11,12 +11,16 @@ import {
   Layers,
   Info,
   ShieldCheck,
+  Wallet,
+  Banknote,
+  UserCog,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useData } from '../context/DataContext.jsx';
 import { canViewAdminPanel } from '../lib/permissions.js';
 import { sellerColor, UNASSIGNED_COLOR } from '../lib/constants.js';
-import { fromDateInput, toDateInput, formatDate, formatDateTime } from '../lib/format.js';
+import { fromDateInput, toDateInput, formatDate, formatDateTime, formatMXN } from '../lib/format.js';
+import { fechaPago } from '../lib/comisiones.js';
 import {
   UNASSIGNED_KEY,
   sellerLabel,
@@ -29,6 +33,8 @@ import {
   stageFunnel,
   rejectionNotes,
   authorizationStats,
+  cotizacionStats,
+  startOfThisWeek,
 } from '../lib/analytics.js';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
@@ -38,6 +44,7 @@ import BarChart from '../components/charts/BarChart.jsx';
 import LineChart from '../components/charts/LineChart.jsx';
 import DonutChart from '../components/charts/DonutChart.jsx';
 import HBarChart from '../components/charts/HBarChart.jsx';
+import ReglasPagoCard from '../components/admin/ReglasPagoCard.jsx';
 
 const DAY = 86_400_000;
 
@@ -46,6 +53,7 @@ function quickRange(id) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   if (id === 'hoy') return [today, today];
+  if (id === 'semana_actual') return [startOfThisWeek(), today];
   if (id === 'semana') return [today - 6 * DAY, today];
   if (id === 'mes') return [new Date(now.getFullYear(), now.getMonth(), 1).getTime(), today];
   if (id === 'trimestre') return [new Date(now.getFullYear(), now.getMonth() - 2, 1).getTime(), today];
@@ -54,6 +62,7 @@ function quickRange(id) {
 
 const QUICK = [
   { id: 'hoy', label: 'Hoy' },
+  { id: 'semana_actual', label: 'Esta semana' },
   { id: 'semana', label: '7 días' },
   { id: 'mes', label: 'Este mes' },
   { id: 'trimestre', label: '3 meses' },
@@ -96,21 +105,33 @@ function Section({ title, hint, children, right }) {
 
 export default function AdminPanelView() {
   const { role } = useAuth();
-  const { clients, citas, buroAutorizaciones, sellerColors, sellerAvatars, teamUsernames } =
-    useData();
-  const [desde, setDesde] = useState('');
-  const [hasta, setHasta] = useState('');
+  const {
+    clients,
+    citas,
+    buroAutorizaciones,
+    comisiones,
+    cotizaciones,
+    configComisiones,
+    sellerColors,
+    sellerAvatars,
+    teamUsernames,
+    promotorUsernames,
+  } = useData();
+  const [desde, setDesde] = useState(() => toDateInput(startOfThisWeek()));
+  const [hasta, setHasta] = useState(() => toDateInput(Date.now()));
   // Empty selection means "todo el equipo".
   const [selected, setSelected] = useState([]);
+  // '' significa "todos los promotores".
+  const [promotorSel, setPromotorSel] = useState('');
 
   // Everyone who appears in the data, plus registered users with no activity
-  // yet, so a new vendedor is filterable from day one.
+  // yet, so a new vendedor is filterable from day one. El bucket "Sin asignar"
+  // se omite: el dueño del negocio pidió que no aparezca en ningún lado.
   const sellers = useMemo(() => {
-    const fromData = presentSellers(clients, citas);
-    const merged = new Set(fromData.filter((s) => s !== UNASSIGNED_KEY));
+    const fromData = presentSellers(clients, citas, { incluirSinAsignar: false });
+    const merged = new Set(fromData);
     for (const name of teamUsernames) merged.add(name);
-    const list = [...merged].sort((a, b) => a.localeCompare(b));
-    return fromData.includes(UNASSIGNED_KEY) ? [...list, UNASSIGNED_KEY] : list;
+    return [...merged].sort((a, b) => a.localeCompare(b));
   }, [clients, citas, teamUsernames]);
 
   const colorOf = (key) =>
@@ -123,21 +144,32 @@ export default function AdminPanelView() {
     [desde, hasta, clients, citas],
   );
 
+  // Clientes recortados por el promotor encargado, antes de alimentar
+  // cualquier estadística que dependa de la cartera.
+  const clientesFiltrados = useMemo(
+    () =>
+      promotorSel ? clients.filter((c) => c.promotorEncargado === promotorSel) : clients,
+    [clients, promotorSel],
+  );
+
   const rows = useMemo(
-    () => sellerStats(clients, citas, from, to, selected.length ? selected : sellers),
-    [clients, citas, from, to, selected, sellers],
+    () => sellerStats(clientesFiltrados, citas, from, to, selected.length ? selected : sellers),
+    [clientesFiltrados, citas, from, to, selected, sellers],
   );
   const totals = useMemo(() => sumTotals(rows), [rows]);
 
   const activeSellers = selected.length ? selected : sellers;
   const series = useMemo(
-    () => timeSeries(clients, from, to, activeSellers),
-    [clients, from, to, activeSellers],
+    () => timeSeries(clientesFiltrados, from, to, activeSellers),
+    [clientesFiltrados, from, to, activeSellers],
   );
-  const funnel = useMemo(() => stageFunnel(clients, activeSellers), [clients, activeSellers]);
+  const funnel = useMemo(
+    () => stageFunnel(clientesFiltrados, activeSellers),
+    [clientesFiltrados, activeSellers],
+  );
   const rechazos = useMemo(
-    () => rejectionNotes(clients, from, to, activeSellers),
-    [clients, from, to, activeSellers],
+    () => rejectionNotes(clientesFiltrados, from, to, activeSellers),
+    [clientesFiltrados, from, to, activeSellers],
   );
 
   // Autorizaciones generadas con el Buró Automático — mismo from/to/selected
@@ -149,6 +181,43 @@ export default function AdminPanelView() {
   const totalAutorizaciones = useMemo(
     () => [...autorizacionCounts.values()].reduce((a, b) => a + b, 0),
     [autorizacionCounts],
+  );
+
+  // Cotizaciones generadas — misma forma que autorizacionCounts.
+  const cotizacionCounts = useMemo(
+    () => cotizacionStats(cotizaciones, from, to, selected),
+    [cotizaciones, from, to, selected],
+  );
+  const totalCotizaciones = useMemo(
+    () => [...cotizacionCounts.values()].reduce((a, b) => a + b, 0),
+    [cotizacionCounts],
+  );
+
+  // KPIs de dinero: cuentan por fecha de PAGO derivada, no de facturación, así
+  // que "esta semana" muestra lo que sale esta semana, no lo que se facturó.
+  // Respeta también el filtro de promotor, igual que el resto del panel: de lo
+  // contrario los KPIs se contradicen con la tabla y las gráficas.
+  const comisionesEnRango = useMemo(() => {
+    const activos = selected.length ? new Set(selected) : null;
+    return comisiones.filter((c) => {
+      if (activos && !activos.has(c.vendedor)) return false;
+      if (promotorSel && c.promotor !== promotorSel) return false;
+      const pago = fechaPago(c.fechaFacturacion, configComisiones);
+      return pago >= from && pago <= to;
+    });
+  }, [comisiones, configComisiones, from, to, selected, promotorSel]);
+
+  const dinero = useMemo(
+    () =>
+      comisionesEnRango.reduce(
+        (acc, c) => ({
+          ingreso: acc.ingreso + c.comisionTotal,
+          neto: acc.neto + c.netoAdmin,
+          financiado: acc.financiado + c.montoFinanciado,
+        }),
+        { ingreso: 0, neto: 0, financiado: 0 },
+      ),
+    [comisionesEnRango],
   );
 
   if (!canViewAdminPanel(role)) {
@@ -231,6 +300,50 @@ export default function AdminPanelView() {
               );
             })}
           </div>
+
+          {promotorUsernames.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-white/5 pt-3">
+              <span className="mr-1 flex items-center gap-1.5 text-xs font-medium text-ink-faint">
+                <UserCog size={14} className="text-sky2" /> Promotor:
+              </span>
+              <button
+                onClick={() => setPromotorSel('')}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                  promotorSel === ''
+                    ? 'bg-gold/20 text-gold'
+                    : 'bg-white/5 text-ink-muted hover:bg-white/10 hover:text-ink'
+                }`}
+              >
+                Todos
+              </button>
+              {promotorUsernames.map((name) => {
+                const on = promotorSel === name;
+                const color = sellerColor(name, sellerColors);
+                const photo = sellerAvatars[name];
+                return (
+                  <button
+                    key={name}
+                    onClick={() => setPromotorSel(on ? '' : name)}
+                    aria-pressed={on}
+                    className={`flex items-center gap-1.5 rounded-full py-1 pr-3 text-xs font-medium transition ${
+                      photo ? 'pl-1' : 'pl-3'
+                    } ${on ? 'text-ink' : 'text-ink-muted hover:text-ink'}`}
+                    style={{ backgroundColor: on ? `${color}33` : 'rgba(255,255,255,0.05)' }}
+                  >
+                    {photo ? (
+                      <Avatar photo={photo} name={name} color={color} size={18} />
+                    ) : (
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                    )}
+                    {name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-white/5 pt-3">
             <span className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
@@ -325,6 +438,26 @@ export default function AdminPanelView() {
             label="Autorizaciones (Buró)"
             value={totalAutorizaciones}
             hint="Llenados completos vía extensión o servicio"
+          />
+          <StatCard
+            icon={Wallet}
+            label="Ingreso total global"
+            value={formatMXN(dinero.ingreso)}
+            hint="Comisiones totales pagadas en el periodo"
+            tone="gold"
+          />
+          <StatCard
+            icon={TrendingUp}
+            label="Neto admin"
+            value={formatMXN(dinero.neto)}
+            hint="Total menos vendedor y promotor"
+            tone="success"
+          />
+          <StatCard
+            icon={Banknote}
+            label="Total monto financiado"
+            value={formatMXN(dinero.financiado)}
+            hint={`${comisionesEnRango.length} venta${comisionesEnRango.length === 1 ? '' : 's'} facturada${comisionesEnRango.length === 1 ? '' : 's'}`}
           />
         </div>
 
@@ -433,7 +566,8 @@ export default function AdminPanelView() {
                   <th className="py-2 pr-3 text-right font-medium">Cancelados</th>
                   <th className="py-2 pr-3 text-right font-medium">Citas</th>
                   <th className="py-2 pr-3 text-right font-medium">Cartera</th>
-                  <th className="py-2 text-right font-medium">Autorizaciones</th>
+                  <th className="py-2 pr-3 text-right font-medium">Autorizaciones</th>
+                  <th className="py-2 text-right font-medium">Cotizaciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -466,8 +600,11 @@ export default function AdminPanelView() {
                       <span className="text-ink-faint"> / {r.citasAtendidas}</span>
                     </td>
                     <td className="py-2 pr-3 text-right text-ink-muted">{r.enProceso}</td>
-                    <td className="py-2 text-right text-sky2">
+                    <td className="py-2 pr-3 text-right text-sky2">
                       {autorizacionCounts.get(r.key) ?? 0}
+                    </td>
+                    <td className="py-2 text-right text-gold">
+                      {cotizacionCounts.get(r.key) ?? 0}
                     </td>
                   </tr>
                 ))}
@@ -484,7 +621,8 @@ export default function AdminPanelView() {
                     <span className="text-ink-faint"> / {totals.citasAtendidas}</span>
                   </td>
                   <td className="py-2 pr-3 text-right">{totals.enProceso}</td>
-                  <td className="py-2 text-right">{totalAutorizaciones}</td>
+                  <td className="py-2 pr-3 text-right">{totalAutorizaciones}</td>
+                  <td className="py-2 text-right">{totalCotizaciones}</td>
                 </tr>
               </tfoot>
             </table>
@@ -526,6 +664,9 @@ export default function AdminPanelView() {
             </ul>
           )}
         </Section>
+
+        {/* ---------------- Reglas de comisiones ---------------- */}
+        <ReglasPagoCard />
       </div>
     </div>
   );
