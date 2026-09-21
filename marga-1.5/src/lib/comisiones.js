@@ -111,12 +111,31 @@ export function mesVenta(ts, config = CONFIG_DEFAULT) {
   return `${year}-${pad2(month + 1)}`;
 }
 
-/** La excepción que cubre `ts`, o null. `hasta` se toma como día completo. */
+/** Timestamp utilizable: número finito (no null, string, NaN ni Infinity). */
+const esFecha = (v) => typeof v === 'number' && Number.isFinite(v);
+
+/** Día ISO de la semana válido: entero de 1 (lunes) a 7 (domingo). */
+const esDiaSemana = (v) => Number.isInteger(v) && v >= 1 && v <= 7;
+
+/**
+ * La excepción que cubre `ts`, o null. `hasta` se toma como día completo.
+ * Se ignora cualquier excepción con `desde`, `hasta` o `fechaPago` que no sea
+ * un número finito: `startOfDay(null)` es 1970, así que una excepción con
+ * `desde: null` cubriría todo el histórico.
+ */
 function excepcionPara(ts, config) {
   const dia = startOfDay(ts);
-  const lista = config.excepciones ?? [];
+  const lista = Array.isArray(config.excepciones) ? config.excepciones : [];
   return (
-    lista.find((e) => dia >= startOfDay(e.desde) && dia <= startOfDay(e.hasta)) ?? null
+    lista.find(
+      (e) =>
+        e &&
+        esFecha(e.desde) &&
+        esFecha(e.hasta) &&
+        esFecha(e.fechaPago) &&
+        dia >= startOfDay(e.desde) &&
+        dia <= startOfDay(e.hasta),
+    ) ?? null
   );
 }
 
@@ -132,8 +151,9 @@ export function fechaPago(ts, config = CONFIG_DEFAULT) {
   const excepcion = excepcionPara(ts, config);
   if (excepcion) return startOfDay(excepcion.fechaPago);
 
-  const diaCorte = config.diaCorte ?? CONFIG_DEFAULT.diaCorte;
-  const diaPago = config.diaPago ?? CONFIG_DEFAULT.diaPago;
+  // Fuera de 1..7 (0, 8, '1', null, 2.5…) se usa el default.
+  const diaCorte = esDiaSemana(config.diaCorte) ? config.diaCorte : CONFIG_DEFAULT.diaCorte;
+  const diaPago = esDiaSemana(config.diaPago) ? config.diaPago : CONFIG_DEFAULT.diaPago;
 
   let semana = startOfWeek(ts);
   if (isoDow(ts) > diaCorte) semana += 7 * DAY;

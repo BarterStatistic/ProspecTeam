@@ -185,3 +185,65 @@ describe('fechaPago', () => {
     expect(fechaPago(at(2026, 9, 24), config)).toBe(at(2026, 10, 5));
   });
 });
+
+describe('fechaPago con configuración inválida', () => {
+  // Con la config por defecto (corte lunes, pago viernes): el lunes 21 de
+  // septiembre de 2026 se paga el viernes 25; el miércoles 23 cae después del
+  // corte → viernes 2 de octubre.
+  const lunes = at(2026, 9, 21);
+  const miercoles = at(2026, 9, 23);
+  const pagoDefault = at(2026, 10, 2);
+
+  it.each([0, 8, '1', '3', null, undefined, NaN, 2.5])(
+    'usa el día de corte por defecto cuando diaCorte es %s',
+    (diaCorte) => {
+      const config = { ...CONFIG_DEFAULT, diaCorte };
+      expect(fechaPago(lunes, config)).toBe(at(2026, 9, 25));
+      expect(fechaPago(miercoles, config)).toBe(pagoDefault);
+    },
+  );
+
+  it.each([0, 8, '1', '5', null, undefined, NaN, 4.5])(
+    'usa el día de pago por defecto cuando diaPago es %s',
+    (diaPago) => {
+      expect(fechaPago(miercoles, { ...CONFIG_DEFAULT, diaPago })).toBe(pagoDefault);
+    },
+  );
+});
+
+describe('fechaPago con excepciones mal formadas', () => {
+  const enero = at(2026, 1, 14); // miércoles
+  const pagoEnero = at(2026, 1, 23); // viernes de la semana siguiente
+  const valida = { desde: at(2026, 9, 21), hasta: at(2026, 9, 27), fechaPago: at(2026, 9, 30) };
+
+  it.each([
+    ['desde null', { ...valida, desde: null }],
+    ['hasta null', { ...valida, hasta: null }],
+    ['fechaPago null', { ...valida, fechaPago: null }],
+    ['desde undefined', { ...valida, desde: undefined }],
+    ['desde string', { ...valida, desde: '2026-01-01' }],
+    ['hasta NaN', { ...valida, hasta: NaN }],
+    ['fechaPago string', { ...valida, fechaPago: '2026-09-30' }],
+    ['desde Infinity', { ...valida, desde: -Infinity }],
+  ])('ignora una excepción con %s', (_, excepcion) => {
+    const config = {
+      ...CONFIG_DEFAULT,
+      excepciones: [{ id: 'mala', ...excepcion }],
+    };
+    // Una venta de enero no se va a pagar en septiembre (ni en 1970).
+    expect(fechaPago(enero, config)).toBe(pagoEnero);
+    // Y dentro del rango que habría cubierto, manda la regla base.
+    expect(fechaPago(at(2026, 9, 23), config)).toBe(at(2026, 10, 2));
+  });
+
+  it('una excepción mala no tapa a una válida que viene después', () => {
+    const config = {
+      ...CONFIG_DEFAULT,
+      excepciones: [
+        { id: 'mala', desde: null, hasta: null, fechaPago: at(2026, 12, 31) },
+        { id: 'buena', ...valida },
+      ],
+    };
+    expect(fechaPago(at(2026, 9, 22), config)).toBe(at(2026, 9, 30));
+  });
+});

@@ -36,6 +36,32 @@ function diaValido(value) {
 }
 
 /**
+ * Nota de una excepción. Estado local con guardado en `onBlur`, igual que la
+ * nota para vendedores: escribir en cada tecla mandaba el arreglo completo de
+ * excepciones desde un estado que podía estar viejo y perdía ediciones.
+ */
+function NotaExcepcion({ valor, onGuardar }) {
+  const [nota, setNota] = useState(valor ?? '');
+
+  useEffect(() => {
+    setNota(valor ?? '');
+  }, [valor]);
+
+  return (
+    <Input
+      label="Nota"
+      className="flex-1"
+      value={nota}
+      onChange={(ev) => setNota(ev.target.value)}
+      onBlur={() => {
+        if (nota !== (valor ?? '')) onGuardar(nota);
+      }}
+      placeholder="Motivo"
+    />
+  );
+}
+
+/**
  * Configuración de comisiones: cuándo arranca el mes de venta, la regla base de
  * corte y pago, las excepciones por semana concreta y la nota que ven los
  * vendedores. Todo se guarda en el documento único config/comisiones.
@@ -68,6 +94,16 @@ export default function ReglasPagoCard() {
 
   function editarExcepcion(id, patch) {
     guardarExcepciones(excepciones.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+  }
+
+  /**
+   * Cambia una fecha de la excepción. Borrar el campo (valor vacío) no escribe
+   * `null`: se ignora y se conserva la fecha anterior.
+   */
+  function editarFecha(id, campo, value) {
+    const ts = fromDateInput(value);
+    if (ts == null || !Number.isFinite(ts)) return;
+    editarExcepcion(id, { [campo]: ts });
   }
 
   async function renumerar() {
@@ -158,33 +194,24 @@ export default function ReglasPagoCard() {
                     label="Desde"
                     type="date"
                     value={toDateInput(e.desde)}
-                    onChange={(ev) =>
-                      editarExcepcion(e.id, { desde: fromDateInput(ev.target.value) })
-                    }
+                    onChange={(ev) => editarFecha(e.id, 'desde', ev.target.value)}
                   />
                   <Input
                     label="Hasta"
                     type="date"
                     value={toDateInput(e.hasta)}
-                    onChange={(ev) =>
-                      editarExcepcion(e.id, { hasta: fromDateInput(ev.target.value) })
-                    }
+                    onChange={(ev) => editarFecha(e.id, 'hasta', ev.target.value)}
                   />
                   <Input
                     label="Se paga el"
                     type="date"
                     value={toDateInput(e.fechaPago)}
-                    onChange={(ev) =>
-                      editarExcepcion(e.id, { fechaPago: fromDateInput(ev.target.value) })
-                    }
+                    onChange={(ev) => editarFecha(e.id, 'fechaPago', ev.target.value)}
                   />
                   <div className="flex items-end gap-2">
-                    <Input
-                      label="Nota"
-                      className="flex-1"
-                      value={e.nota ?? ''}
-                      onChange={(ev) => editarExcepcion(e.id, { nota: ev.target.value })}
-                      placeholder="Motivo"
+                    <NotaExcepcion
+                      valor={e.nota}
+                      onGuardar={(nota) => editarExcepcion(e.id, { nota })}
                     />
                     <Button
                       variant="ghost"
