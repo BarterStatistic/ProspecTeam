@@ -505,6 +505,10 @@ export async function actualizarFacturacion(comisionId, values, actor = null) {
     actor,
   });
   comision.createdAt = previa.createdAt;
+  // Corregir moto/esquema/enganche/racha no debe desmarcar un pago ya hecho:
+  // `construirComision` arma el objeto desde cero y no conoce este campo.
+  comision.pagado = previa.pagado ?? false;
+  comision.pagadoAt = previa.pagadoAt ?? null;
 
   await store.setComision(comision);
   // También estampa `comisionId`: es inofensivo cuando ya estaba puesto (caso
@@ -517,6 +521,15 @@ export async function actualizarFacturacion(comisionId, values, actor = null) {
     updatedAt: now(),
   });
   return comision;
+}
+
+/**
+ * Marca (o desmarca) el pago de una comisión al vendedor. Puramente
+ * informativo para el admin — no toca ningún importe ni la fecha de pago
+ * calculada (`fechaPago`), solo registra si ya se entregó.
+ */
+export async function marcarPagoComision(id, pagado) {
+  await store.patchComision(id, { pagado: !!pagado, pagadoAt: pagado ? now() : null });
 }
 
 /** Elimina una comisión y limpia la marca de facturación de su tarjeta. */

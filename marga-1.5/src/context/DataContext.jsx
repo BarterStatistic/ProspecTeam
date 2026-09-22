@@ -20,6 +20,7 @@ import {
   registrarFacturacion as dbRegistrarFacturacion,
   actualizarFacturacion as dbActualizarFacturacion,
   eliminarComision,
+  marcarPagoComision,
   renumerarMes,
   registrarCotizacion as dbRegistrarCotizacion,
   guardarConfigComisiones,
@@ -154,6 +155,7 @@ export function DataProvider({ children }) {
       actualizarFacturacion: (comisionId, values) =>
         dbActualizarFacturacion(comisionId, values, user),
       eliminarComision,
+      marcarPagoComision,
       renumerarMes,
       guardarConfigComisiones,
 
