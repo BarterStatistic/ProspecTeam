@@ -8,7 +8,7 @@ import {
   mesVenta,
   numeroVentaPara,
 } from '../../lib/comisiones.js';
-import { formatMXN, formatDate, toDateInput, fromDateInput } from '../../lib/format.js';
+import { formatMXN, formatPct, formatDate, toDateInput, fromDateInput } from '../../lib/format.js';
 import Modal from '../ui/Modal.jsx';
 import Button from '../ui/Button.jsx';
 import Input from '../ui/Input.jsx';
@@ -261,7 +261,7 @@ export default function FacturacionModal({ cliente, onClose }) {
             <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
               <dt className="text-ink-faint">Enganche</dt>
               <dd className="text-right text-ink">
-                {preview.fin.enganchePct.toFixed(2)}%
+                {formatPct(preview.fin.enganchePct)}
               </dd>
               <dt className="text-ink-faint">
                 Parcialidad ({preview.fin.plazoMax} {SCHEMES[esquemaId].termUnit})
