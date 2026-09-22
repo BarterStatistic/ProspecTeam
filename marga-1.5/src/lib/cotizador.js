@@ -87,7 +87,12 @@ export function calcularFinanciamiento({
   const plazoMax = plazoMaximo(esquemaId);
   const factor = nivelPara(esquemaId, enganchePct).m[plazoMax];
   const montoACredito = precio - enganche;
-  const pago = parcialidad({ esquemaId, montoACredito, enganchePct, plazo: plazoMax });
+  // Redondeada al peso entero, como la publica la tabla oficial de Dinamo y el
+  // cotizador vigente (Math.round(fin * lvl.m[t])): el monto financiado —y por
+  // tanto la comisión— sale de la misma cifra que ve el cliente.
+  const pago = Math.round(
+    parcialidad({ esquemaId, montoACredito, enganchePct, plazo: plazoMax }),
+  );
 
   return {
     precioEfectivo: precio,

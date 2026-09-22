@@ -35,9 +35,10 @@ gestiona desde Marga (`src/lib/permissions.js`, `canViewComisiones`, líneas 112
 
 **Fórmula completa** (`src/lib/comisiones.js` y `src/lib/cotizador.js`):
 
-1. **Monto financiado** = parcialidad al plazo máximo del esquema × ese mismo plazo
-   máximo. El enganche se captura **en pesos** al facturar, no en porcentaje
-   (`src/lib/cotizador.js`, `calcularFinanciamiento`, líneas 63-87). Plazo máximo: 72
+1. **Monto financiado** = parcialidad al plazo máximo del esquema, **redondeada al peso
+   entero** como la publica la tabla oficial de Dinamo, × ese mismo plazo máximo. El
+   enganche se captura **en pesos** al facturar, no en porcentaje
+   (`src/lib/cotizador.js`, `calcularFinanciamiento`). Plazo máximo: 72
    quincenas en Motonómina, Credinamo, Motoxpress y 50% de Enganche; 170 semanas en
    Motonómina Flex, Credinamo Flex y Motoxpress Flex.
 2. **Comisión total** = monto financiado × 0.9575 × tasa. La tasa es 3% para Motoxpress

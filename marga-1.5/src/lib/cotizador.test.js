@@ -81,8 +81,9 @@ describe('calcularFinanciamiento', () => {
     expect(r.enganchePct).toBeCloseTo(5, 6);
     expect(r.plazoMax).toBe(72);
     expect(r.factor).toBe(0.040495);
-    expect(r.parcialidad).toBeCloseTo(844.2296, 3);
-    expect(r.montoFinanciado).toBeCloseTo(60784.53, 2);
+    // 844.2296 → la tabla oficial redondea la parcialidad al peso entero.
+    expect(r.parcialidad).toBe(844);
+    expect(r.montoFinanciado).toBe(844 * 72);
   });
 
   it('sube el monto financiado cuando se incluye el servicio preventivo', () => {
@@ -93,7 +94,7 @@ describe('calcularFinanciamiento', () => {
       enganche: 1211.6, // 5% de 24232
     });
     expect(r.precioEfectivo).toBe(24232);
-    expect(r.montoFinanciado).toBeCloseTo(67119.2, 1);
+    expect(r.montoFinanciado).toBe(932 * 72); // 932.21 → 932
   });
 
   it('usa el plazo de 72 quincenas en motoxpress', () => {
@@ -105,7 +106,7 @@ describe('calcularFinanciamiento', () => {
     });
     expect(r.plazoMax).toBe(72);
     expect(r.factor).toBe(0.047874);
-    expect(r.montoFinanciado).toBeCloseTo(18653.25 * 0.047874 * 72, 4);
+    expect(r.montoFinanciado).toBe(893 * 72); // 18653.25 × 0.047874 = 893.006 → 893
   });
 
   it('usa el plazo de 170 semanas en los esquemas flex', () => {
@@ -180,7 +181,8 @@ describe('enganche redondeado a 2 decimales (huecos entre bandas)', () => {
     });
     expect(r.enganchePct).toBe(30);
     expect(r.factor).toBe(0.035218);
-    expect(r.parcialidad).toBeCloseTo((31395 - 9418) * 0.035218, 6);
+    expect(r.parcialidad).toBe(774); // 21977 × 0.035218 = 773.986 → 774
+    expect(r.montoFinanciado).toBe(774 * 72);
   });
 
   it('devuelve el mismo porcentaje redondeado que eligió el nivel', () => {
