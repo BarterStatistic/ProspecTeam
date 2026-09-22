@@ -2,18 +2,19 @@
 // configuración, devuelve números. No toca React, el store ni Date.now().
 //
 // Fórmula, de arriba hacia abajo:
-//   comisionTotal    = montoFinanciado × 0.9575 × (0.03 motoxpress | 0.04 resto)
-//   comisionVendedor = comisionTotal × racha(numeroVenta)
-//   comisionPromotor = comisionTotal × 0.10, o 0 si nadie está asignado
+//   comisionTotal    = montoFinanciado × (0.03 motoxpress | 0.04 resto)
+//   comisionVendedor = comisionTotal × racha(numeroVenta) × 0.9575
+//   comisionPromotor = comisionTotal × 0.10 × 0.9575, o 0 si nadie está asignado
 //   netoAdmin        = comisionTotal − comisionVendedor − comisionPromotor
 //
-// El 4.25% se descuenta del monto financiado ANTES de la tasa, así que la
-// comisión total que se muestra ya es neta y tanto el promotor como el neto
-// admin cuelgan de esa cifra.
+// El 4.25% NO se descuenta de la comisión total (esa cifra es la que se
+// reparte): se descuenta de cada pago individual a vendedor y promotor. El
+// neto admin sale de restarle a la comisión total esos dos pagos ya con su
+// propio descuento aplicado, así que absorbe el 4.25% que no se les entregó.
 
 const DAY = 86_400_000;
 
-/** Factor que deja el monto financiado neto del 4.25%. */
+/** Factor que deja neto del 4.25% el pago individual de vendedor y promotor. */
 export const DESCUENTO = 0.9575;
 
 /** Porcentaje de la comisión total que se lleva el vendedor, por nivel. */
@@ -55,11 +56,11 @@ export function calcularComision({
   tienePromotor,
 }) {
   const tasa = tasaPara(esquemaId);
-  const comisionTotal = montoFinanciado * DESCUENTO * tasa;
+  const comisionTotal = montoFinanciado * tasa;
   const nivel = nivelRacha(numeroVenta);
   const pct = NIVELES_RACHA[nivel - 1];
-  const comisionVendedor = comisionTotal * pct;
-  const comisionPromotor = tienePromotor ? comisionTotal * TASA_PROMOTOR : 0;
+  const comisionVendedor = comisionTotal * pct * DESCUENTO;
+  const comisionPromotor = tienePromotor ? comisionTotal * TASA_PROMOTOR * DESCUENTO : 0;
 
   return {
     tasa,

@@ -45,7 +45,7 @@ describe('racha', () => {
 });
 
 describe('calcularComision', () => {
-  it('descuenta el 4.25% del monto financiado antes de aplicar la tasa', () => {
+  it('la comisión total es el monto financiado por la tasa, sin descontar el 4.25%', () => {
     const r = calcularComision({
       montoFinanciado: 61865,
       esquemaId: 'motonomina',
@@ -53,7 +53,9 @@ describe('calcularComision', () => {
       tienePromotor: false,
     });
     expect(r.tasa).toBe(0.04);
-    expect(r.comisionTotal).toBeCloseTo(2369.4295, 4);
+    expect(r.comisionTotal).toBeCloseTo(2474.6, 4);
+    // El 4.25% se descuenta del pago individual, no de la comisión total:
+    // comisionTotal × 15% × 0.9575.
     expect(r.comisionVendedor).toBeCloseTo(355.4144, 4);
   });
 
@@ -65,10 +67,12 @@ describe('calcularComision', () => {
       tienePromotor: false,
     });
     expect(r.comisionPromotor).toBe(0);
-    expect(r.netoAdmin).toBeCloseTo(2014.0151, 4);
+    // netoAdmin = comisionTotal − comisionVendedor − comisionPromotor: absorbe
+    // el 4.25% que no se descontó de la comisión total.
+    expect(r.netoAdmin).toBeCloseTo(2119.1856, 4);
   });
 
-  it('con promotor asignado descuenta el 10% de la comisión total', () => {
+  it('con promotor asignado descuenta el 10% de la comisión total, también neto del 4.25%', () => {
     const r = calcularComision({
       montoFinanciado: 61865,
       esquemaId: 'motonomina',
@@ -76,17 +80,17 @@ describe('calcularComision', () => {
       tienePromotor: true,
     });
     expect(r.comisionPromotor).toBeCloseTo(236.943, 3);
-    expect(r.netoAdmin).toBeCloseTo(1777.0721, 4);
+    expect(r.netoAdmin).toBeCloseTo(1882.2426, 4);
   });
 
-  it('aplica el 3% en motoxpress', () => {
+  it('aplica el 3% en motoxpress sobre el monto financiado completo', () => {
     const r = calcularComision({
       montoFinanciado: 100000,
       esquemaId: 'motoxpress',
       numeroVenta: 1,
       tienePromotor: false,
     });
-    expect(r.comisionTotal).toBeCloseTo(100000 * 0.9575 * 0.03, 6);
+    expect(r.comisionTotal).toBeCloseTo(100000 * 0.03, 6);
   });
 
   it('el total de las tres partes siempre cuadra con la comisión total', () => {
