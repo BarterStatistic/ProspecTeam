@@ -38,15 +38,30 @@ export function createFirestoreStore(config) {
   const usersCol = collection(db, 'users');
   const citasCol = collection(db, 'citas');
   const buroAutorizacionesCol = collection(db, 'buroAutorizaciones');
+  const comisionesCol = collection(db, 'comisiones');
+  const cotizacionesCol = collection(db, 'cotizaciones');
+  const notificacionesCol = collection(db, 'notificaciones');
+  const configCol = collection(db, 'config');
+  const configDoc = doc(configCol, 'comisiones');
 
   let clients = [];
   let users = [];
   let citas = [];
   let buroAutorizaciones = [];
+  let comisiones = [];
+  let cotizaciones = [];
+  let notificaciones = [];
+  // Named comisionesConfig (not "config") to avoid shadowing the Firebase
+  // config parameter of createFirestoreStore above.
+  let comisionesConfig = {};
   const clientListeners = new Set();
   const userListeners = new Set();
   const citaListeners = new Set();
   const buroAutorizacionListeners = new Set();
+  const comisionListeners = new Set();
+  const cotizacionListeners = new Set();
+  const notificacionListeners = new Set();
+  const configListeners = new Set();
 
   function notify(listeners, data) {
     for (const cb of listeners) cb(data);
@@ -98,6 +113,26 @@ export function createFirestoreStore(config) {
     listen(buroAutorizacionesCol, (snap) => {
       buroAutorizaciones = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       notify(buroAutorizacionListeners, buroAutorizaciones);
+    });
+    listen(comisionesCol, (snap) => {
+      comisiones = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      notify(comisionListeners, comisiones);
+    });
+    listen(cotizacionesCol, (snap) => {
+      cotizaciones = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      notify(cotizacionListeners, cotizaciones);
+    });
+    listen(notificacionesCol, (snap) => {
+      notificaciones = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      notify(notificacionListeners, notificaciones);
+    });
+    // El documento de configuración es único, pero pasa por el mismo `listen`
+    // que las colecciones: onSnapshot acepta igual un doc que una colección, y
+    // así hereda el reintento ante error. Con un onSnapshot suelto, un fallo
+    // del listener congelaría las reglas de pago hasta recargar la página.
+    listen(configDoc, (snap) => {
+      comisionesConfig = snap.exists() ? snap.data() : {};
+      notify(configListeners, comisionesConfig);
     });
   }
 
@@ -185,5 +220,60 @@ export function createFirestoreStore(config) {
       return () => buroAutorizacionListeners.delete(cb);
     },
     setBuroAutorizacion: (record) => setDoc(doc(buroAutorizacionesCol, record.id), record),
+
+    // --- comisiones ---
+    getComisiones: () => comisiones,
+    onComisionesChange(cb) {
+      comisionListeners.add(cb);
+      cb(comisiones);
+      return () => comisionListeners.delete(cb);
+    },
+    setComision: (record) => setDoc(doc(comisionesCol, record.id), record),
+    patchComision: (id, patch) => updateDoc(doc(comisionesCol, id), patch),
+    deleteComision: (id) => deleteDoc(doc(comisionesCol, id)),
+    async patchComisiones(patches) {
+      const batch = writeBatch(db);
+      for (const { id, patch } of patches) batch.update(doc(comisionesCol, id), patch);
+      await batch.commit();
+    },
+
+    // --- cotizaciones (log de solo-apéndice) ---
+    getCotizaciones: () => cotizaciones,
+    onCotizacionesChange(cb) {
+      cotizacionListeners.add(cb);
+      cb(cotizaciones);
+      return () => cotizacionListeners.delete(cb);
+    },
+    setCotizacion: (record) => setDoc(doc(cotizacionesCol, record.id), record),
+
+    // --- notificaciones ---
+    getNotificaciones: () => notificaciones,
+    onNotificacionesChange(cb) {
+      notificacionListeners.add(cb);
+      cb(notificaciones);
+      return () => notificacionListeners.delete(cb);
+    },
+    setNotificacion: (record) => setDoc(doc(notificacionesCol, record.id), record),
+    async patchNotificaciones(patches) {
+      if (!patches.length) return;
+      const batch = writeBatch(db);
+      for (const { id, patch } of patches) batch.update(doc(notificacionesCol, id), patch);
+      await batch.commit();
+    },
+    async deleteNotificaciones(ids) {
+      if (!ids.length) return;
+      const batch = writeBatch(db);
+      for (const id of ids) batch.delete(doc(notificacionesCol, id));
+      await batch.commit();
+    },
+
+    // --- config (documento único config/comisiones) ---
+    getConfig: () => comisionesConfig,
+    onConfigChange(cb) {
+      configListeners.add(cb);
+      cb(comisionesConfig);
+      return () => configListeners.delete(cb);
+    },
+    setConfig: (patch) => setDoc(configDoc, patch, { merge: true }),
   };
 }

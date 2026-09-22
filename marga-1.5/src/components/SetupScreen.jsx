@@ -9,7 +9,7 @@ export default function SetupScreen() {
         <div className="mb-5 flex items-center gap-3">
           <DatabaseZap size={28} className="text-gold" />
           <h1 className="text-2xl font-extrabold tracking-tight">
-            <span className="text-gold">Marga 1.5</span>
+            <span className="text-gold">Marga 2.0</span>
           </h1>
         </div>
 

@@ -58,7 +58,26 @@ export function emptyClient(section = 'prospectos') {
     promotorEncargado: '',
     notes: '',
     buroAutorizado: false,
+    // Marca de facturación (columna "Moto Facturada") y la comisión que generó.
+    fechaFacturacion: null,
+    comisionId: null,
     section,
     stage: DEFAULT_STAGE[section] ?? '',
+  };
+}
+
+/**
+ * Argumentos de `applyBoardReorder` para regresar una tarjeta a la columna de
+ * donde salió, al final de ella. Es la reversión que se usa cuando se cancela
+ * la captura de facturación tras llevar una tarjeta a "Moto Facturada", ya sea
+ * arrastrándola (KanbanBoard) o con el menú "Mover a" (ClientCard).
+ * `columna` son las tarjetas de la columna de origen, en orden.
+ */
+export function regresoAColumna(columna, movedId, fromStage) {
+  return {
+    movedId,
+    toStage: fromStage,
+    stageChanged: true,
+    orderedIds: [...columna.filter((c) => c.id !== movedId).map((c) => c.id), movedId],
   };
 }

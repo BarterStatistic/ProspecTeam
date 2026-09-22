@@ -12,6 +12,8 @@ import {
   Wrench,
   ScanLine,
   ChevronDown,
+  Wallet,
+  Calculator,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useData } from '../../context/DataContext.jsx';
@@ -22,7 +24,12 @@ import {
   ROLE_CHIP_CLASSES,
   userColor,
 } from '../../lib/constants.js';
-import { visibleSections, canManageUsers, canViewAdminPanel } from '../../lib/permissions.js';
+import {
+  visibleSections,
+  canManageUsers,
+  canViewAdminPanel,
+  canViewComisiones,
+} from '../../lib/permissions.js';
 import Avatar from '../ui/Avatar.jsx';
 
 const ICONS = {
@@ -35,6 +42,7 @@ const ICONS = {
 // Per-tool icon, keyed by the tool id in constants.js.
 const TOOL_ICONS = {
   buro: ScanLine,
+  cotizador: Calculator,
 };
 
 function NavButton({ icon: Icon, label, badge, isActive, onClick, nested = false }) {
@@ -101,7 +109,7 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
     <div className="flex h-full w-64 flex-col border-r border-white/5 bg-navy-800/80 backdrop-blur-md">
       <div className="flex items-center justify-between px-5 py-5">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-gold">Marga 1.5</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-gold">Marga 2.0</h1>
           <p className="text-[11px] text-ink-faint">Dinamo Saltillo</p>
         </div>
         <button
@@ -133,6 +141,15 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
           isActive={active === 'citas'}
           onClick={() => onNavigate('citas')}
         />
+
+        {canViewComisiones(role) && (
+          <NavButton
+            icon={Wallet}
+            label="Comisiones"
+            isActive={active === 'comisiones'}
+            onClick={() => onNavigate('comisiones')}
+          />
+        )}
 
         {canManageUsers(role) && (
           <>

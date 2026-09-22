@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
 import { canEditClient } from '../../lib/permissions.js';
 import { fullName } from '../../lib/clients.js';
+import { etiquetaEsquema } from '../../lib/motos.js';
 import { sellerColor } from '../../lib/constants.js';
 import { formatDate, toDateInput, fromDateInput } from '../../lib/format.js';
 import Card from '../ui/Card.jsx';
@@ -88,7 +89,7 @@ function SaleRow({ client }) {
         <div className="animate-fadeIn space-y-4 border-t border-white/5 px-4 py-4">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <Field label="Tipo de venta">{client.saleType}</Field>
-            <Field label="Esquema de crédito">{client.creditScheme}</Field>
+            <Field label="Esquema de crédito">{etiquetaEsquema(client.creditScheme)}</Field>
             <Field label="Buró autorizado">{client.buroAutorizado ? 'Sí' : 'No'}</Field>
             <Field label="Enganche">{client.engancheDejado ? 'Sí' : 'No'}</Field>
             <Field label="Moto(s)">{client.motorcycles}</Field>

@@ -18,7 +18,8 @@ export default function BackupMenu() {
 
   async function handleExport() {
     setMenuOpen(false);
-    const data = await exportAll();
+    // El rol decide si el respaldo lleva comisiones y cotizaciones (solo admin).
+    const data = await exportAll(role);
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

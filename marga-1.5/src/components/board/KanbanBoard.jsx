@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -19,8 +19,10 @@ import {
 } from '../../lib/constants.js';
 import { useData } from '../../context/DataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { canDropTo, canEditClient } from '../../lib/permissions.js';
+import { useUI } from '../../context/UIContext.jsx';
+import { canDropTo, canEditClient, canRegistrarFacturacion } from '../../lib/permissions.js';
 import { resolveTransition } from '../../lib/db.js';
+import { regresoAColumna } from '../../lib/clients.js';
 import Column, { COLUMN_PREFIX } from './Column.jsx';
 import { CardBody } from './ClientCard.jsx';
 
@@ -71,6 +73,7 @@ function FilterRow({ label, items, value, onChange, colorOf }) {
 export default function KanbanBoard({ section }) {
   const { clients, moveClient, applyBoardReorder, sellerColors } = useData();
   const { user, role } = useAuth();
+  const { openFacturacion } = useUI();
   const [activeId, setActiveId] = useState(null);
   // Filter the board by who captured the client (createdBy). Local per board.
   const [sellerFilter, setSellerFilter] = useState(ALL);
@@ -114,20 +117,24 @@ export default function KanbanBoard({ section }) {
     return list;
   }, [clients, section, isProcesos]);
 
-  const matchesFilter = (c) => {
-    if (sellerFilter !== ALL) {
-      if (sellerFilter === UNASSIGNED ? !!c.createdBy : c.createdBy !== sellerFilter) return false;
-    }
-    if (promotorFilter !== ALL) {
-      if (
-        promotorFilter === UNASSIGNED
-          ? !!c.promotorEncargado
-          : c.promotorEncargado !== promotorFilter
-      )
-        return false;
-    }
-    return true;
-  };
+  const matchesFilter = useCallback(
+    (c) => {
+      if (sellerFilter !== ALL) {
+        if (sellerFilter === UNASSIGNED ? !!c.createdBy : c.createdBy !== sellerFilter)
+          return false;
+      }
+      if (promotorFilter !== ALL) {
+        if (
+          promotorFilter === UNASSIGNED
+            ? !!c.promotorEncargado
+            : c.promotorEncargado !== promotorFilter
+        )
+          return false;
+      }
+      return true;
+    },
+    [sellerFilter, promotorFilter],
+  );
 
   // Group this section's clients by stage, each column sorted by `order`.
   const grouped = useMemo(() => {
@@ -138,7 +145,7 @@ export default function KanbanBoard({ section }) {
     }
     for (const col of columns) map[col.id].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     return map;
-  }, [clients, section, columns, sellerFilter, promotorFilter]);
+  }, [clients, section, columns, matchesFilter]);
 
   const activeClient = activeId ? clients.find((c) => c.id === activeId) : null;
 
@@ -147,7 +154,7 @@ export default function KanbanBoard({ section }) {
   // scroll and lose (pointercancel kills the drag). Touch uses hold-to-drag
   // (like Trello/Kommo): press ~200 ms to lift a card, swipe normally to scroll.
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 10 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
@@ -202,6 +209,14 @@ export default function KanbanBoard({ section }) {
         ...withoutActive.slice(insertIndex),
       ];
       await applyBoardReorder({ movedId: draggedId, toStage, stageChanged: true, orderedIds });
+
+      // Caer en "Moto Facturada" abre la captura. Si el modal se cancela, la
+      // tarjeta vuelve a la columna de donde salió y no se crea comisión.
+      if (toStage === 'moto_facturada' && canRegistrarFacturacion(role)) {
+        openFacturacion(clients.find((c) => c.id === draggedId), () =>
+          applyBoardReorder(regresoAColumna(grouped[fromStage], draggedId, fromStage)),
+        );
+      }
     }
   }
 
@@ -257,7 +272,7 @@ export default function KanbanBoard({ section }) {
 
       <DragOverlay>
         {activeClient ? (
-          <div className="w-72 rotate-2">
+          <div className="w-72">
             <CardBody client={activeClient} dragging />
           </div>
         ) : null}

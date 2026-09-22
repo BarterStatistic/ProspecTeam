@@ -19,12 +19,16 @@ export default function Column({ column, clients, locked = false }) {
   // on the right — and every stage stays on screen for easy dragging.
   return (
     <div className="flex h-full min-h-0 w-72 shrink-0 flex-col md:w-auto md:min-w-[9.5rem] md:flex-1 md:shrink">
-      <div className="mb-2 flex items-center justify-between px-1">
+      {/* min-h reserva el alto de 2 líneas de texto (text-sm: 1.25rem por
+          línea) para que un encabezado largo ("Entrega agendada", "Moto
+          Facturada"...) que se parte en dos renglones no empiece la zona de
+          soltar más abajo que sus columnas vecinas de una sola línea. */}
+      <div className="mb-2 flex min-h-[2.5rem] items-center justify-between gap-2 px-1">
         <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
           {locked && <Lock size={12} className="text-ink-faint" aria-label="Solo administrador" />}
           {column.label}
         </h3>
-        <span className="m-chip bg-white/5 text-ink-faint">{clients.length}</span>
+        <span className="m-chip shrink-0 bg-white/5 text-ink-faint">{clients.length}</span>
       </div>
 
       <div

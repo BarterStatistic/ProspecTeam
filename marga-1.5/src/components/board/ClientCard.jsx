@@ -18,9 +18,15 @@ import {
 import { useData } from '../../context/DataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
-import { canDeleteClient, canDropTo, canEditClient } from '../../lib/permissions.js';
+import { etiquetaEsquema } from '../../lib/motos.js';
+import {
+  canDeleteClient,
+  canDropTo,
+  canEditClient,
+  canRegistrarFacturacion,
+} from '../../lib/permissions.js';
 import { BOARD_COLUMNS, sellerColor } from '../../lib/constants.js';
-import { fullName } from '../../lib/clients.js';
+import { fullName, regresoAColumna } from '../../lib/clients.js';
 import { formatDateTime } from '../../lib/format.js';
 import Checkbox from '../ui/Checkbox.jsx';
 import CopyButton from '../ui/CopyButton.jsx';
@@ -33,9 +39,17 @@ const stopPress = (e) => e.stopPropagation();
 const noDrag = { onPointerDown: stopPress, onMouseDown: stopPress, onTouchStart: stopPress };
 
 export function CardBody({ client, dragging = false }) {
-  const { updateClient, deleteClient, moveClient, sellerColors, sellerAvatars } = useData();
+  const {
+    clients,
+    updateClient,
+    deleteClient,
+    moveClient,
+    applyBoardReorder,
+    sellerColors,
+    sellerAvatars,
+  } = useData();
   const { user, role } = useAuth();
-  const { openEditClient, openCancelClient } = useUI();
+  const { openEditClient, openCancelClient, openFacturacion } = useUI();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const editable = canEditClient(role, client, user?.username);
@@ -49,6 +63,25 @@ export function CardBody({ client, dragging = false }) {
   // Accent colour by who captured the client (createdBy): a left stripe on the
   // card + a tinted "Registró" line, so cards are scannable by seller.
   const accent = sellerColor(client.createdBy, sellerColors);
+  const puedeFacturar = canRegistrarFacturacion(role);
+  // En "Moto Facturada" sin comisión: movida antes de esta corrección, fallo
+  // parcial offline o comisión eliminada. El chip "Sin facturar" la recupera.
+  const sinFacturar = client.stage === 'moto_facturada' && !client.comisionId;
+
+  // "Mover a" no debe saltarse la facturación: llevar la tarjeta a "Moto
+  // Facturada" abre la captura, y cancelarla la regresa a su columna de
+  // origen con la misma reversión que usa el arrastre (KanbanBoard).
+  async function moverA(stage) {
+    const origen = client.stage;
+    await moveClient(client.id, client.section, stage);
+    if (stage !== 'moto_facturada' || !puedeFacturar) return;
+    openFacturacion(client, () => {
+      const columna = clients
+        .filter((c) => c.section === client.section && c.stage === origen)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      return applyBoardReorder(regresoAColumna(columna, client.id, origen));
+    });
+  }
 
   return (
     <div
@@ -106,7 +139,7 @@ export function CardBody({ client, dragging = false }) {
                                 disabled={isCurrent}
                                 onClick={() => {
                                   setMenuOpen(false);
-                                  moveClient(client.id, client.section, col.id);
+                                  moverA(col.id);
                                 }}
                                 className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs ${
                                   isCurrent
@@ -229,14 +262,48 @@ export function CardBody({ client, dragging = false }) {
         </div>
       )}
 
-      {(client.saleType || client.creditScheme) && (
+      {(client.saleType || client.creditScheme || client.comisionId || sinFacturar) && (
         <div className="mt-2 flex flex-wrap gap-1">
           {client.saleType && (
             <span className="m-chip bg-sky2/15 text-sky2-light">{client.saleType}</span>
           )}
           {client.creditScheme && (
-            <span className="m-chip bg-white/5 text-ink-muted">{client.creditScheme}</span>
+            <span className="m-chip bg-white/5 text-ink-muted">{etiquetaEsquema(client.creditScheme)}</span>
           )}
+          {sinFacturar &&
+            (puedeFacturar ? (
+              <button
+                type="button"
+                {...noDrag}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openFacturacion(client);
+                }}
+                title="Capturar la facturación de esta venta"
+                className="m-chip bg-state-warning/15 text-state-warning transition hover:bg-state-warning/25"
+              >
+                Sin facturar
+              </button>
+            ) : (
+              <span className="m-chip bg-state-warning/15 text-state-warning">Sin facturar</span>
+            ))}
+          {client.comisionId &&
+            (puedeFacturar ? (
+              <button
+                type="button"
+                {...noDrag}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openFacturacion(client);
+                }}
+                title="Editar la facturación de esta venta"
+                className="m-chip bg-state-success/15 text-state-success transition hover:bg-state-success/25"
+              >
+                Facturada
+              </button>
+            ) : (
+              <span className="m-chip bg-state-success/15 text-state-success">Facturada</span>
+            ))}
         </div>
       )}
 

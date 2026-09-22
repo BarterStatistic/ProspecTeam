@@ -3,12 +3,14 @@ import { useData } from '../../context/DataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { canAssignPromotor } from '../../lib/permissions.js';
 import { emptyClient, findDuplicate } from '../../lib/clients.js';
+import { normalizarEsquema } from '../../lib/motos.js';
 import { SALE_TYPES, CREDIT_SCHEMES } from '../../lib/constants.js';
 import Modal from '../ui/Modal.jsx';
 import Button from '../ui/Button.jsx';
 import Input, { Textarea } from '../ui/Input.jsx';
 import Select from '../ui/Select.jsx';
 import Checkbox from '../ui/Checkbox.jsx';
+import MotoPicker from '../ui/MotoPicker.jsx';
 import DuplicateWarningModal from './DuplicateWarningModal.jsx';
 
 // Only these fields are user-editable; section/stage/order/timestamps are managed
@@ -54,7 +56,8 @@ export default function ClientFormModal({ open, initial, onClose }) {
 
   useEffect(() => {
     if (open) {
-      setValues(initial ?? emptyClient());
+      const base = initial ?? emptyClient();
+      setValues({ ...base, creditScheme: normalizarEsquema(base.creditScheme ?? '') });
       setError('');
       setDupMatch(null);
     }
@@ -156,12 +159,7 @@ export default function ClientFormModal({ open, initial, onClose }) {
             />
           </div>
 
-          <Input
-            label="Moto(s)"
-            value={values.motorcycles}
-            onChange={setInput('motorcycles')}
-            placeholder="Super sport, SPF 250, B-52…"
-          />
+          <MotoPicker value={values.motorcycles ?? ''} onChange={set('motorcycles')} />
 
           <Input
             label="Vendedor Prospect Team"
