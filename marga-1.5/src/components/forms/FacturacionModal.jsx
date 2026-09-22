@@ -62,6 +62,10 @@ export default function FacturacionModal({ cliente, onClose }) {
   // que el usuario haya tecleado nada. Se enciende con la primera
   // interacción del campo y se apaga cada vez que el modal se reabre.
   const [engancheTocado, setEngancheTocado] = useState(false);
+  // Punto de racha: por default sigue el cálculo automático (ventas del mes
+  // del vendedor + 1). Vacío = "automático"; en cuanto se teclea algo, ese
+  // valor manda tanto en la vista previa como al guardar.
+  const [numeroVentaManual, setNumeroVentaManual] = useState('');
 
   useEffect(() => {
     if (!cliente) return;
@@ -77,6 +81,7 @@ export default function FacturacionModal({ cliente, onClose }) {
     setError('');
     setGuardando(false);
     setEngancheTocado(false);
+    setNumeroVentaManual('');
   }, [cliente, comisionPrevia]);
 
   const fechaFacturacion = useMemo(() => {
@@ -110,7 +115,7 @@ export default function FacturacionModal({ cliente, onClose }) {
       // de venta, conserva el número de venta original; si cambia, recuenta
       // las ventas de ese vendedor en el mes nuevo EXCLUYENDO la propia
       // comisión que se edita.
-      const numeroVenta = esEdicion
+      const numeroVentaAuto = esEdicion
         ? clave === comisionPrevia.mesVenta
           ? comisionPrevia.numeroVenta
           : numeroVentaPara(comisiones, {
@@ -119,6 +124,14 @@ export default function FacturacionModal({ cliente, onClose }) {
               excluirId: comisionPrevia.id,
             })
         : numeroVentaPara(comisiones, { vendedor: cliente.createdBy ?? '', clave });
+      // El punto de racha se puede corregir a mano: en blanco sigue el
+      // automático; con algo tecleado, ese valor manda en la vista previa y
+      // al guardar.
+      const manual = Number(numeroVentaManual);
+      const numeroVenta =
+        numeroVentaManual !== '' && Number.isInteger(manual) && manual > 0
+          ? manual
+          : numeroVentaAuto;
       const com = calcularComision({
         montoFinanciado: fin.montoFinanciado,
         esquemaId,
@@ -130,6 +143,7 @@ export default function FacturacionModal({ cliente, onClose }) {
         fin,
         com,
         numeroVenta,
+        numeroVentaAuto,
         pago: fechaPago(fechaFacturacion, configComisiones),
       };
     } catch (e) {
@@ -141,6 +155,7 @@ export default function FacturacionModal({ cliente, onClose }) {
     enganche,
     incluyeServicio,
     fechaFacturacion,
+    numeroVentaManual,
     cliente,
     comisiones,
     comisionPrevia,
@@ -160,6 +175,9 @@ export default function FacturacionModal({ cliente, onClose }) {
       incluyeServicio,
       motoNombre,
       esquemaId,
+      // Solo viaja cuando el punto de racha fue corregido a mano; en blanco,
+      // `db.js` sigue calculándolo automáticamente.
+      numeroVenta: preview.numeroVenta !== preview.numeroVentaAuto ? preview.numeroVenta : undefined,
     };
     try {
       if (esEdicion) await actualizarFacturacion(comisionPrevia.id, values);
@@ -250,6 +268,31 @@ export default function FacturacionModal({ cliente, onClose }) {
           onChange={setIncluyeServicio}
           label="Incluye servicio preventivo"
         />
+
+        <div>
+          <Input
+            label="Punto de racha (venta # del mes)"
+            type="number"
+            min="1"
+            step="1"
+            value={numeroVentaManual}
+            onChange={(e) => setNumeroVentaManual(e.target.value)}
+            placeholder={`Automático: ${preview.numeroVentaAuto ?? '—'}`}
+          />
+          <p className="mt-1 text-xs text-ink-faint">
+            Por defecto es el número de venta calculado del mes. Solo cámbialo si necesitas
+            corregirlo a mano.{' '}
+            {numeroVentaManual !== '' && (
+              <button
+                type="button"
+                onClick={() => setNumeroVentaManual('')}
+                className="text-sky2 hover:underline"
+              >
+                Usar automático
+              </button>
+            )}
+          </p>
+        </div>
 
         {preview.error && (!preview.esVacio || engancheTocado) && (
           <p className="text-sm text-state-danger">{preview.error}</p>

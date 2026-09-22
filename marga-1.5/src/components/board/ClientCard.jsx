@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
@@ -51,6 +52,45 @@ export function CardBody({ client, dragging = false }) {
   const { user, role } = useAuth();
   const { openEditClient, openCancelClient, openFacturacion } = useUI();
   const [menuOpen, setMenuOpen] = useState(false);
+  // Posición del menú en coordenadas de viewport: se calcula al abrir y el
+  // menú se porta al <body>, para que no lo recorte el `overflow-y-auto` de
+  // la columna cuando la tarjeta queda cerca del borde de la pantalla.
+  const [menuPos, setMenuPos] = useState(null);
+  const menuBtnRef = useRef(null);
+
+  function toggleMenu() {
+    if (!menuOpen) {
+      const MENU_WIDTH = 224; // w-56
+      const MARGIN = 8;
+      const rect = menuBtnRef.current.getBoundingClientRect();
+      const left = Math.min(
+        Math.max(rect.right - MENU_WIDTH, MARGIN),
+        window.innerWidth - MENU_WIDTH - MARGIN,
+      );
+      const espacioAbajo = window.innerHeight - rect.bottom;
+      const abrirArriba = espacioAbajo < 200 && rect.top > espacioAbajo;
+      setMenuPos({
+        left,
+        top: abrirArriba ? null : rect.bottom + 4,
+        bottom: abrirArriba ? window.innerHeight - rect.top + 4 : null,
+      });
+    }
+    setMenuOpen((v) => !v);
+  }
+
+  // El menú queda fijo a coordenadas del viewport, así que si la columna se
+  // desplaza mientras está abierto se cierra en vez de quedar flotando lejos
+  // del botón que lo abrió.
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const cerrar = () => setMenuOpen(false);
+    window.addEventListener('scroll', cerrar, true);
+    window.addEventListener('resize', cerrar);
+    return () => {
+      window.removeEventListener('scroll', cerrar, true);
+      window.removeEventListener('resize', cerrar);
+    };
+  }, [menuOpen]);
 
   const editable = canEditClient(role, client, user?.username);
   const deletable = canDeleteClient(role, client, user?.username);
@@ -104,16 +144,22 @@ export function CardBody({ client, dragging = false }) {
         {hasMenu && (
           <div className="relative shrink-0" {...noDrag}>
             <button
-              onClick={() => setMenuOpen((v) => !v)}
+              ref={menuBtnRef}
+              onClick={toggleMenu}
               className="rounded-md p-1 text-ink-faint transition hover:bg-white/5 hover:text-ink"
               aria-label="Acciones"
             >
               <MoreVertical size={16} />
             </button>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 z-50 mt-1 max-h-[70vh] w-56 overflow-y-auto rounded-lg border border-white/10 bg-navy-800 shadow-card">
+            {menuOpen &&
+              menuPos &&
+              createPortal(
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                  <div
+                    style={{ left: menuPos.left, top: menuPos.top ?? 'auto', bottom: menuPos.bottom ?? 'auto' }}
+                    className="fixed z-50 max-h-[70vh] w-56 overflow-y-auto rounded-lg border border-white/10 bg-navy-800 shadow-card"
+                  >
                   {editable && (
                     <>
                       <button
@@ -201,9 +247,10 @@ export function CardBody({ client, dragging = false }) {
                       <Trash2 size={14} /> Eliminar
                     </button>
                   )}
-                </div>
-              </>
-            )}
+                  </div>
+                </>,
+                document.body,
+              )}
           </div>
         )}
       </div>
