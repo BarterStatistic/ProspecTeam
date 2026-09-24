@@ -4,6 +4,7 @@ import { useData } from '../../context/DataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { canImportBackup } from '../../lib/permissions.js';
 import { toDateInput } from '../../lib/format.js';
+import { saveBlob } from '../../lib/saveFile.js';
 import Button from '../ui/Button.jsx';
 import Modal from '../ui/Modal.jsx';
 
@@ -21,12 +22,7 @@ export default function BackupMenu() {
     // El rol decide si el respaldo lleva comisiones y cotizaciones (solo admin).
     const data = await exportAll(role);
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `marga-backup-${toDateInput(Date.now())}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    await saveBlob(blob, `marga-backup-${toDateInput(Date.now())}.json`);
   }
 
   function handlePickFile() {
