@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Wallet, TrendingUp, Banknote, Flame, Trash2, StickyNote } from 'lucide-react';
+import { Wallet, TrendingUp, Banknote, Flame, Trash2, Pencil, StickyNote } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useData } from '../context/DataContext.jsx';
+import { useUI } from '../context/UIContext.jsx';
 import { canViewComisiones, isAdmin } from '../lib/permissions.js';
 import { sellerColor } from '../lib/constants.js';
 import {
@@ -32,12 +33,15 @@ function StatCard({ icon: Icon, label, value, hint, tone = 'sky' }) {
 export default function ComisionesView() {
   const { role, user } = useAuth();
   const {
+    clients,
     comisiones,
     configComisiones,
     eliminarComision,
+    marcarPagoComision,
     sellerColors,
     teamUsernames,
   } = useData();
+  const { openFacturacion } = useUI();
   const [filtroVendedor, setFiltroVendedor] = useState('');
   const admin = isAdmin(role);
 
@@ -92,6 +96,18 @@ export default function ComisionesView() {
         Los promotores no tienen acceso al panel de Comisiones.
       </p>
     );
+  }
+
+  // Reabre el modal de facturación completo (moto, esquema, enganche, punto
+  // de racha…) para corregir una venta ya registrada, en vez de un editor
+  // aparte que pudiera desincronizar los importes de la fórmula real.
+  function editar(comision) {
+    const cliente = clients.find((c) => c.id === comision.clienteId);
+    if (!cliente) {
+      window.alert('El cliente de esta venta ya no existe; no se puede editar la facturación.');
+      return;
+    }
+    openFacturacion(cliente);
   }
 
   return (
@@ -239,6 +255,7 @@ export default function ComisionesView() {
                       )}
                       <th className="py-2 pr-3 text-right font-medium">Comisión vendedor</th>
                       <th className="py-2 pr-3 text-right font-medium">Fecha de pago</th>
+                      <th className="py-2 pr-3 text-center font-medium">Pago</th>
                       {admin && <th className="py-2 font-medium" />}
                     </tr>
                   </thead>
@@ -282,8 +299,46 @@ export default function ComisionesView() {
                         <td className="py-2 pr-3 text-right text-ink-muted">
                           {formatDate(c.fechaPagoTs)}
                         </td>
+                        <td className="py-2 pr-3 text-center">
+                          {admin ? (
+                            <button
+                              type="button"
+                              onClick={() => marcarPagoComision(c.id, !c.pagado)}
+                              title={
+                                c.pagado
+                                  ? 'Marcar como pendiente de pago'
+                                  : 'Marcar como pagada'
+                              }
+                              className={`m-chip transition ${
+                                c.pagado
+                                  ? 'bg-state-success/15 text-state-success hover:bg-state-success/25'
+                                  : 'bg-state-warning/15 text-state-warning hover:bg-state-warning/25'
+                              }`}
+                            >
+                              {c.pagado ? 'Pagado' : 'Pendiente'}
+                            </button>
+                          ) : (
+                            <span
+                              className={`m-chip ${
+                                c.pagado
+                                  ? 'bg-state-success/15 text-state-success'
+                                  : 'bg-state-warning/15 text-state-warning'
+                              }`}
+                            >
+                              {c.pagado ? 'Pagado' : 'Pendiente'}
+                            </span>
+                          )}
+                        </td>
                         {admin && (
                           <td className="py-2 text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Editar la facturación de ${c.clienteNombre}`}
+                              onClick={() => editar(c)}
+                            >
+                              <Pencil size={13} className="text-sky2" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"

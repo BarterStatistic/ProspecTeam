@@ -338,6 +338,11 @@ export function guardarConfigComisiones(patch) {
   return store.setConfig(patch);
 }
 
+/** Entero positivo: descarta el valor automático (`undefined`/`null`) y cualquier basura. */
+function numeroVentaManualValido(v) {
+  return Number.isInteger(v) && v > 0;
+}
+
 /** Arma el objeto de comisión a partir de los datos capturados al facturar. */
 function construirComision({ cliente, values, config, numeroVenta, id, actor }) {
   const moto = motoPorNombre(values.motoNombre);
@@ -419,10 +424,15 @@ export async function registrarFacturacion(clienteId, values, actor = null) {
     comision = await actualizarFacturacion(existente.id, values, actor);
   } else {
     const clave = mesVenta(values.fechaFacturacion, config);
-    const numeroVenta = numeroVentaPara(store.getComisiones(), {
-      vendedor: cliente.createdBy ?? '',
-      clave,
-    });
+    // El punto de racha se calcula por defecto, pero el modal de facturación
+    // permite corregirlo a mano (p. ej. una venta que no quedó registrada en
+    // su momento) — en ese caso llega ya resuelto en `values.numeroVenta`.
+    const numeroVenta = numeroVentaManualValido(values.numeroVenta)
+      ? values.numeroVenta
+      : numeroVentaPara(store.getComisiones(), {
+          vendedor: cliente.createdBy ?? '',
+          clave,
+        });
     comision = construirComision({
       cliente,
       values,
@@ -476,8 +486,9 @@ export async function actualizarFacturacion(comisionId, values, actor = null) {
 
   const config = configComisiones();
   const claveNueva = mesVenta(values.fechaFacturacion, config);
-  const numeroVenta =
-    claveNueva === previa.mesVenta
+  const numeroVenta = numeroVentaManualValido(values.numeroVenta)
+    ? values.numeroVenta
+    : claveNueva === previa.mesVenta
       ? previa.numeroVenta
       : numeroVentaPara(store.getComisiones(), {
           vendedor: previa.vendedor,
@@ -494,6 +505,10 @@ export async function actualizarFacturacion(comisionId, values, actor = null) {
     actor,
   });
   comision.createdAt = previa.createdAt;
+  // Corregir moto/esquema/enganche/racha no debe desmarcar un pago ya hecho:
+  // `construirComision` arma el objeto desde cero y no conoce este campo.
+  comision.pagado = previa.pagado ?? false;
+  comision.pagadoAt = previa.pagadoAt ?? null;
 
   await store.setComision(comision);
   // También estampa `comisionId`: es inofensivo cuando ya estaba puesto (caso
@@ -506,6 +521,15 @@ export async function actualizarFacturacion(comisionId, values, actor = null) {
     updatedAt: now(),
   });
   return comision;
+}
+
+/**
+ * Marca (o desmarca) el pago de una comisión al vendedor. Puramente
+ * informativo para el admin — no toca ningún importe ni la fecha de pago
+ * calculada (`fechaPago`), solo registra si ya se entregó.
+ */
+export async function marcarPagoComision(id, pagado) {
+  await store.patchComision(id, { pagado: !!pagado, pagadoAt: pagado ? now() : null });
 }
 
 /** Elimina una comisión y limpia la marca de facturación de su tarjeta. */
