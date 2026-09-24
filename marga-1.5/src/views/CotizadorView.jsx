@@ -4,6 +4,7 @@ import { useData } from '../context/DataContext.jsx';
 import { SCHEMES, motoPorNombre } from '../lib/motos.js';
 import { precioEfectivo, parcialidad } from '../lib/cotizador.js';
 import { toDateInput } from '../lib/format.js';
+import { saveBlob } from '../lib/saveFile.js';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import PasoMoto from '../components/cotizador/PasoMoto.jsx';
@@ -107,10 +108,12 @@ export default function CotizadorView() {
         backgroundColor: '#0B1E3B',
         scale: 2,
       });
-      const a = document.createElement('a');
-      a.download = `cotizacion-${motoNombre.replace(/\s+/g, '-').toLowerCase()}-${toDateInput(Date.now())}.png`;
-      a.href = canvas.toDataURL('image/png');
-      a.click();
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('No se pudo generar la cotización.');
+      await saveBlob(
+        blob,
+        `cotizacion-${motoNombre.replace(/\s+/g, '-').toLowerCase()}-${toDateInput(Date.now())}.png`,
+      );
     } finally {
       setDescargando(false);
     }
