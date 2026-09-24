@@ -37,6 +37,9 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'Segoe UI', 'sans-serif'],
+        // Tipografías del cotizador original (Urbanist titulares, DM Mono cifras).
+        head: ['Urbanist', 'system-ui', 'sans-serif'],
+        cifra: ['"DM Mono"', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
         card: '0 4px 24px -8px rgba(0, 0, 0, 0.5)',
