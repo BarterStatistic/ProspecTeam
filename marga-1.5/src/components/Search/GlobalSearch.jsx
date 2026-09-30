@@ -3,7 +3,7 @@ import { Search, Phone } from 'lucide-react';
 import { useData } from '../../context/DataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
-import { canEditClient, visibleSections } from '../../lib/permissions.js';
+import { canEditClient, canSeeClient } from '../../lib/permissions.js';
 import { fullName, normalizeName, normalizePhone } from '../../lib/clients.js';
 import { SECTIONS, stageLabel } from '../../lib/constants.js';
 import CopyButton from '../ui/CopyButton.jsx';
@@ -29,10 +29,10 @@ export default function GlobalSearch({ open, onClose }) {
     const q = normalizeName(query);
     const digits = normalizePhone(query);
     if (!query.trim()) return [];
-    // Only surface clients in sections this role can open.
-    const sections = visibleSections(role);
+    // Only surface clients this user can open (a vendedor sees only their own
+    // cancelled clients).
     return clients
-      .filter((c) => sections.includes(c.section))
+      .filter((c) => canSeeClient(role, c, user?.username))
       .filter((c) => {
         const name = normalizeName(fullName(c));
         const moto = normalizeName(c.motorcycles || '');
@@ -42,7 +42,7 @@ export default function GlobalSearch({ open, onClose }) {
         );
       })
       .slice(0, 40);
-  }, [clients, query, role]);
+  }, [clients, query, role, user]);
 
   if (!open) return null;
 

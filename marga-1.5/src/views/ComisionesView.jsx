@@ -8,11 +8,13 @@ import { sellerColor } from '../lib/constants.js';
 import {
   fechaPago,
   mesVenta,
+  periodoPorClave,
+  etiquetaMes,
   numeroVentaPara,
   PROMOTOR_DEFAULT,
   NIVELES_RACHA,
 } from '../lib/comisiones.js';
-import { formatMXN, formatDate } from '../lib/format.js';
+import { formatMXN, formatDate, formatDateShort } from '../lib/format.js';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 
@@ -82,13 +84,16 @@ export default function ComisionesView() {
     return [...map.entries()].sort((a, b) => b[0] - a[0]);
   }, [visibles]);
 
+  // Mes de venta en curso: su rango (si el admin lo registró) es lo que dura la racha.
+  const claveHoy = mesVenta(Date.now(), configComisiones);
+  const periodoHoy = periodoPorClave(claveHoy, configComisiones);
+
   // Racha del mes en curso, solo para la vista del vendedor.
   const rachaActual = useMemo(() => {
     if (admin || !user?.username) return 0;
-    const clave = mesVenta(Date.now(), configComisiones);
     // Ventas que ya lleva = el número que le tocaría a la siguiente, menos uno.
-    return numeroVentaPara(conPago, { vendedor: user.username, clave }) - 1;
-  }, [admin, user, conPago, configComisiones]);
+    return numeroVentaPara(conPago, { vendedor: user.username, clave: claveHoy }) - 1;
+  }, [admin, user, conPago, claveHoy]);
 
   if (!canViewComisiones(role)) {
     return (
@@ -126,6 +131,11 @@ export default function ComisionesView() {
           <Card className="p-4">
             <div className="flex items-center gap-2 text-xs text-ink-muted">
               <Flame size={14} className="text-gold" /> Racha de este mes
+              <span className="ml-auto text-[11px] text-ink-faint">
+                {etiquetaMes(claveHoy)}
+                {periodoHoy &&
+                  ` · ${formatDateShort(periodoHoy.inicio)} – ${formatDateShort(periodoHoy.fin)}`}
+              </span>
             </div>
             <div className="mt-2 flex items-center gap-1.5">
               {NIVELES_RACHA.map((pct, i) => (

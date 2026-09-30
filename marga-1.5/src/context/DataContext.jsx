@@ -24,6 +24,7 @@ import {
   renumerarMes,
   registrarCotizacion as dbRegistrarCotizacion,
   guardarConfigComisiones,
+  guardarPeriodosVenta,
   marcarNotificacionesLeidas,
   configComisiones as leerConfigComisiones,
 } from '../lib/db.js';
@@ -158,6 +159,7 @@ export function DataProvider({ children }) {
       marcarPagoComision,
       renumerarMes,
       guardarConfigComisiones,
+      guardarPeriodosVenta,
 
       // --- cotizador ---
       cotizaciones,

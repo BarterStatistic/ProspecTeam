@@ -26,6 +26,18 @@ export function formatDate(ts) {
   return dateFmt.format(new Date(ts));
 }
 
+const dateShortFmt = new Intl.DateTimeFormat('es-MX', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+
+/** Timestamp (ms) → "26 sep 2026". Empty string for falsy input. */
+export function formatDateShort(ts) {
+  if (!ts) return '';
+  return dateShortFmt.format(new Date(ts)).replace('.', '');
+}
+
 /** Timestamp (ms) → value for an <input type="date"> (YYYY-MM-DD), local time. */
 export function toDateInput(ts) {
   if (!ts) return '';

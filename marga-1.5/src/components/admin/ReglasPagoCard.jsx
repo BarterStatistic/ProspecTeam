@@ -125,7 +125,7 @@ export default function ReglasPagoCard() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Input
-          label="El mes de venta arranca el día"
+          label="Sin mes registrado, el mes arranca el día"
           type="number"
           min="1"
           max="28"

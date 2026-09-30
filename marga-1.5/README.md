@@ -1,4 +1,4 @@
-# Marga 2.0 — Organizador de clientes (multiusuario)
+# Marga 2.5 — Organizador de clientes (multiusuario)
 
 Herramienta interna del equipo de ventas de **Dinamo Saltillo** para dar seguimiento a
 clientes de venta de motos: tableros Kanban de **Prospectos** y **Procesos**, listas de
@@ -6,6 +6,31 @@ clientes de venta de motos: tableros Kanban de **Prospectos** y **Procesos**, li
 para que todo el equipo vea los mismos datos desde cualquier dispositivo, en tiempo real.
 
 > La versión anterior (un solo usuario, datos locales) se conserva intacta en `../marga/`.
+
+## Novedades de Marga 2.5
+
+- **Badge de Citas = citas de hoy.** El número junto a **Citas** en el menú cuenta las
+  citas cuya fecha es hoy (atendidas o no), no el total histórico
+  (`src/lib/citas.js`, `contarCitasDeHoy`).
+- **Meses de venta** (Panel ADMIN). El admin registra cada mes de venta con su fecha de
+  inicio y de fin (`config/comisiones.periodosVenta`, `[{ id, clave: 'YYYY-MM', inicio,
+  fin }]`); ese rango es lo que dura la racha de los vendedores en ese mes
+  (`src/lib/comisiones.js`, `mesVenta`). Los días que no cubre ningún mes registrado
+  siguen la regla anterior "el mes arranca el día N"; si esa regla cae en una clave ya
+  registrada, se recorre al mes libre siguiente (o anterior), para que un día fuera del
+  rango de octubre nunca sume a la racha de octubre. Al guardar, las ventas ya
+  facturadas que cambian de mes se reacomodan y se renumera la racha de los meses
+  afectados (`src/lib/db.js`, `guardarPeriodosVenta`); registrar un mes a futuro no
+  toca nada.
+- **Avisos al admin.** Cuando un **vendedor** pasa un prospecto a Procesos (lo suelta en
+  "Proceso comenzado" o lo captura directo ahí) o agenda una cita, cada admin recibe una
+  notificación (`TIPOS.PROCESO_NUEVO`, `TIPOS.CITA_NUEVA`). Lo que hacen el admin o un
+  promotor no se reporta.
+- **Clientes cancelados para vendedores.** El vendedor ve la sección, en **solo
+  lectura**, con únicamente los cancelados que registró (`createdBy`) o que lo nombran
+  como "Vendedor Prospect Team" (sin distinguir mayúsculas ni acentos) —
+  `src/lib/permissions.js`, `canSeeClient`. El mismo filtro aplica al contador del menú
+  y a la búsqueda global.
 
 ## Novedades frente a Marga 1.5
 

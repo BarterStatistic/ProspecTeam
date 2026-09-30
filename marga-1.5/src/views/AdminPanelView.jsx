@@ -48,6 +48,7 @@ import LineChart from '../components/charts/LineChart.jsx';
 import DonutChart from '../components/charts/DonutChart.jsx';
 import HBarChart from '../components/charts/HBarChart.jsx';
 import ReglasPagoCard from '../components/admin/ReglasPagoCard.jsx';
+import MesesVentaCard from '../components/admin/MesesVentaCard.jsx';
 
 const DAY = 86_400_000;
 
@@ -676,6 +677,9 @@ export default function AdminPanelView() {
             </ul>
           )}
         </Section>
+
+        {/* ---------------- Meses de venta (duración de las rachas) ---------------- */}
+        <MesesVentaCard />
 
         {/* ---------------- Reglas de comisiones ---------------- */}
         <ReglasPagoCard />

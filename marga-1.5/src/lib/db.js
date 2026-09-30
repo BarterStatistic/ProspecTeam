@@ -4,7 +4,7 @@
 // Records carry `createdBy` (who registered the client) and `updatedAt`
 // ("última modificación"), stamped automatically on every write.
 
-import { AUTO_TRANSITIONS } from './constants.js';
+import { AUTO_TRANSITIONS, ROLES } from './constants.js';
 import { store } from './store/index.js';
 import { calcularFinanciamiento } from './cotizador.js';
 import {
@@ -13,6 +13,7 @@ import {
   mesVenta,
   fechaPago,
   numeroVentaPara,
+  cambiosDeMesVenta,
 } from './comisiones.js';
 import { motoPorNombre } from './motos.js';
 import { isAdmin } from './permissions.js';
@@ -22,6 +23,8 @@ import {
   mensajeEntrega,
   mensajeFacturacion,
   mensajeEdicion,
+  mensajeProcesoNuevo,
+  mensajeCitaNueva,
 } from './notificaciones.js';
 
 const now = () => Date.now();
@@ -41,11 +44,11 @@ function nombreDe(cliente) {
  * Crea una notificación para el vendedor dueño de la tarjeta y poda las viejas.
  * No se autonotifica: si el actor es el propio destinatario, no escribe nada.
  */
-export async function notificar({ destinatario, tipo, mensaje, clienteId, actor }) {
+export async function notificar({ destinatario, tipo, mensaje, clienteId, citaId, actor }) {
   if (!destinatario) return;
   if (actor && actor === destinatario) return;
 
-  await store.setNotificacion({
+  const record = {
     id: uuid(),
     destinatario,
     tipo,
@@ -53,7 +56,9 @@ export async function notificar({ destinatario, tipo, mensaje, clienteId, actor 
     clienteId: clienteId ?? '',
     createdAt: now(),
     leida: false,
-  });
+  };
+  if (citaId) record.citaId = citaId;
+  await store.setNotificacion(record);
 
   const mias = store
     .getNotificaciones()
@@ -61,6 +66,22 @@ export async function notificar({ destinatario, tipo, mensaje, clienteId, actor 
     .sort((a, b) => b.createdAt - a.createdAt);
   if (mias.length > MAX_NOTIFICACIONES) {
     await store.deleteNotificaciones(mias.slice(MAX_NOTIFICACIONES).map((n) => n.id));
+  }
+}
+
+/**
+ * Avisa a cada administrador de algo que hizo un vendedor (pasar un prospecto
+ * a Procesos, agendar una cita). Solo dispara cuando el actor es vendedor: lo
+ * que hacen el admin o un promotor no se reporta.
+ */
+async function notificarAdmins(actor, aviso) {
+  if (actor?.role !== ROLES.VENDEDOR) return;
+  const admins = store
+    .getUsers()
+    .filter((u) => u.role === ROLES.ADMIN && u.username)
+    .map((u) => u.username);
+  for (const destinatario of admins) {
+    await notificar({ ...aviso, destinatario, actor: actor.username ?? '' });
   }
 }
 
@@ -116,6 +137,13 @@ export async function createClient(values, actor = null) {
     comisionId: null,
   };
   await store.setClient(record);
+  if (record.section === 'procesos') {
+    await notificarAdmins(actor, {
+      tipo: TIPOS.PROCESO_NUEVO,
+      mensaje: mensajeProcesoNuevo(actor?.username ?? '', nombreDe(record)),
+      clienteId: record.id,
+    });
+  }
   return record;
 }
 
@@ -201,6 +229,14 @@ export async function moveClient(id, toSection, toStage, actor = null) {
   const destinatario = current.createdBy;
   const nombre = nombreDe(current);
   const quien = actor?.username ?? '';
+  // Un prospecto que entra a Procesos (soltarlo en "Proceso comenzado").
+  if (target.section === 'procesos' && current.section !== 'procesos') {
+    await notificarAdmins(actor, {
+      tipo: TIPOS.PROCESO_NUEVO,
+      mensaje: mensajeProcesoNuevo(quien, nombre),
+      clienteId: id,
+    });
+  }
   if (target.section === 'ventas') {
     await notificar({
       destinatario,
@@ -290,6 +326,16 @@ export async function createCita(values, actor = null) {
     updatedAt: ts,
   };
   await store.setCita(record);
+  await notificarAdmins(actor, {
+    tipo: TIPOS.CITA_NUEVA,
+    mensaje: mensajeCitaNueva(
+      actor?.username ?? '',
+      record.clientName || 'un cliente',
+      record.fechaCita,
+      record.hasTime,
+    ),
+    citaId: record.id,
+  });
   return record;
 }
 
@@ -548,30 +594,31 @@ export async function eliminarComision(id) {
 }
 
 /**
- * Renumera las comisiones de un mes de venta por orden de facturación, por
- * vendedor, y recalcula los importes que dependen de la racha. Acción manual
- * del admin — nunca se dispara sola.
+ * Patches que renumeran, por vendedor y en orden de facturación, las
+ * comisiones de `lista` que caen en el mes de venta `claveMes`, con los
+ * importes que dependen de la racha recalculados. Solo incluye las que
+ * cambian de número.
  */
-export async function renumerarMes(claveMes) {
-  const delMes = store.getComisiones().filter((c) => c.mesVenta === claveMes);
+function patchesRenumerar(lista, claveMes) {
   const porVendedor = new Map();
-  for (const c of delMes) {
+  for (const c of lista) {
+    if (c.mesVenta !== claveMes) continue;
     if (!porVendedor.has(c.vendedor)) porVendedor.set(c.vendedor, []);
     porVendedor.get(c.vendedor).push(c);
   }
 
   const patches = [];
-  for (const lista of porVendedor.values()) {
-    lista.sort((a, b) => a.fechaFacturacion - b.fechaFacturacion);
-    lista.forEach((c, i) => {
+  for (const delVendedor of porVendedor.values()) {
+    delVendedor.sort((a, b) => a.fechaFacturacion - b.fechaFacturacion);
+    delVendedor.forEach((c, i) => {
       const numeroVenta = i + 1;
+      if (c.numeroVenta === numeroVenta) return;
       const recalc = calcularComision({
         montoFinanciado: c.montoFinanciado,
         esquemaId: c.esquemaId,
         numeroVenta,
         tienePromotor: !!c.promotor,
       });
-      if (c.numeroVenta === numeroVenta) return;
       patches.push({
         id: c.id,
         patch: {
@@ -585,8 +632,52 @@ export async function renumerarMes(claveMes) {
       });
     });
   }
+  return patches;
+}
+
+/**
+ * Renumera las comisiones de un mes de venta por orden de facturación, por
+ * vendedor, y recalcula los importes que dependen de la racha. Acción manual
+ * del admin — nunca se dispara sola.
+ */
+export async function renumerarMes(claveMes) {
+  const patches = patchesRenumerar(store.getComisiones(), claveMes);
   await store.patchComisiones(patches);
   return patches.length;
+}
+
+/**
+ * Guarda la lista de meses de venta (inicio/fin de cada racha) y reacomoda las
+ * ventas ya facturadas que, con los rangos nuevos, pertenecen a otro mes: les
+ * reescribe `mesVenta` y renumera la racha de cada mes afectado (el que dejan
+ * y el que las recibe). Los meses que no ganan ni pierden ventas no se tocan,
+ * así que registrar un mes a futuro no mueve nada.
+ * Devuelve cuántas ventas cambiaron de mes.
+ */
+export async function guardarPeriodosVenta(periodos) {
+  await store.setConfig({ periodosVenta: periodos });
+  // Se arma la config a mano: el espejo de `store.getConfig()` puede no haber
+  // recibido todavía la escritura de arriba.
+  const config = { ...configComisiones(), periodosVenta: periodos };
+
+  const comisiones = store.getComisiones();
+  const cambios = cambiosDeMesVenta(comisiones, config);
+  if (cambios.length === 0) return 0;
+
+  const nuevoMes = new Map(cambios.map((c) => [c.id, c.a]));
+  const afectados = new Set(cambios.flatMap((c) => [c.de, c.a]));
+  const reacomodadas = comisiones.map((c) =>
+    nuevoMes.has(c.id) ? { ...c, mesVenta: nuevoMes.get(c.id) } : c,
+  );
+
+  const porId = new Map(cambios.map((c) => [c.id, { mesVenta: c.a }]));
+  for (const clave of afectados) {
+    for (const { id, patch } of patchesRenumerar(reacomodadas, clave)) {
+      porId.set(id, { ...(porId.get(id) ?? {}), ...patch });
+    }
+  }
+  await store.patchComisiones([...porId].map(([id, patch]) => ({ id, patch })));
+  return cambios.length;
 }
 
 // ---------------------------------------------------------------------------
