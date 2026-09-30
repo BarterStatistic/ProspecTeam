@@ -3,6 +3,7 @@
 // INE photo underneath. Colours mirror the app palette.
 
 import { formatDate, formatDateTime } from './format.js';
+import { saveBlob } from './saveFile.js';
 
 const COL = {
   bg: '#0A1428',
@@ -194,10 +195,6 @@ export async function downloadCitaSummary(cita) {
 
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
   if (!blob) throw new Error('No se pudo generar la imagen del resumen.');
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `cita-${safeName(cita.clientName)}-${safeName(formatDate(cita.fechaCita))}.jpg`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const filename = `cita-${safeName(cita.clientName)}-${safeName(formatDate(cita.fechaCita))}.jpg`;
+  await saveBlob(blob, filename);
 }

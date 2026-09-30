@@ -11,6 +11,7 @@
 
 import { precioEfectivo } from './cotizador.js';
 import { formatMXN as mxn, formatMXN0 as mxn0, formatPct as pct } from './format.js';
+import { saveBlob } from './saveFile.js';
 
 export const ANCHO_TARJETA = 640;
 
@@ -222,10 +223,9 @@ export async function descargarCotizacionJPG(opciones) {
       scrollX: 0,
       scrollY: 0,
     });
-    const link = document.createElement('a');
-    link.download = nombreArchivo(opciones.moto.nombre);
-    link.href = canvas.toDataURL('image/jpeg', 0.93);
-    link.click();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.93));
+    if (!blob) throw new Error('No se pudo generar la cotización.');
+    await saveBlob(blob, nombreArchivo(opciones.moto.nombre));
   } finally {
     document.body.removeChild(card);
     arreglo.remove();
