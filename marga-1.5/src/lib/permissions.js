@@ -64,6 +64,7 @@ export function canSeeClient(role, client, username) {
 export function canViewSection(role, section) {
   if (section === 'usuarios' || section === 'admin') return isAdmin(role);
   if (section === 'citas') return true; // shared agenda: every role manages citas fully
+  if (section === 'disponibilidad') return true; // every role reads it; only admin edits
   if (TOOL_IDS.includes(section)) return true; // tools: available to every role
   if (section === 'comisiones') return canViewComisiones(role);
   return visibleSections(role).includes(section);
@@ -113,6 +114,11 @@ export function canDropTo(role, section) {
  */
 export function canAssignPromotor(role) {
   return isAdmin(role) || isPromotor(role);
+}
+
+/** Disponibilidad de motos: todos la consultan, solo el admin cambia estados. */
+export function canEditDisponibilidad(role) {
+  return isAdmin(role);
 }
 
 export function canImportBackup(role) {

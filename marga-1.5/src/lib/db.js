@@ -17,6 +17,7 @@ import {
 } from './comisiones.js';
 import { motoPorNombre } from './motos.js';
 import { isAdmin } from './permissions.js';
+import { esEstadoValido } from './disponibilidad.js';
 import {
   TIPOS,
   mensajeColumna,
@@ -700,6 +701,23 @@ export async function registrarCotizacion(values, actor = null) {
   return record;
 }
 
+// ---------------------------------------------------------------------------
+// Disponibilidad de motos — un estado por modelo del catálogo.
+// ---------------------------------------------------------------------------
+
+/** Cambia el estado de disponibilidad de una moto del catálogo. */
+export async function cambiarDisponibilidad(nombreMoto, estado, actor = null) {
+  if (!motoPorNombre(nombreMoto)) {
+    throw new Error(`La moto "${nombreMoto}" no está en el catálogo.`);
+  }
+  if (!esEstadoValido(estado)) throw new Error(`Estado de disponibilidad inválido: ${estado}`);
+  await store.setDisponibilidadMoto(nombreMoto, {
+    estado,
+    updatedAt: now(),
+    updatedBy: actor?.username ?? '',
+  });
+}
+
 /** Versión del formato de respaldo. v3 agrega el dinero (solo para admin). */
 export const BACKUP_VERSION = 3;
 
@@ -716,6 +734,7 @@ export async function exportAll(role) {
     exportedAt: now(),
     clients: store.getClients(),
     citas: store.getCitas(),
+    disponibilidad: store.getDisponibilidad(),
   };
   if (isAdmin(role)) {
     data.comisiones = store.getComisiones();
@@ -760,6 +779,13 @@ export async function importAll(data, mode = 'merge') {
   }
   if (data.configComisiones && typeof data.configComisiones === 'object') {
     await store.setConfig(data.configComisiones);
+  }
+  if (data.disponibilidad && typeof data.disponibilidad === 'object') {
+    for (const [nombre, registro] of Object.entries(data.disponibilidad)) {
+      if (registro && esEstadoValido(registro.estado)) {
+        await store.setDisponibilidadMoto(nombre, registro);
+      }
+    }
   }
   return records.length;
 }

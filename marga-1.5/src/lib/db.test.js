@@ -526,3 +526,38 @@ describe('guardarPeriodosVenta', () => {
     expect(com.mesVenta).toBe('2026-10');
   });
 });
+
+describe('cambiarDisponibilidad', () => {
+  it('guarda el estado de la moto con quién y cuándo lo cambió', async () => {
+    await db.cambiarDisponibilidad('DNM 2.5', 'bajo_pedido', ADMIN);
+    const r = store.getDisponibilidad()['DNM 2.5'];
+    expect(r.estado).toBe('bajo_pedido');
+    expect(r.updatedBy).toBe(ADMIN.username);
+    expect(typeof r.updatedAt).toBe('number');
+
+    await db.cambiarDisponibilidad('DNM 2.5', 'no_disponible', ADMIN);
+    expect(store.getDisponibilidad()['DNM 2.5'].estado).toBe('no_disponible');
+  });
+
+  it('rechaza una moto fuera del catálogo o un estado inválido', async () => {
+    await expect(db.cambiarDisponibilidad('MOTO FANTASMA', 'disponible', ADMIN)).rejects.toThrow(
+      /no está en el catálogo/,
+    );
+    await expect(db.cambiarDisponibilidad('U2', 'agotada', ADMIN)).rejects.toThrow(/inválido/);
+    expect(store.getDisponibilidad()).toEqual({});
+  });
+
+  it('viaja en el respaldo y se restaura', async () => {
+    await db.cambiarDisponibilidad('U2', 'no_disponible', ADMIN);
+    const respaldo = await db.exportAll('vendedor');
+    expect(respaldo.disponibilidad.U2.estado).toBe('no_disponible');
+
+    vi.resetModules();
+    vi.stubGlobal('localStorage', localStorageDeMentira());
+    db = await import('./db.js');
+    ({ store } = await import('./store/index.js'));
+    await store.init();
+    await db.importAll(respaldo);
+    expect(store.getDisponibilidad().U2.estado).toBe('no_disponible');
+  });
+});

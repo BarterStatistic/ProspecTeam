@@ -16,6 +16,7 @@ export function createMemoryStore() {
   let cotizaciones = [];
   let notificaciones = [];
   let config = {};
+  let disponibilidad = {};
   const clientListeners = new Set();
   const userListeners = new Set();
   const citaListeners = new Set();
@@ -24,6 +25,7 @@ export function createMemoryStore() {
   const cotizacionListeners = new Set();
   const notificacionListeners = new Set();
   const configListeners = new Set();
+  const disponibilidadListeners = new Set();
 
   function load() {
     try {
@@ -40,6 +42,10 @@ export function createMemoryStore() {
         cotizaciones = Array.isArray(parsed.cotizaciones) ? parsed.cotizaciones : [];
         notificaciones = Array.isArray(parsed.notificaciones) ? parsed.notificaciones : [];
         config = parsed.config && typeof parsed.config === 'object' ? parsed.config : {};
+        disponibilidad =
+          parsed.disponibilidad && typeof parsed.disponibilidad === 'object'
+            ? parsed.disponibilidad
+            : {};
       }
     } catch {
       /* corrupted storage — start clean */
@@ -59,6 +65,7 @@ export function createMemoryStore() {
           cotizaciones,
           notificaciones,
           config,
+          disponibilidad,
         }),
       );
     } catch {
@@ -298,6 +305,19 @@ export function createMemoryStore() {
     async setConfig(patch) {
       config = { ...config, ...patch };
       notifyConfig();
+    },
+
+    // --- disponibilidad de motos (documento único config/disponibilidad) ---
+    getDisponibilidad: () => disponibilidad,
+    onDisponibilidadChange(cb) {
+      disponibilidadListeners.add(cb);
+      cb(disponibilidad);
+      return () => disponibilidadListeners.delete(cb);
+    },
+    async setDisponibilidadMoto(nombre, registro) {
+      disponibilidad = { ...disponibilidad, [nombre]: registro };
+      persist();
+      for (const cb of disponibilidadListeners) cb(disponibilidad);
     },
   };
 }

@@ -41,6 +41,7 @@ export const TOOL_IDS = TOOLS.map((t) => t.id);
 export const VIEW_META = {
   ...SECTIONS,
   citas: { id: 'citas', label: 'Citas', type: 'citas' },
+  disponibilidad: { id: 'disponibilidad', label: 'Disponibilidad de motos', type: 'disponibilidad' },
   usuarios: { id: 'usuarios', label: 'Gestor de usuarios', type: 'users' },
   admin: { id: 'admin', label: 'Panel ADMIN', type: 'admin' },
   comisiones: { id: 'comisiones', label: 'Comisiones', type: 'comisiones' },

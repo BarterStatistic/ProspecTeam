@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Wallet,
   Calculator,
+  Bike,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useData } from '../../context/DataContext.jsx';
@@ -146,6 +147,14 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
           badge={citasHoy}
           isActive={active === 'citas'}
           onClick={() => onNavigate('citas')}
+        />
+
+        {/* Catálogo con disponibilidad — lo consultan todos los roles */}
+        <NavButton
+          icon={Bike}
+          label="Disponibilidad de motos"
+          isActive={active === 'disponibilidad'}
+          onClick={() => onNavigate('disponibilidad')}
         />
 
         {canViewComisiones(role) && (

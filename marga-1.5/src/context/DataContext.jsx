@@ -27,6 +27,7 @@ import {
   guardarPeriodosVenta,
   marcarNotificacionesLeidas,
   configComisiones as leerConfigComisiones,
+  cambiarDisponibilidad as dbCambiarDisponibilidad,
 } from '../lib/db.js';
 
 const DataContext = createContext(null);
@@ -60,6 +61,9 @@ export function DataProvider({ children }) {
   useEffect(() => store.onCotizacionesChange(setCotizaciones), []);
   useEffect(() => store.onNotificacionesChange(setNotificaciones), []);
   useEffect(() => store.onConfigChange(setConfigRaw), []);
+
+  const [disponibilidad, setDisponibilidad] = useState(() => store.getDisponibilidad());
+  useEffect(() => store.onDisponibilidadChange(setDisponibilidad), []);
 
   // Every role subscribes to the users collection, because the per-vendedor
   // accent colour and profile picture live there and mark cards for everyone.
@@ -165,6 +169,11 @@ export function DataProvider({ children }) {
       cotizaciones,
       registrarCotizacion: (values) => dbRegistrarCotizacion(values, user),
 
+      // --- disponibilidad de motos ---
+      disponibilidad,
+      cambiarDisponibilidad: (nombreMoto, estado) =>
+        dbCambiarDisponibilidad(nombreMoto, estado, user),
+
       // --- notificaciones ---
       misNotificaciones,
       noLeidas,
@@ -233,6 +242,7 @@ export function DataProvider({ children }) {
       misNotificaciones,
       noLeidas,
       configComisiones,
+      disponibilidad,
     ],
   );
 

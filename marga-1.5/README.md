@@ -31,6 +31,15 @@ para que todo el equipo vea los mismos datos desde cualquier dispositivo, en tie
   como "Vendedor Prospect Team" (sin distinguir mayúsculas ni acentos) —
   `src/lib/permissions.js`, `canSeeClient`. El mismo filtro aplica al contador del menú
   y a la búsqueda global.
+- **Disponibilidad de motos.** Sección nueva en el menú, visible para todos los roles:
+  los 37 modelos del catálogo (`MODELS` de `src/lib/motos.js`) con su precio de lista y
+  uno de tres estados — **Disponible** (verde), **Bajo pedido** (amarillo) o **No
+  disponible** (rojo) —, filtros por estado con conteo y búsqueda por modelo. Solo el
+  **admin** cambia estados (`permissions.canEditDisponibilidad`); el resto los consulta.
+  Se guarda en el documento único `config/disponibilidad` como
+  `{ [nombreMoto]: { estado, updatedAt, updatedBy } }` (`src/lib/disponibilidad.js`,
+  `db.cambiarDisponibilidad`); una moto sin registro se considera disponible. Viaja en el
+  respaldo JSON.
 
 ## Novedades frente a Marga 1.5
 
