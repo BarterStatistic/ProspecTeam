@@ -31,7 +31,7 @@ function loadImage(src) {
 }
 
 /** Word-wrap `text` to `maxWidth`, returning an array of lines. */
-function wrapLines(ctx, text, maxWidth) {
+export function wrapLines(ctx, text, maxWidth) {
   const out = [];
   for (const paragraph of String(text).split('\n')) {
     const words = paragraph.split(/\s+/).filter(Boolean);
@@ -54,7 +54,7 @@ function wrapLines(ctx, text, maxWidth) {
   return out;
 }
 
-function safeName(s) {
+export function safeName(s) {
   return String(s || 'cita')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')

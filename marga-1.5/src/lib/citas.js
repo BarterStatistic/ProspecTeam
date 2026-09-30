@@ -13,3 +13,13 @@ export function contarCitasDeHoy(citas, now = Date.now()) {
     (c) => typeof c?.fechaCita === 'number' && c.fechaCita >= inicio && c.fechaCita < fin,
   ).length;
 }
+
+/**
+ * Folio corto de una cita para el vale: los primeros 8 caracteres
+ * alfanuméricos de su id, en mayúsculas. Sirve para validar el vale contra la
+ * agenda al llegar el cliente.
+ */
+export function folioCita(cita) {
+  const limpio = String(cita?.id ?? '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  return limpio.slice(0, 8) || 'SIN-FOLIO';
+}
