@@ -46,6 +46,7 @@ const ICONS = {
 const TOOL_ICONS = {
   buro: ScanLine,
   cotizador: Calculator,
+  disponibilidad: Bike,
 };
 
 function NavButton({ icon: Icon, label, badge, isActive, onClick, nested = false }) {
@@ -147,14 +148,6 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
           badge={citasHoy}
           isActive={active === 'citas'}
           onClick={() => onNavigate('citas')}
-        />
-
-        {/* Catálogo con disponibilidad — lo consultan todos los roles */}
-        <NavButton
-          icon={Bike}
-          label="Disponibilidad de motos"
-          isActive={active === 'disponibilidad'}
-          onClick={() => onNavigate('disponibilidad')}
         />
 
         {canViewComisiones(role) && (

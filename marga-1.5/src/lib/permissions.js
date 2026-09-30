@@ -64,7 +64,6 @@ export function canSeeClient(role, client, username) {
 export function canViewSection(role, section) {
   if (section === 'usuarios' || section === 'admin') return isAdmin(role);
   if (section === 'citas') return true; // shared agenda: every role manages citas fully
-  if (section === 'disponibilidad') return true; // every role reads it; only admin edits
   if (TOOL_IDS.includes(section)) return true; // tools: available to every role
   if (section === 'comisiones') return canViewComisiones(role);
   return visibleSections(role).includes(section);

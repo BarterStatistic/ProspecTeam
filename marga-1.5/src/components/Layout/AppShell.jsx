@@ -28,13 +28,13 @@ const VIEWS = {
   ventas: VentasView,
   cancelados: CanceladosView,
   citas: CitasView,
-  disponibilidad: DisponibilidadView,
   usuarios: UsuariosView,
   admin: AdminPanelView,
   comisiones: ComisionesView,
   // Tools (see TOOLS in constants.js) — keyed by tool id.
   buro: BuroAutomaticoView,
   cotizador: CotizadorView,
+  disponibilidad: DisponibilidadView,
 };
 
 export default function AppShell() {
