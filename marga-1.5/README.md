@@ -122,6 +122,20 @@ tablas oficiales con vigencia **25/08/2026**.
 - El **vendedor solo ve sus propias comisiones** en su pestaña Comisiones.
 - **Admin y promotor** son quienes capturan una facturación (soltar la tarjeta en
   "Moto Facturada" o reabrir el chip "Facturada").
+- **Eliminar un cliente facturado** lo hace solo el **admin**, y borra también su
+  comisión en la misma escritura (el aviso de confirmación muestra cuánto). Antes la
+  comisión quedaba huérfana y seguía sumando en la nómina y en la racha. Como al
+  eliminar una comisión, el mes no se renumera solo (`src/lib/db.js`, `deleteClient`).
+
+### Sesión
+
+La sesión guardada en la pestaña es solo `{ id, firma }` (`src/lib/auth.js`). El
+nombre y el **rol se leen siempre del registro vivo** en `users`, así que editar
+`sessionStorage` a mano ya no da permisos de admin, y un cambio de rol, de contraseña o
+una baja hecha por el admin se aplica al instante en las sesiones abiertas (cambiar o
+borrar la cuenta cierra la sesión con un aviso; cambiar tu propia contraseña no te
+saca). Mientras las reglas de Firestore sigan abiertas esto sube la barrera, pero no
+sustituye a Firebase Auth.
 
 ## Pruebas
 
@@ -129,7 +143,7 @@ tablas oficiales con vigencia **25/08/2026**.
 npm test
 ```
 
-Corre **124 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
+Corre **160 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
 snapshot del catálogo completo, y `src/lib/cotizador.js`), comisiones
 (`src/lib/comisiones.js`), textos de notificaciones (`src/lib/notificaciones.js`),
 analítica del Panel ADMIN (`src/lib/analytics.js`) y la capa de dominio

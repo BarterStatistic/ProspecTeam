@@ -177,3 +177,27 @@ export function numeroVentaPara(comisiones, { vendedor, clave, excluirId = null 
   );
   return previas.length + 1;
 }
+
+/**
+ * Agrupa comisiones (con su `fechaPagoTs` ya derivada) por fecha de pago, en el
+ * orden en que se consultan: primero los pagos pendientes, del más cercano al
+ * más lejano, y después los ya pasados, del más reciente al más viejo. Solo el
+ * primer pago pendiente (el de hoy cuenta como pendiente) lleva `proximo`.
+ * Devuelve [{ ts, filas, proximo }].
+ */
+export function agruparPorPago(comisiones, ahora) {
+  const hoy = startOfDay(ahora);
+  const porFecha = new Map();
+  for (const c of comisiones) {
+    if (!porFecha.has(c.fechaPagoTs)) porFecha.set(c.fechaPagoTs, []);
+    porFecha.get(c.fechaPagoTs).push(c);
+  }
+  const fechas = [...porFecha.keys()];
+  const pendientes = fechas.filter((ts) => ts >= hoy).sort((a, b) => a - b);
+  const pasados = fechas.filter((ts) => ts < hoy).sort((a, b) => b - a);
+  return [...pendientes, ...pasados].map((ts, i) => ({
+    ts,
+    filas: porFecha.get(ts),
+    proximo: i === 0 && ts >= hoy,
+  }));
+}

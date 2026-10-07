@@ -40,7 +40,7 @@ export default function LineChart({ points, series, height = H }) {
               y2={y(t)}
               stroke="rgba(255,255,255,0.07)"
             />
-            <text x={PAD.left - 6} y={y(t) + 4} textAnchor="end" fontSize="10" fill="#64748B">
+            <text x={PAD.left - 6} y={y(t) + 4} textAnchor="end" fontSize="10" fill="#8291A8">
               {t}
             </text>
           </g>
@@ -70,7 +70,7 @@ export default function LineChart({ points, series, height = H }) {
               y={height - PAD.bottom + 16}
               textAnchor="middle"
               fontSize="9"
-              fill="#64748B"
+              fill="#8291A8"
             >
               {p.label}
             </text>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { XCircle, Trash2, Phone, Bike, RotateCcw, CalendarX } from 'lucide-react';
 import { useData } from '../../context/DataContext.jsx';
-import { fullName } from '../../lib/clients.js';
+import { fullName, mensajeEliminarCliente } from '../../lib/clients.js';
 import { sellerColor } from '../../lib/constants.js';
 import { formatDateTime } from '../../lib/format.js';
 import Card from '../ui/Card.jsx';
@@ -11,7 +11,14 @@ import CopyButton from '../ui/CopyButton.jsx';
 import Avatar from '../ui/Avatar.jsx';
 
 function CancelledRow({ client }) {
-  const { updateClient, deleteClient, moveClient, sellerColors, sellerAvatars } = useData();
+  const {
+    updateClient,
+    deleteClient,
+    comisionesDeCliente,
+    moveClient,
+    sellerColors,
+    sellerAvatars,
+  } = useData();
   const [notas, setNotas] = useState(client.notasRechazo ?? '');
 
   // Puts the credit process back on track: the client returns to the Procesos
@@ -56,7 +63,10 @@ function CancelledRow({ client }) {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => confirm(`¿Eliminar a ${fullName(client)}?`) && deleteClient(client.id)}
+          onClick={() =>
+            confirm(mensajeEliminarCliente(client, comisionesDeCliente(client))) &&
+            deleteClient(client.id).catch((err) => alert(err.message))
+          }
           aria-label="Eliminar"
         >
           <Trash2 size={16} className="text-state-danger" />

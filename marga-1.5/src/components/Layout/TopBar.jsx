@@ -37,7 +37,11 @@ export default function TopBar({ section, onOpenSidebar, onOpenSearch }) {
       </button>
 
       <NotificationBell />
-      <BackupMenu />
+      {/* En celular Respaldo vive en el menú lateral: con cuatro botones aquí
+          el título se cortaba ("Prospe…"). */}
+      <div className="hidden md:block">
+        <BackupMenu />
+      </div>
 
       {showAdd && (
         <Button variant="gold" size="md" onClick={() => openAddClient(section)}>

@@ -118,7 +118,7 @@ export const ROLE_CHIP_CLASSES = {
 // later from the "Gestor de usuarios" view.
 export const SEED_USERS = [
   { id: 'braulio-acosta', username: 'Braulio Acosta', role: ROLES.ADMIN, password: 'xbox2015', color: '#22C55E' },
-  { id: 'alejandro-acosta', username: 'Alejandro Acosta', role: ROLES.VENDEDOR, password: 'prospect2007', color: '#EF4444' },
+  { id: 'alejandro-acosta', username: 'Alejandro Acosta', role: ROLES.VENDEDOR, password: 'prospect2007', color: '#14B8A6' },
   { id: 'emmanuel-bernal', username: 'Emmanuel Bernal', role: ROLES.VENDEDOR, password: 'brisasponiente394', color: '#3B82F6' },
 ];
 
@@ -134,7 +134,7 @@ export const SEED_USERS = [
 
 export const SELLER_COLORS = {
   'Emmanuel Bernal': '#3B82F6', // azul
-  'Alejandro Acosta': '#EF4444', // rojo
+  'Alejandro Acosta': '#14B8A6', // turquesa (antes rojo: ver COLORES_RETIRADOS)
   'Braulio Acosta': '#22C55E', // verde fuerte
 };
 
@@ -146,7 +146,6 @@ export const UNASSIGNED_LABEL = 'Sin asignar';
 export const COLOR_PALETTE = [
   '#22C55E', // verde
   '#3B82F6', // azul
-  '#EF4444', // rojo
   '#FFD11A', // dorado
   '#A855F7', // morado
   '#F97316', // naranja
@@ -158,10 +157,24 @@ export const COLOR_PALETTE = [
   '#94A3B8', // gris
 ];
 
+// Colores que ya no se ofrecen pero pueden seguir guardados en un usuario.
+// El rojo se confundía con "error" y con las acciones de borrar/cancelar (que
+// usan el rojo de state.danger), así que se pinta con su reemplazo hasta que
+// el admin elija otro color desde el Gestor de usuarios.
+export const COLORES_RETIRADOS = {
+  '#EF4444': '#14B8A6', // rojo → turquesa
+};
+
+/** Aplica COLORES_RETIRADOS a un color guardado (sin distinguir mayúsculas). */
+function colorVigente(color) {
+  if (!color) return color;
+  return COLORES_RETIRADOS[String(color).toUpperCase()] ?? color;
+}
+
 // Fallback palette for any other (future) vendedor without a stored colour,
 // chosen deterministically from the name so each one keeps a stable, distinct
 // colour until an admin picks one.
-const EXTRA_PALETTE = ['#A855F7', '#F59E0B', '#14B8A6', '#EC4899', '#84CC16', '#F97316'];
+const EXTRA_PALETTE = ['#A855F7', '#F59E0B', '#EC4899', '#84CC16', '#F97316'];
 
 /**
  * Accent colour for a client's creator (empty → grey).
@@ -170,7 +183,7 @@ const EXTRA_PALETTE = ['#A855F7', '#F59E0B', '#14B8A6', '#EC4899', '#84CC16', '#
  */
 export function sellerColor(name, colors = null) {
   if (!name) return UNASSIGNED_COLOR;
-  if (colors && colors[name]) return colors[name];
+  if (colors && colors[name]) return colorVigente(colors[name]);
   if (SELLER_COLORS[name]) return SELLER_COLORS[name];
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
@@ -179,7 +192,7 @@ export function sellerColor(name, colors = null) {
 
 /** Colour assigned to a user record, falling back to the name-based default. */
 export function userColor(user) {
-  return user?.color || sellerColor(user?.username);
+  return colorVigente(user?.color) || sellerColor(user?.username);
 }
 
 // Human-readable label for a section/stage pair (used by the global search).

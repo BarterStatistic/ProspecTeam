@@ -23,6 +23,7 @@ import { useUI } from '../../context/UIContext.jsx';
 import { canDropTo, canEditClient, canRegistrarFacturacion } from '../../lib/permissions.js';
 import { resolveTransition } from '../../lib/db.js';
 import { regresoAColumna } from '../../lib/clients.js';
+import { ChevronDown, SlidersHorizontal } from 'lucide-react';
 import Column, { COLUMN_PREFIX } from './Column.jsx';
 import { CardBody } from './ClientCard.jsx';
 
@@ -79,6 +80,11 @@ export default function KanbanBoard({ section }) {
   const [sellerFilter, setSellerFilter] = useState(ALL);
   // Procesos only: filter by the promotor following the process up.
   const [promotorFilter, setPromotorFilter] = useState(ALL);
+  // Celular: los filtros van plegados tras un botón "Filtros" (hasta 4
+  // renglones de chips empujaban la primera tarjeta al último tercio de la
+  // pantalla). Desde md siempre están a la vista.
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+  const filtrosActivos = (sellerFilter !== ALL ? 1 : 0) + (promotorFilter !== ALL ? 1 : 0);
   const columns = BOARD_COLUMNS[section];
   const isProcesos = section === 'procesos';
 
@@ -234,25 +240,48 @@ export default function KanbanBoard({ section }) {
     >
       <div className="flex h-full flex-col">
         {(sellers.length > 0 || promotores.length > 0) && (
-          <div className="space-y-1.5 px-4 pt-3 sm:px-6">
-            <FilterRow
-              label="Vendedor:"
-              items={sellers}
-              value={sellerFilter}
-              onChange={setSellerFilter}
-              colorOf={(v) =>
-                v === UNASSIGNED ? UNASSIGNED_COLOR : sellerColor(v, sellerColors)
-              }
-            />
-            <FilterRow
-              label="Promotor:"
-              items={promotores}
-              value={promotorFilter}
-              onChange={setPromotorFilter}
-              colorOf={(v) =>
-                v === UNASSIGNED ? UNASSIGNED_COLOR : sellerColor(v, sellerColors)
-              }
-            />
+          <div className="px-4 pt-3 sm:px-6">
+            <button
+              onClick={() => setFiltrosAbiertos((v) => !v)}
+              aria-expanded={filtrosAbiertos}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition md:hidden ${
+                filtrosActivos
+                  ? 'border-gold/30 bg-gold/10 text-gold'
+                  : 'border-white/10 text-ink-muted hover:bg-white/5 hover:text-ink'
+              }`}
+            >
+              <SlidersHorizontal size={14} />
+              Filtros
+              {filtrosActivos > 0 && (
+                <span className="m-chip bg-gold/20 text-gold">{filtrosActivos}</span>
+              )}
+              <ChevronDown
+                size={14}
+                className={`transition ${filtrosAbiertos ? 'rotate-180' : ''}`}
+              />
+            </button>
+            <div
+              className={`space-y-1.5 md:mt-0 md:block ${filtrosAbiertos ? 'mt-2 block' : 'hidden'}`}
+            >
+              <FilterRow
+                label="Vendedor:"
+                items={sellers}
+                value={sellerFilter}
+                onChange={setSellerFilter}
+                colorOf={(v) =>
+                  v === UNASSIGNED ? UNASSIGNED_COLOR : sellerColor(v, sellerColors)
+                }
+              />
+              <FilterRow
+                label="Promotor:"
+                items={promotores}
+                value={promotorFilter}
+                onChange={setPromotorFilter}
+                colorOf={(v) =>
+                  v === UNASSIGNED ? UNASSIGNED_COLOR : sellerColor(v, sellerColors)
+                }
+              />
+            </div>
           </div>
         )}
 

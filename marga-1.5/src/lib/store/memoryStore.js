@@ -115,6 +115,10 @@ export function createMemoryStore() {
       );
       persist();
     }
+    // Quien se suscribió antes de init (la verificación de sesión en
+    // AuthContext) recibió la lista vacía; como en Firestore, avisarle cuando
+    // llegan los datos.
+    for (const cb of userListeners) cb(users);
   }
 
   return {
@@ -143,6 +147,13 @@ export function createMemoryStore() {
     },
     async deleteClient(id) {
       clients = clients.filter((c) => c.id !== id);
+      notifyClients();
+    },
+    async deleteClientConComisiones(id, comisionIds) {
+      const borrar = new Set(comisionIds);
+      comisiones = comisiones.filter((c) => !borrar.has(c.id));
+      clients = clients.filter((c) => c.id !== id);
+      notifyComisiones();
       notifyClients();
     },
     async bulkSetClients(records) {

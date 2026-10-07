@@ -25,6 +25,7 @@ import {
   guardarConfigComisiones,
   marcarNotificacionesLeidas,
   configComisiones as leerConfigComisiones,
+  comisionesDeCliente,
 } from '../lib/db.js';
 
 const DataContext = createContext(null);
@@ -35,7 +36,7 @@ const uuid = () =>
     : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 export function DataProvider({ children }) {
-  const { user } = useAuth();
+  const { user, renovarSesionPropia } = useAuth();
   const [clients, setClients] = useState(() => store.getClients());
   const [users, setUsers] = useState(() => store.getUsers());
   const [citas, setCitas] = useState(() => store.getCitas());
@@ -129,7 +130,7 @@ export function DataProvider({ children }) {
       loading: false,
       createClient: (values) => dbCreateClient(values, user),
       updateClient: (id, patch) => updateClient(id, patch, user),
-      deleteClient,
+      deleteClient: (id) => deleteClient(id, user),
       moveClient: (id, toSection, toStage) => moveClient(id, toSection, toStage, user),
       applyBoardReorder: (args) => applyBoardReorder(args, user),
       cancelClient,
@@ -154,6 +155,8 @@ export function DataProvider({ children }) {
       actualizarFacturacion: (comisionId, values) =>
         dbActualizarFacturacion(comisionId, values, user),
       eliminarComision,
+      /** Comisiones ligadas a un cliente (para avisar antes de eliminarlo). */
+      comisionesDeCliente: (cliente) => comisionesDeCliente(cliente, comisiones),
       renumerarMes,
       guardarConfigComisiones,
 
@@ -205,7 +208,12 @@ export function DataProvider({ children }) {
         // `photo` is deliberately absent: an admin editing a role or colour must
         // not wipe the picture the user set for themselves.
         const patch = { username: name, role, color: color || '' };
-        if (password) patch.passwordHash = await hashPassword(password);
+        if (password) {
+          patch.passwordHash = await hashPassword(password);
+          // Cambiar la contraseña invalida las sesiones de esa cuenta; si es la
+          // propia, la de esta pestaña se renueva en vez de cerrarse.
+          await renovarSesionPropia({ id, passwordHash: patch.passwordHash });
+        }
         await store.patchUser(id, patch);
       },
       deleteUser: (id) => store.deleteUser(id),

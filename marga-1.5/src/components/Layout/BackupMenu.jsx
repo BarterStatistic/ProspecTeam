@@ -7,7 +7,12 @@ import { toDateInput } from '../../lib/format.js';
 import Button from '../ui/Button.jsx';
 import Modal from '../ui/Modal.jsx';
 
-export default function BackupMenu() {
+/**
+ * Respaldo: exportar / importar JSON. `variant="sidebar"` lo dibuja como una
+ * entrada del menú lateral, con el desplegable hacia arriba: en celular vive
+ * ahí y no en la barra superior, donde le quitaba espacio al título.
+ */
+export default function BackupMenu({ variant = 'topbar' }) {
   const { exportAll, importAll } = useData();
   const { role } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -64,15 +69,29 @@ export default function BackupMenu() {
 
   return (
     <div className="relative">
-      <Button variant="outline" size="md" onClick={() => setMenuOpen((v) => !v)} aria-label="Respaldo">
-        <Database size={18} />
-        <span className="hidden sm:inline">Respaldo</span>
-      </Button>
+      {variant === 'sidebar' ? (
+        <button
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-expanded={menuOpen}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-white/5 hover:text-ink"
+        >
+          <Database size={18} /> Respaldo
+        </button>
+      ) : (
+        <Button variant="outline" size="md" onClick={() => setMenuOpen((v) => !v)} aria-label="Respaldo">
+          <Database size={18} />
+          <span className="hidden sm:inline">Respaldo</span>
+        </Button>
+      )}
 
       {menuOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-          <div className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-xl border border-white/10 bg-navy-800 shadow-card">
+          <div
+            className={`absolute z-50 w-52 overflow-hidden rounded-xl border border-white/10 bg-navy-800 shadow-card ${
+              variant === 'sidebar' ? 'bottom-full left-0 mb-2' : 'right-0 mt-2'
+            }`}
+          >
             <button
               onClick={handleExport}
               className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-ink hover:bg-white/5"

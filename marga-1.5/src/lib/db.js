@@ -168,8 +168,36 @@ export async function updateClient(id, patch, actor = null) {
   });
 }
 
-export async function deleteClient(id) {
-  await store.deleteClient(id);
+/**
+ * Comisiones ligadas a un cliente: la de su `comisionId` y cualquier otra con
+ * su `clienteId` (p. ej. una huérfana de una escritura parcial).
+ */
+export function comisionesDeCliente(cliente, comisiones = store.getComisiones()) {
+  if (!cliente) return [];
+  return comisiones.filter(
+    (c) => c.clienteId === cliente.id || (cliente.comisionId && c.id === cliente.comisionId),
+  );
+}
+
+/**
+ * Elimina un cliente. Si tiene comisión, solo el admin puede hacerlo y la
+ * comisión se borra junto con la tarjeta (en una sola escritura): antes la
+ * comisión quedaba huérfana, seguía contando en la nómina y en la racha, y ya
+ * no se podía editar. Igual que `eliminarComision`, no renumera el mes.
+ */
+export async function deleteClient(id, actor = null) {
+  const cliente = store.getClients().find((c) => c.id === id) ?? { id, comisionId: null };
+  const ligadas = comisionesDeCliente(cliente);
+  if (ligadas.length === 0) {
+    await store.deleteClient(id);
+    return;
+  }
+  if (!isAdmin(actor?.role)) {
+    throw new Error(
+      'Este cliente ya tiene una comisión registrada; solo el administrador puede eliminarlo.',
+    );
+  }
+  await store.deleteClientConComisiones(id, ligadas.map((c) => c.id));
 }
 
 /**
