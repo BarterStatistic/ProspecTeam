@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 const WIDTHS = {
@@ -21,7 +22,10 @@ export default function Modal({ open, onClose, title, size = 'md', children, foo
 
   if (!open) return null;
 
-  return (
+  // Portal a <body>: un ancestro con transform (p. ej. el menú lateral animado
+  // en celular, donde vive Respaldo) convierte position: fixed en relativo a
+  // ese ancestro, y el modal quedaba confinado al ancho del panel.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-navy-900/70 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
@@ -50,6 +54,7 @@ export default function Modal({ open, onClose, title, size = 'md', children, foo
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

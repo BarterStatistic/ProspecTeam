@@ -374,22 +374,22 @@ export default function AdminPanelView() {
           )}
 
           <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-white/5 pt-3">
-            <span className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+            <span className="mb-2 flex w-full items-center gap-1.5 text-xs font-medium text-ink-muted sm:w-auto">
               <CalendarRange size={14} className="text-sky2" /> Periodo
             </span>
             <Input
-              label="Inicio (dd/mm/aa)"
+              label="Inicio"
               type="date"
               value={desde}
               onChange={(e) => setDesde(e.target.value)}
-              className="w-44"
+              className="min-w-0 flex-1 sm:w-44 sm:flex-none"
             />
             <Input
-              label="Fin (dd/mm/aa)"
+              label="Fin"
               type="date"
               value={hasta}
               onChange={(e) => setHasta(e.target.value)}
-              className="w-44"
+              className="min-w-0 flex-1 sm:w-44 sm:flex-none"
             />
             <div className="mb-1 flex flex-wrap gap-1.5">
               {QUICK.map((q) => (
