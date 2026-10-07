@@ -9,6 +9,9 @@ Supabase de Alex (`ehyqexzaauvjoioafqdz`). Diseño:
 - Tablas: `modelos`, `esquemas`, `esquema_niveles`, `multiplicadores`, `parametros`.
   Lectura pública; escritura solo con `service_role`.
 - `cotizar(modelo, esquema, enganche, con_servicio)` → una fila por plazo.
+- `cotizar_monto(modelo, esquema, enganche_en_pesos)` → JSON con las parcialidades;
+  convierte el monto a porcentaje y usa `cotizar()`. Lo llama la herramienta
+  "Calculadora de Parcialidades" de Alex (n8n, HTTP con la clave publicable).
 - `catalogo()` → JSON con la forma exacta de `MODELS` y `SCHEMES` de los cotizadores.
 - Vista `Motos` → lo que lee Alex. La tabla original quedó como `motos_legacy`.
 
