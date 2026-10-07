@@ -45,7 +45,7 @@ export default function BarChart({ groups, series, height = H }) {
               stroke="rgba(255,255,255,0.07)"
               strokeWidth="1"
             />
-            <text x={PAD.left - 6} y={y(t) + 4} textAnchor="end" fontSize="10" fill="#64748B">
+            <text x={PAD.left - 6} y={y(t) + 4} textAnchor="end" fontSize="10" fill="#8291A8">
               {t}
             </text>
           </g>
@@ -102,7 +102,7 @@ export default function BarChart({ groups, series, height = H }) {
                 y={height - PAD.bottom + 28}
                 textAnchor="middle"
                 fontSize="9"
-                fill="#64748B"
+                fill="#8291A8"
               >
                 {g.label.split(' ').slice(1).join(' ')}
               </text>

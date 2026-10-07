@@ -162,6 +162,14 @@ export function createFirestoreStore(config) {
       await batch.commit();
     },
     deleteClient: (id) => deleteDoc(doc(clientsCol, id)),
+    // Un solo batch: o se borran el cliente y sus comisiones, o nada. Así no
+    // quedan comisiones huérfanas sumando en la nómina si la conexión se corta.
+    async deleteClientConComisiones(id, comisionIds) {
+      const batch = writeBatch(db);
+      for (const cid of comisionIds) batch.delete(doc(comisionesCol, cid));
+      batch.delete(doc(clientsCol, id));
+      await batch.commit();
+    },
     async bulkSetClients(records) {
       // Firestore batches cap at 500 ops; chunk to stay safe on big backups.
       for (let i = 0; i < records.length; i += 400) {

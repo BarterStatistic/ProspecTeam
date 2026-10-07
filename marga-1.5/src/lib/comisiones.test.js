@@ -13,6 +13,7 @@ import {
   cambiosDeMesVenta,
   etiquetaMes,
   sumarMes,
+  agruparPorPago,
 } from './comisiones.js';
 
 const at = (y, m, d) => new Date(y, m - 1, d).getTime();
@@ -353,5 +354,45 @@ describe('sumarMes / etiquetaMes', () => {
 
   it('da el nombre del mes con mayúscula', () => {
     expect(etiquetaMes('2026-10')).toBe('Octubre 2026');
+  });
+});
+
+describe('agruparPorPago', () => {
+  const d = (y, m, dia) => new Date(y, m - 1, dia).getTime();
+  const com = (id, fechaPagoTs) => ({ id, fechaPagoTs });
+  const ahora = d(2026, 10, 7) + 15 * 3_600_000; // 7 oct 2026, 3 p.m.
+
+  it('pendientes del más cercano al más lejano, luego pasados del más reciente al más viejo', () => {
+    const grupos = agruparPorPago(
+      [com('a', d(2026, 10, 16)), com('b', d(2026, 9, 25)), com('c', d(2026, 10, 9)), com('d', d(2026, 10, 2))],
+      ahora,
+    );
+    expect(grupos.map((g) => g.ts)).toEqual([
+      d(2026, 10, 9),
+      d(2026, 10, 16),
+      d(2026, 10, 2),
+      d(2026, 9, 25),
+    ]);
+  });
+
+  it('solo el pago pendiente más cercano es "próximo"', () => {
+    const grupos = agruparPorPago([com('a', d(2026, 10, 16)), com('b', d(2026, 10, 9))], ahora);
+    expect(grupos.map((g) => g.proximo)).toEqual([true, false]);
+  });
+
+  it('el pago de hoy cuenta como próximo aunque ya pasó la medianoche', () => {
+    const grupos = agruparPorPago([com('a', d(2026, 10, 7)), com('b', d(2026, 10, 9))], ahora);
+    expect(grupos[0]).toMatchObject({ ts: d(2026, 10, 7), proximo: true });
+  });
+
+  it('sin pagos pendientes, ninguno es próximo', () => {
+    const grupos = agruparPorPago([com('a', d(2026, 10, 2))], ahora);
+    expect(grupos[0].proximo).toBe(false);
+  });
+
+  it('junta en un grupo las comisiones con la misma fecha de pago', () => {
+    const grupos = agruparPorPago([com('a', d(2026, 10, 9)), com('b', d(2026, 10, 9))], ahora);
+    expect(grupos).toHaveLength(1);
+    expect(grupos[0].filas.map((c) => c.id)).toEqual(['a', 'b']);
   });
 });

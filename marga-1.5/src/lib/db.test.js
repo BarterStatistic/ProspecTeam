@@ -286,6 +286,54 @@ describe('eliminarComision', () => {
   });
 });
 
+describe('deleteClient', () => {
+  const ADMIN_ROL = { username: 'admin_braulio', role: 'admin' };
+
+  it('el admin elimina un cliente facturado junto con su comisión', async () => {
+    const cliente = await sembrarCliente();
+    await db.registrarFacturacion(cliente.id, facturacion(at(2026, 9, 20)), ADMIN);
+
+    await db.deleteClient(cliente.id, ADMIN_ROL);
+
+    expect(tarjeta(cliente.id)).toBeUndefined();
+    expect(store.getComisiones()).toHaveLength(0);
+  });
+
+  it('también borra una comisión huérfana ligada solo por clienteId', async () => {
+    const cliente = await sembrarCliente();
+    const comision = await db.registrarFacturacion(cliente.id, facturacion(at(2026, 9, 20)), ADMIN);
+    // Escritura parcial: la comisión existe pero la tarjeta no quedó estampada.
+    await store.patchClient(cliente.id, { comisionId: null });
+
+    await db.deleteClient(cliente.id, ADMIN_ROL);
+
+    expect(store.getComisiones().find((c) => c.id === comision.id)).toBeUndefined();
+  });
+
+  it('no deja que un vendedor elimine un cliente con comisión', async () => {
+    const cliente = await sembrarCliente();
+    await db.registrarFacturacion(cliente.id, facturacion(at(2026, 9, 20)), ADMIN);
+    await db.moveClient(cliente.id, 'prospectos', 'envio_docs_cita', ADMIN);
+
+    await expect(
+      db.deleteClient(cliente.id, { username: VENDEDOR, role: 'vendedor' }),
+    ).rejects.toThrow(/solo el administrador/);
+    expect(tarjeta(cliente.id)).toBeDefined();
+    expect(comisionesDe(cliente.id)).toHaveLength(1);
+  });
+
+  it('un cliente sin comisión se elimina igual que antes y no toca otras comisiones', async () => {
+    const facturado = await sembrarCliente();
+    await db.registrarFacturacion(facturado.id, facturacion(at(2026, 9, 20)), ADMIN);
+    const otro = await sembrarCliente({ firstName: 'Luis', phone: '8440000000' });
+
+    await db.deleteClient(otro.id, { username: VENDEDOR, role: 'vendedor' });
+
+    expect(tarjeta(otro.id)).toBeUndefined();
+    expect(store.getComisiones()).toHaveLength(1);
+  });
+});
+
 describe('renumerarMes', () => {
   it('reordena por fecha de facturación y recalcula los importes', async () => {
     const tarde = await sembrarCliente({ firstName: 'Tarde' });

@@ -3,7 +3,7 @@ import { XCircle, Trash2, Phone, Bike, RotateCcw, CalendarX } from 'lucide-react
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useData } from '../../context/DataContext.jsx';
 import { canDeleteClient, canEditClient, canSeeClient, isAdmin } from '../../lib/permissions.js';
-import { fullName } from '../../lib/clients.js';
+import { fullName, mensajeEliminarCliente } from '../../lib/clients.js';
 import { sellerColor } from '../../lib/constants.js';
 import { formatDateTime } from '../../lib/format.js';
 import Card from '../ui/Card.jsx';
@@ -14,7 +14,14 @@ import Avatar from '../ui/Avatar.jsx';
 
 function CancelledRow({ client }) {
   const { user, role } = useAuth();
-  const { updateClient, deleteClient, moveClient, sellerColors, sellerAvatars } = useData();
+  const {
+    updateClient,
+    deleteClient,
+    comisionesDeCliente,
+    moveClient,
+    sellerColors,
+    sellerAvatars,
+  } = useData();
   const [notas, setNotas] = useState(client.notasRechazo ?? '');
   // Un vendedor solo consulta sus cancelados: ni borra, ni edita la nota, ni
   // restablece el crédito.
@@ -64,7 +71,10 @@ function CancelledRow({ client }) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => confirm(`¿Eliminar a ${fullName(client)}?`) && deleteClient(client.id)}
+            onClick={() =>
+              confirm(mensajeEliminarCliente(client, comisionesDeCliente(client))) &&
+              deleteClient(client.id).catch((err) => alert(err.message))
+            }
             aria-label="Eliminar"
           >
             <Trash2 size={16} className="text-state-danger" />

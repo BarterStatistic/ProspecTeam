@@ -65,7 +65,7 @@ export default function DonutChart({ slices, centerLabel, centerValue }) {
         <text x={C} y={C - 2} textAnchor="middle" fontSize="26" fontWeight="700" fill="#F8FAFC">
           {centerValue ?? total}
         </text>
-        <text x={C} y={C + 16} textAnchor="middle" fontSize="10" fill="#64748B">
+        <text x={C} y={C + 16} textAnchor="middle" fontSize="10" fill="#8291A8">
           {centerLabel}
         </text>
       </svg>

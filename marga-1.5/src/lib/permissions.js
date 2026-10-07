@@ -91,11 +91,15 @@ export function canEditClient(role, client, username) {
   return ownsProspect(client, username);
 }
 
-/** Can this user permanently delete the given client? */
+/**
+ * Can this user permanently delete the given client? A client that already
+ * has a comisión (e.g. returned to Prospectos after being facturado) is
+ * admin-only: deleting it also deletes the comisión.
+ */
 export function canDeleteClient(role, client, username) {
   if (isAdmin(role)) return true;
   if (isPromotor(role)) return false;
-  return ownsProspect(client, username);
+  return ownsProspect(client, username) && !client.comisionId;
 }
 
 /** Can this role drop a card into section/stage? (drag target check) */

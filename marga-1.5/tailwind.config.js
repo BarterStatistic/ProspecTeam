@@ -27,7 +27,9 @@ export default {
         ink: {
           DEFAULT: '#F8FAFC',
           muted: '#94A3B8',
-          faint: '#64748B',
+          // 5.2:1 sobre las tarjetas (AA pide 4.5:1 en texto pequeño); antes
+          // #64748B daba 3.5:1 en fechas, subtítulos y contadores.
+          faint: '#8291A8',
         },
         state: {
           success: '#4ADE80',

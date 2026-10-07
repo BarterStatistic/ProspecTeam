@@ -27,7 +27,7 @@ import {
   canRegistrarFacturacion,
 } from '../../lib/permissions.js';
 import { BOARD_COLUMNS, sellerColor } from '../../lib/constants.js';
-import { fullName, regresoAColumna } from '../../lib/clients.js';
+import { fullName, regresoAColumna, mensajeEliminarCliente } from '../../lib/clients.js';
 import { formatDateTime } from '../../lib/format.js';
 import Checkbox from '../ui/Checkbox.jsx';
 import CopyButton from '../ui/CopyButton.jsx';
@@ -44,6 +44,7 @@ export function CardBody({ client, dragging = false }) {
     clients,
     updateClient,
     deleteClient,
+    comisionesDeCliente,
     moveClient,
     applyBoardReorder,
     sellerColors,
@@ -148,6 +149,7 @@ export function CardBody({ client, dragging = false }) {
               onClick={toggleMenu}
               className="rounded-md p-1 text-ink-faint transition hover:bg-white/5 hover:text-ink"
               aria-label="Acciones"
+              aria-expanded={menuOpen}
             >
               <MoreVertical size={16} />
             </button>
@@ -239,8 +241,8 @@ export function CardBody({ client, dragging = false }) {
                     <button
                       onClick={() => {
                         setMenuOpen(false);
-                        if (confirm(`¿Eliminar a ${fullName(client)}? Esta acción no se puede deshacer.`))
-                          deleteClient(client.id);
+                        if (confirm(mensajeEliminarCliente(client, comisionesDeCliente(client))))
+                          deleteClient(client.id).catch((err) => alert(err.message));
                       }}
                       className="flex w-full items-center gap-2 px-3 py-2 text-xs text-state-danger hover:bg-white/5"
                     >

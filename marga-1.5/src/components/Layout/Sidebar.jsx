@@ -34,6 +34,7 @@ import {
 } from '../../lib/permissions.js';
 import { contarCitasDeHoy } from '../../lib/citas.js';
 import Avatar from '../ui/Avatar.jsx';
+import BackupMenu from './BackupMenu.jsx';
 
 const ICONS = {
   prospectos: UserPlus,
@@ -224,6 +225,10 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
             {ROLE_LABELS[role] ?? role}
           </span>
         </button>
+        {/* Solo en celular: en escritorio Respaldo está en la barra superior. */}
+        <div className="md:hidden">
+          <BackupMenu variant="sidebar" />
+        </div>
         <button
           onClick={logout}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-state-danger/10 hover:text-state-danger"

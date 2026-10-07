@@ -11,6 +11,7 @@ import {
   periodoPorClave,
   etiquetaMes,
   numeroVentaPara,
+  agruparPorPago,
   PROMOTOR_DEFAULT,
   NIVELES_RACHA,
 } from '../lib/comisiones.js';
@@ -29,6 +30,30 @@ function StatCard({ icon: Icon, label, value, hint, tone = 'sky' }) {
       <p className="mt-1 text-2xl font-bold text-ink">{value}</p>
       {hint && <p className="text-[11px] text-ink-faint">{hint}</p>}
     </Card>
+  );
+}
+
+/**
+ * Estado de pago de una comisión. El admin lo cambia con un toque; el vendedor
+ * solo lo consulta. Lo usan la tabla (escritorio) y las tarjetas (celular).
+ */
+function EstadoPago({ comision, admin, onToggle }) {
+  const tono = comision.pagado
+    ? 'bg-state-success/15 text-state-success'
+    : 'bg-state-warning/15 text-state-warning';
+  const texto = comision.pagado ? 'Pagado' : 'Pendiente';
+  if (!admin) return <span className={`m-chip ${tono}`}>{texto}</span>;
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(comision.id, !comision.pagado)}
+      title={comision.pagado ? 'Marcar como pendiente de pago' : 'Marcar como pagada'}
+      className={`m-chip transition ${tono} ${
+        comision.pagado ? 'hover:bg-state-success/25' : 'hover:bg-state-warning/25'
+      }`}
+    >
+      {texto}
+    </button>
   );
 }
 
@@ -74,15 +99,19 @@ export default function ComisionesView() {
     [visibles],
   );
 
-  // Agrupación por fecha de pago, más próxima arriba.
-  const grupos = useMemo(() => {
-    const map = new Map();
-    for (const c of visibles) {
-      if (!map.has(c.fechaPagoTs)) map.set(c.fechaPagoTs, []);
-      map.get(c.fechaPagoTs).push(c);
+  // Agrupación por fecha de pago: pendientes del más cercano al más lejano y
+  // luego los pasados. Solo el pago pendiente más cercano lleva "Próximo".
+  const grupos = useMemo(() => agruparPorPago(visibles, Date.now()), [visibles]);
+
+  function confirmarEliminar(c) {
+    if (
+      window.confirm(
+        `¿Eliminar la comisión de ${c.clienteNombre}? La tarjeta quedará sin facturación.`,
+      )
+    ) {
+      eliminarComision(c.id);
     }
-    return [...map.entries()].sort((a, b) => b[0] - a[0]);
-  }, [visibles]);
+  }
 
   // Mes de venta en curso: su rango (si el admin lo registró) es lo que dura la racha.
   const claveHoy = mesVenta(Date.now(), configComisiones);
@@ -117,7 +146,7 @@ export default function ComisionesView() {
 
   return (
     <div className="h-full overflow-y-auto px-4 py-5 sm:px-6">
-      <div className="mx-auto max-w-5xl space-y-4">
+      <div className="mx-auto max-w-6xl space-y-4">
         {!admin && configComisiones.notaVendedores && (
           <Card className="flex items-start gap-3 border-gold/20 p-4">
             <StickyNote size={16} className="mt-0.5 shrink-0 text-gold" />
@@ -229,12 +258,12 @@ export default function ComisionesView() {
             </p>
           </Card>
         ) : (
-          grupos.map(([ts, filas]) => (
+          grupos.map(({ ts, filas, proximo }) => (
             <Card key={ts} className="p-4">
               <div className="mb-3 flex items-baseline justify-between gap-3">
                 <h3 className="text-sm font-semibold text-ink">
                   Pago del {formatDate(ts)}
-                  {ts > Date.now() && (
+                  {proximo && (
                     <span className="m-chip ml-2 bg-sky2/15 text-sky2">Próximo</span>
                   )}
                 </h3>
@@ -248,8 +277,103 @@ export default function ComisionesView() {
                 </span>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[820px] text-left text-xs">
+              {/* Celular: una tarjeta por comisión. La tabla necesita 820 px y
+                  en un teléfono dejaba fuera la mitad de las columnas. La
+                  fecha de pago no se repite: es la del encabezado del grupo. */}
+              <ul className="space-y-2 md:hidden">
+                {filas.map((c) => {
+                  const color = sellerColor(c.vendedor, sellerColors);
+                  return (
+                    <li key={c.id} className="rounded-xl border border-white/5 bg-navy-900/40 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="break-words text-sm font-semibold text-ink">
+                            {c.clienteNombre}
+                          </p>
+                          <p className="mt-0.5 text-xs text-ink-muted">
+                            Venta #{c.numeroVenta} · {c.moto}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-semibold text-gold">
+                            {formatMXN(c.comisionVendedor)}
+                          </p>
+                          <p className="text-[11px] text-ink-faint">Comisión vendedor</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <EstadoPago comision={c} admin={admin} onToggle={marcarPagoComision} />
+                        {admin && (
+                          <>
+                            <span
+                              className="m-chip font-semibold"
+                              style={{ backgroundColor: `${color}26`, color }}
+                            >
+                              {c.vendedor || 'Sin asignar'}
+                            </span>
+                            <span className="m-chip bg-white/5 text-ink-muted">
+                              Promotor: {c.promotor || PROMOTOR_DEFAULT}
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      {admin && (
+                        <>
+                          <div className="mt-2 flex items-end justify-between gap-3 border-t border-white/5 pt-2">
+                            <dl className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                              <dt className="text-ink-faint">Financiado</dt>
+                              <dt className="text-ink-faint">Comisión total</dt>
+                              <dd className="text-sky2">{formatMXN(c.montoFinanciado)}</dd>
+                              <dd className="text-ink-muted">{formatMXN(c.comisionTotal)}</dd>
+                            </dl>
+                            <div className="-mb-1 -mr-1 flex shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-10 w-10"
+                                aria-label={`Editar la facturación de ${c.clienteNombre}`}
+                                onClick={() => editar(c)}
+                              >
+                                <Pencil size={16} className="text-sky2" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-10 w-10"
+                                aria-label={`Eliminar la comisión de ${c.clienteNombre}`}
+                                onClick={() => confirmarEliminar(c)}
+                              >
+                                <Trash2 size={16} className="text-state-danger" />
+                              </Button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <div className="hidden overflow-x-auto md:block">
+                {/* table-fixed + anchos fijos: cada grupo es su propia tabla y,
+                    con anchos automáticos, las columnas quedaban desalineadas
+                    de un grupo a otro. Cliente toma el espacio que sobra. La
+                    fecha de pago no tiene columna: es la del encabezado. */}
+                <table className="w-full min-w-[960px] table-fixed text-left text-xs">
+                  <colgroup>
+                    {admin && <col className="w-[136px]" />}
+                    <col className="w-[32px]" />
+                    <col />
+                    {admin && <col className="w-[124px]" />}
+                    <col className={admin ? 'w-[100px]' : 'w-[160px]'} />
+                    {admin && <col className="w-[124px]" />}
+                    {admin && <col className="w-[116px]" />}
+                    <col className="w-[136px]" />
+                    <col className="w-[100px]" />
+                    {admin && <col className="w-[84px]" />}
+                  </colgroup>
                   <thead className="text-ink-faint">
                     <tr className="border-b border-white/10">
                       {admin && <th className="py-2 pr-3 font-medium">Vendedor</th>}
@@ -264,7 +388,6 @@ export default function ComisionesView() {
                         <th className="py-2 pr-3 text-right font-medium">Comisión total</th>
                       )}
                       <th className="py-2 pr-3 text-right font-medium">Comisión vendedor</th>
-                      <th className="py-2 pr-3 text-right font-medium">Fecha de pago</th>
                       <th className="py-2 pr-3 text-center font-medium">Pago</th>
                       {admin && <th className="py-2 font-medium" />}
                     </tr>
@@ -286,13 +409,13 @@ export default function ComisionesView() {
                           </td>
                         )}
                         <td className="py-2 pr-3 text-right text-ink-muted">{c.numeroVenta}</td>
-                        <td className="py-2 pr-3 text-ink">{c.clienteNombre}</td>
+                        <td className="break-words py-2 pr-3 text-ink">{c.clienteNombre}</td>
                         {admin && (
-                          <td className="py-2 pr-3 text-ink-muted">
+                          <td className="break-words py-2 pr-3 text-ink-muted">
                             {c.promotor || PROMOTOR_DEFAULT}
                           </td>
                         )}
-                        <td className="py-2 pr-3 text-ink-muted">{c.moto}</td>
+                        <td className="break-words py-2 pr-3 text-ink-muted">{c.moto}</td>
                         {admin && (
                           <td className="py-2 pr-3 text-right text-sky2">
                             {formatMXN(c.montoFinanciado)}
@@ -306,38 +429,8 @@ export default function ComisionesView() {
                         <td className="py-2 pr-3 text-right font-semibold text-gold">
                           {formatMXN(c.comisionVendedor)}
                         </td>
-                        <td className="py-2 pr-3 text-right text-ink-muted">
-                          {formatDate(c.fechaPagoTs)}
-                        </td>
                         <td className="py-2 pr-3 text-center">
-                          {admin ? (
-                            <button
-                              type="button"
-                              onClick={() => marcarPagoComision(c.id, !c.pagado)}
-                              title={
-                                c.pagado
-                                  ? 'Marcar como pendiente de pago'
-                                  : 'Marcar como pagada'
-                              }
-                              className={`m-chip transition ${
-                                c.pagado
-                                  ? 'bg-state-success/15 text-state-success hover:bg-state-success/25'
-                                  : 'bg-state-warning/15 text-state-warning hover:bg-state-warning/25'
-                              }`}
-                            >
-                              {c.pagado ? 'Pagado' : 'Pendiente'}
-                            </button>
-                          ) : (
-                            <span
-                              className={`m-chip ${
-                                c.pagado
-                                  ? 'bg-state-success/15 text-state-success'
-                                  : 'bg-state-warning/15 text-state-warning'
-                              }`}
-                            >
-                              {c.pagado ? 'Pagado' : 'Pendiente'}
-                            </span>
-                          )}
+                          <EstadoPago comision={c} admin={admin} onToggle={marcarPagoComision} />
                         </td>
                         {admin && (
                           <td className="py-2 text-right">
@@ -353,15 +446,7 @@ export default function ComisionesView() {
                               variant="ghost"
                               size="sm"
                               aria-label={`Eliminar la comisión de ${c.clienteNombre}`}
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    `¿Eliminar la comisión de ${c.clienteNombre}? La tarjeta quedará sin facturación.`,
-                                  )
-                                ) {
-                                  eliminarComision(c.id);
-                                }
-                              }}
+                              onClick={() => confirmarEliminar(c)}
                             >
                               <Trash2 size={13} className="text-state-danger" />
                             </Button>
