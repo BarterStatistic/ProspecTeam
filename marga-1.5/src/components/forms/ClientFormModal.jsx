@@ -56,7 +56,14 @@ export default function ClientFormModal({ open, initial, onClose }) {
 
   useEffect(() => {
     if (open) {
-      const base = initial ?? emptyClient();
+      // Merge over emptyClient() (not just `initial ?? emptyClient()`): un
+      // cliente guardado antes de que existiera un campo nuevo (p. ej.
+      // promotorEncargado, agregado sin migración) no lo trae en su registro,
+      // así que `initial.promotorEncargado` es `undefined`. Firestore's
+      // updateDoc() rechaza cualquier valor `undefined` en el patch, así que
+      // guardar esa edición fallaba en silencio: el botón "Guardar cambios"
+      // parecía roto sin ningún mensaje de error.
+      const base = { ...emptyClient(), ...initial };
       setValues({ ...base, creditScheme: normalizarEsquema(base.creditScheme ?? '') });
       setError('');
       setDupMatch(null);
@@ -90,12 +97,19 @@ export default function ClientFormModal({ open, initial, onClose }) {
   }
 
   async function save() {
-    if (isEdit) {
-      await updateClient(initial.id, pickEditable(values));
-    } else {
-      await createClient(values);
+    try {
+      if (isEdit) {
+        await updateClient(initial.id, pickEditable(values));
+      } else {
+        await createClient(values);
+      }
+      onClose();
+    } catch (e) {
+      // Sin esto, un error del store (p. ej. Firestore rechazando el patch)
+      // se perdía en silencio y el botón "Guardar cambios" parecía no hacer
+      // nada: el modal se quedaba abierto sin ninguna pista de qué pasó.
+      setError(e.message || 'No se pudo guardar el cliente.');
     }
-    onClose();
   }
 
   return (

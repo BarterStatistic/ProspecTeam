@@ -2,18 +2,19 @@
 // configuración, devuelve números. No toca React, el store ni Date.now().
 //
 // Fórmula, de arriba hacia abajo:
-//   comisionTotal    = montoFinanciado × 0.9575 × (0.03 motoxpress | 0.04 resto)
-//   comisionVendedor = comisionTotal × racha(numeroVenta)
-//   comisionPromotor = comisionTotal × 0.10, o 0 si nadie está asignado
+//   comisionTotal    = montoFinanciado × (0.03 motoxpress | 0.04 resto)
+//   comisionVendedor = comisionTotal × racha(numeroVenta) × 0.9575
+//   comisionPromotor = comisionTotal × 0.10 × 0.9575, o 0 si nadie está asignado
 //   netoAdmin        = comisionTotal − comisionVendedor − comisionPromotor
 //
-// El 4.25% se descuenta del monto financiado ANTES de la tasa, así que la
-// comisión total que se muestra ya es neta y tanto el promotor como el neto
-// admin cuelgan de esa cifra.
+// El 4.25% NO se descuenta de la comisión total (esa cifra es la que se
+// reparte): se descuenta de cada pago individual a vendedor y promotor. El
+// neto admin sale de restarle a la comisión total esos dos pagos ya con su
+// propio descuento aplicado, así que absorbe el 4.25% que no se les entregó.
 
 const DAY = 86_400_000;
 
-/** Factor que deja el monto financiado neto del 4.25%. */
+/** Factor que deja neto del 4.25% el pago individual de vendedor y promotor. */
 export const DESCUENTO = 0.9575;
 
 /** Porcentaje de la comisión total que se lleva el vendedor, por nivel. */
@@ -26,7 +27,8 @@ export const TASA_PROMOTOR = 0.1;
 export const PROMOTOR_DEFAULT = 'Braulio Acosta';
 
 export const CONFIG_DEFAULT = {
-  diaInicioMes: 1, // 1..28
+  diaInicioMes: 1, // 1..28 — regla de respaldo para días sin mes de venta registrado
+  periodosVenta: [], // [{ id, clave: 'YYYY-MM', inicio, fin }] — meses de venta explícitos
   diaCorte: 1, // 1 = lunes … 7 = domingo (ISO)
   diaPago: 5, // 5 = viernes
   notaVendedores: '',
@@ -55,11 +57,11 @@ export function calcularComision({
   tienePromotor,
 }) {
   const tasa = tasaPara(esquemaId);
-  const comisionTotal = montoFinanciado * DESCUENTO * tasa;
+  const comisionTotal = montoFinanciado * tasa;
   const nivel = nivelRacha(numeroVenta);
   const pct = NIVELES_RACHA[nivel - 1];
-  const comisionVendedor = comisionTotal * pct;
-  const comisionPromotor = tienePromotor ? comisionTotal * TASA_PROMOTOR : 0;
+  const comisionVendedor = comisionTotal * pct * DESCUENTO;
+  const comisionPromotor = tienePromotor ? comisionTotal * TASA_PROMOTOR * DESCUENTO : 0;
 
   return {
     tasa,
@@ -91,12 +93,59 @@ function startOfWeek(ts) {
 /** Dos dígitos con cero a la izquierda. */
 const pad2 = (n) => String(n).padStart(2, '0');
 
+/** Clave `YYYY-MM` válida (mes 01..12). */
+const esClaveMes = (v) => typeof v === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
+
+/** Corre una clave `YYYY-MM` `delta` meses (±). */
+export function sumarMes(clave, delta) {
+  const [y, m] = clave.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+}
+
+/** "Octubre 2026" a partir de `2026-10`. */
+export function etiquetaMes(clave) {
+  if (!esClaveMes(clave)) return String(clave ?? '');
+  const [y, m] = clave.split('-').map(Number);
+  const mes = new Date(y, m - 1, 1).toLocaleDateString('es-MX', { month: 'long' });
+  return `${mes.charAt(0).toUpperCase()}${mes.slice(1)} ${y}`;
+}
+
 /**
- * Clave `YYYY-MM` del "mes de venta" que contiene `ts`.
- * El periodo arranca el día `diaInicioMes`: con 26, una venta del 20 de
- * septiembre pertenece al periodo que abrió el 26 de agosto → '2026-08'.
+ * Meses de venta registrados por el admin que se pueden usar: clave válida,
+ * fechas numéricas y fin no anterior al inicio. Ordenados por inicio.
  */
-export function mesVenta(ts, config = CONFIG_DEFAULT) {
+export function periodosVenta(config = CONFIG_DEFAULT) {
+  const lista = Array.isArray(config?.periodosVenta) ? config.periodosVenta : [];
+  return lista
+    .filter(
+      (p) =>
+        p &&
+        esClaveMes(p.clave) &&
+        esFecha(p.inicio) &&
+        esFecha(p.fin) &&
+        startOfDay(p.fin) >= startOfDay(p.inicio),
+    )
+    .sort((a, b) => a.inicio - b.inicio);
+}
+
+/** El mes de venta registrado que cubre el día de `ts` (fin inclusivo), o null. */
+export function periodoVentaPara(ts, config = CONFIG_DEFAULT) {
+  const dia = startOfDay(ts);
+  return (
+    periodosVenta(config).find(
+      (p) => dia >= startOfDay(p.inicio) && dia <= startOfDay(p.fin),
+    ) ?? null
+  );
+}
+
+/** El mes de venta registrado con esa clave, o null. */
+export function periodoPorClave(clave, config = CONFIG_DEFAULT) {
+  return periodosVenta(config).find((p) => p.clave === clave) ?? null;
+}
+
+/** Regla de respaldo: el periodo arranca el día `diaInicioMes` de cada mes. */
+function mesVentaPorDia(ts, config) {
   const inicio = config.diaInicioMes ?? 1;
   const d = new Date(ts);
   let year = d.getFullYear();
@@ -109,6 +158,52 @@ export function mesVenta(ts, config = CONFIG_DEFAULT) {
     }
   }
   return `${year}-${pad2(month + 1)}`;
+}
+
+/**
+ * Clave `YYYY-MM` del "mes de venta" que contiene `ts`. Define la duración de
+ * la racha: todas las ventas de un vendedor con la misma clave suman a la
+ * misma racha.
+ *
+ * 1. Si el admin registró un mes de venta cuyo rango (inicio–fin, días
+ *    completos) cubre el día, manda su clave.
+ * 2. Si no, la regla por día: el periodo arranca el día `diaInicioMes`. Con 26,
+ *    una venta del 20 de septiembre pertenece al periodo que abrió el 26 de
+ *    agosto → '2026-08'.
+ *    Si esa clave ya la ocupa un mes registrado (cuyo rango no cubre el día),
+ *    se recorre al mes siguiente —o al anterior, si el día cae antes de ese
+ *    rango— hasta dar con una libre: un día fuera del rango de octubre no
+ *    debe sumar a la racha de octubre.
+ */
+export function mesVenta(ts, config = CONFIG_DEFAULT) {
+  const cubre = periodoVentaPara(ts, config);
+  if (cubre) return cubre.clave;
+
+  let clave = mesVentaPorDia(ts, config);
+  const periodos = periodosVenta(config);
+  const ocupante = periodos.find((p) => p.clave === clave);
+  if (!ocupante) return clave;
+
+  const paso = startOfDay(ts) > startOfDay(ocupante.fin) ? 1 : -1;
+  const ocupadas = new Set(periodos.map((p) => p.clave));
+  while (ocupadas.has(clave)) clave = sumarMes(clave, paso);
+  return clave;
+}
+
+/**
+ * Comisiones cuyo `mesVenta` guardado ya no coincide con el que les toca con
+ * `config` (p. ej. tras registrar o editar un mes de venta).
+ * Devuelve [{ id, de, a }].
+ */
+export function cambiosDeMesVenta(comisiones, config = CONFIG_DEFAULT) {
+  const lista = Array.isArray(comisiones) ? comisiones : [];
+  const cambios = [];
+  for (const c of lista) {
+    if (!esFecha(c?.fechaFacturacion)) continue;
+    const a = mesVenta(c.fechaFacturacion, config);
+    if (a !== c.mesVenta) cambios.push({ id: c.id, de: c.mesVenta, a });
+  }
+  return cambios;
 }
 
 /** Timestamp utilizable: número finito (no null, string, NaN ni Infinity). */

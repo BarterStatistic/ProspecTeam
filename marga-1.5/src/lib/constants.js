@@ -33,6 +33,13 @@ export const TOOLS = [
     // generada se registra para poder contarlas por vendedor en el Panel ADMIN.
     description: 'Cotizaciones de financiamiento de motos',
   },
+  {
+    id: 'disponibilidad',
+    label: 'Disponibilidad de motos',
+    // Estado de cada modelo del catálogo (Disponible / Bajo pedido / No
+    // disponible). Todos lo consultan; solo el admin lo cambia.
+    description: 'Qué motos hay, cuáles son bajo pedido y cuáles no',
+  },
 ];
 
 export const TOOL_IDS = TOOLS.map((t) => t.id);
@@ -81,6 +88,10 @@ export const AUTO_TRANSITIONS = {
   'prospectos:proceso_comenzado': { section: 'procesos', stage: 'credito_por_subir' },
   'procesos:moto_entregada': { section: 'ventas', stage: '' },
 };
+
+// Quién recibe a los clientes con cita en la agencia. Sale en grande en el
+// "Vale de cita" que el vendedor le manda al cliente (src/lib/valeCita.js).
+export const ATIENDE_CITAS = 'Braulio Acosta';
 
 export const SALE_TYPES = ['Crédito', 'Contado', 'MSI'];
 

@@ -29,7 +29,6 @@ import {
 import { BOARD_COLUMNS, sellerColor } from '../../lib/constants.js';
 import { fullName, regresoAColumna, mensajeEliminarCliente } from '../../lib/clients.js';
 import { formatDateTime } from '../../lib/format.js';
-import { posicionMenu } from '../../lib/floating.js';
 import Checkbox from '../ui/Checkbox.jsx';
 import CopyButton from '../ui/CopyButton.jsx';
 import Avatar from '../ui/Avatar.jsx';
@@ -54,42 +53,43 @@ export function CardBody({ client, dragging = false }) {
   const { user, role } = useAuth();
   const { openEditClient, openCancelClient, openFacturacion } = useUI();
   const [menuOpen, setMenuOpen] = useState(false);
-  // El menú se dibuja en un portal con position: fixed. Dentro de la columna lo
-  // recortaba su overflow (y el transform de dnd-kit), así que en columnas
-  // angostas se veía "subir", "enter"… en vez de las opciones completas.
+  // Posición del menú en coordenadas de viewport: se calcula al abrir y el
+  // menú se porta al <body>, para que no lo recorte el `overflow-y-auto` de
+  // la columna cuando la tarjeta queda cerca del borde de la pantalla.
   const [menuPos, setMenuPos] = useState(null);
-  const menuButtonRef = useRef(null);
-  const menuRef = useRef(null);
+  const menuBtnRef = useRef(null);
 
   function toggleMenu() {
-    if (menuOpen) {
-      setMenuOpen(false);
-      return;
+    if (!menuOpen) {
+      const MENU_WIDTH = 224; // w-56
+      const MARGIN = 8;
+      const rect = menuBtnRef.current.getBoundingClientRect();
+      const left = Math.min(
+        Math.max(rect.right - MENU_WIDTH, MARGIN),
+        window.innerWidth - MENU_WIDTH - MARGIN,
+      );
+      const espacioAbajo = window.innerHeight - rect.bottom;
+      const abrirArriba = espacioAbajo < 200 && rect.top > espacioAbajo;
+      setMenuPos({
+        left,
+        top: abrirArriba ? null : rect.bottom + 4,
+        bottom: abrirArriba ? window.innerHeight - rect.top + 4 : null,
+      });
     }
-    const rect = menuButtonRef.current.getBoundingClientRect();
-    setMenuPos(posicionMenu(rect, { width: window.innerWidth, height: window.innerHeight }));
-    setMenuOpen(true);
+    setMenuOpen((v) => !v);
   }
 
-  // Fixed no sigue al botón: si la columna o la página se desplazan, o cambia
-  // el tamaño de la ventana, el menú se cierra en vez de quedar flotando
-  // lejos de su tarjeta. El scroll dentro del propio menú no cuenta.
+  // El menú queda fijo a coordenadas del viewport, así que si la columna se
+  // desplaza mientras está abierto se cierra en vez de quedar flotando lejos
+  // del botón que lo abrió.
   useEffect(() => {
     if (!menuOpen) return undefined;
     const cerrar = () => setMenuOpen(false);
-    const alDesplazar = (e) => {
-      if (!menuRef.current?.contains(e.target)) cerrar();
-    };
-    const alTeclear = (e) => {
-      if (e.key === 'Escape') cerrar();
-    };
+    window.addEventListener('scroll', cerrar, true);
     window.addEventListener('resize', cerrar);
-    window.addEventListener('scroll', alDesplazar, true);
-    window.addEventListener('keydown', alTeclear);
     return () => {
+      window.removeEventListener('scroll', cerrar, true);
       window.removeEventListener('resize', cerrar);
-      window.removeEventListener('scroll', alDesplazar, true);
-      window.removeEventListener('keydown', alTeclear);
     };
   }, [menuOpen]);
 
@@ -145,7 +145,7 @@ export function CardBody({ client, dragging = false }) {
         {hasMenu && (
           <div className="relative shrink-0" {...noDrag}>
             <button
-              ref={menuButtonRef}
+              ref={menuBtnRef}
               onClick={toggleMenu}
               className="rounded-md p-1 text-ink-faint transition hover:bg-white/5 hover:text-ink"
               aria-label="Acciones"
@@ -153,22 +153,15 @@ export function CardBody({ client, dragging = false }) {
             >
               <MoreVertical size={16} />
             </button>
-            {/* El portal saca el menú del DOM de la columna, pero en el árbol
-                de React sigue dentro de este div: noDrag sigue frenando que un
-                toque en el menú arranque un arrastre de la tarjeta. */}
-            {menuOpen && menuPos && createPortal(
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                <div
-                  ref={menuRef}
-                  className="fixed z-50 w-56 overflow-y-auto rounded-lg border border-white/10 bg-navy-800 shadow-card"
-                  style={{
-                    left: menuPos.left,
-                    top: menuPos.top,
-                    bottom: menuPos.bottom,
-                    maxHeight: menuPos.maxHeight,
-                  }}
-                >
+            {menuOpen &&
+              menuPos &&
+              createPortal(
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                  <div
+                    style={{ left: menuPos.left, top: menuPos.top ?? 'auto', bottom: menuPos.bottom ?? 'auto' }}
+                    className="fixed z-50 max-h-[70vh] w-56 overflow-y-auto rounded-lg border border-white/10 bg-navy-800 shadow-card"
+                  >
                   {editable && (
                     <>
                       <button
@@ -256,10 +249,10 @@ export function CardBody({ client, dragging = false }) {
                       <Trash2 size={14} /> Eliminar
                     </button>
                   )}
-                </div>
-              </>,
-              document.body,
-            )}
+                  </div>
+                </>,
+                document.body,
+              )}
           </div>
         )}
       </div>

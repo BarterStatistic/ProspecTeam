@@ -20,11 +20,14 @@ import {
   registrarFacturacion as dbRegistrarFacturacion,
   actualizarFacturacion as dbActualizarFacturacion,
   eliminarComision,
+  marcarPagoComision,
   renumerarMes,
   registrarCotizacion as dbRegistrarCotizacion,
   guardarConfigComisiones,
+  guardarPeriodosVenta,
   marcarNotificacionesLeidas,
   configComisiones as leerConfigComisiones,
+  cambiarDisponibilidad as dbCambiarDisponibilidad,
   comisionesDeCliente,
 } from '../lib/db.js';
 
@@ -59,6 +62,9 @@ export function DataProvider({ children }) {
   useEffect(() => store.onCotizacionesChange(setCotizaciones), []);
   useEffect(() => store.onNotificacionesChange(setNotificaciones), []);
   useEffect(() => store.onConfigChange(setConfigRaw), []);
+
+  const [disponibilidad, setDisponibilidad] = useState(() => store.getDisponibilidad());
+  useEffect(() => store.onDisponibilidadChange(setDisponibilidad), []);
 
   // Every role subscribes to the users collection, because the per-vendedor
   // accent colour and profile picture live there and mark cards for everyone.
@@ -155,14 +161,21 @@ export function DataProvider({ children }) {
       actualizarFacturacion: (comisionId, values) =>
         dbActualizarFacturacion(comisionId, values, user),
       eliminarComision,
+      marcarPagoComision,
       /** Comisiones ligadas a un cliente (para avisar antes de eliminarlo). */
       comisionesDeCliente: (cliente) => comisionesDeCliente(cliente, comisiones),
       renumerarMes,
       guardarConfigComisiones,
+      guardarPeriodosVenta,
 
       // --- cotizador ---
       cotizaciones,
       registrarCotizacion: (values) => dbRegistrarCotizacion(values, user),
+
+      // --- disponibilidad de motos ---
+      disponibilidad,
+      cambiarDisponibilidad: (nombreMoto, estado) =>
+        dbCambiarDisponibilidad(nombreMoto, estado, user),
 
       // --- notificaciones ---
       misNotificaciones,
@@ -237,6 +250,7 @@ export function DataProvider({ children }) {
       misNotificaciones,
       noLeidas,
       configComisiones,
+      disponibilidad,
     ],
   );
 

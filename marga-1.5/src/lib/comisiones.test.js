@@ -9,6 +9,10 @@ import {
   mesVenta,
   fechaPago,
   numeroVentaPara,
+  periodoVentaPara,
+  cambiosDeMesVenta,
+  etiquetaMes,
+  sumarMes,
   agruparPorPago,
 } from './comisiones.js';
 
@@ -46,7 +50,7 @@ describe('racha', () => {
 });
 
 describe('calcularComision', () => {
-  it('descuenta el 4.25% del monto financiado antes de aplicar la tasa', () => {
+  it('la comisión total es el monto financiado por la tasa, sin descontar el 4.25%', () => {
     const r = calcularComision({
       montoFinanciado: 61865,
       esquemaId: 'motonomina',
@@ -54,7 +58,9 @@ describe('calcularComision', () => {
       tienePromotor: false,
     });
     expect(r.tasa).toBe(0.04);
-    expect(r.comisionTotal).toBeCloseTo(2369.4295, 4);
+    expect(r.comisionTotal).toBeCloseTo(2474.6, 4);
+    // El 4.25% se descuenta del pago individual, no de la comisión total:
+    // comisionTotal × 15% × 0.9575.
     expect(r.comisionVendedor).toBeCloseTo(355.4144, 4);
   });
 
@@ -66,10 +72,12 @@ describe('calcularComision', () => {
       tienePromotor: false,
     });
     expect(r.comisionPromotor).toBe(0);
-    expect(r.netoAdmin).toBeCloseTo(2014.0151, 4);
+    // netoAdmin = comisionTotal − comisionVendedor − comisionPromotor: absorbe
+    // el 4.25% que no se descontó de la comisión total.
+    expect(r.netoAdmin).toBeCloseTo(2119.1856, 4);
   });
 
-  it('con promotor asignado descuenta el 10% de la comisión total', () => {
+  it('con promotor asignado descuenta el 10% de la comisión total, también neto del 4.25%', () => {
     const r = calcularComision({
       montoFinanciado: 61865,
       esquemaId: 'motonomina',
@@ -77,17 +85,17 @@ describe('calcularComision', () => {
       tienePromotor: true,
     });
     expect(r.comisionPromotor).toBeCloseTo(236.943, 3);
-    expect(r.netoAdmin).toBeCloseTo(1777.0721, 4);
+    expect(r.netoAdmin).toBeCloseTo(1882.2426, 4);
   });
 
-  it('aplica el 3% en motoxpress', () => {
+  it('aplica el 3% en motoxpress sobre el monto financiado completo', () => {
     const r = calcularComision({
       montoFinanciado: 100000,
       esquemaId: 'motoxpress',
       numeroVenta: 1,
       tienePromotor: false,
     });
-    expect(r.comisionTotal).toBeCloseTo(100000 * 0.9575 * 0.03, 6);
+    expect(r.comisionTotal).toBeCloseTo(100000 * 0.03, 6);
   });
 
   it('el total de las tres partes siempre cuadra con la comisión total', () => {
@@ -276,6 +284,76 @@ describe('numeroVentaPara', () => {
 
   it('tolera una lista ausente', () => {
     expect(numeroVentaPara(undefined, { vendedor: 'ana', clave: '2026-09' })).toBe(1);
+  });
+});
+
+describe('mesVenta con meses de venta registrados', () => {
+  const oct = { id: 'oct', clave: '2026-10', inicio: at(2026, 9, 26), fin: at(2026, 10, 25) };
+  const config = { ...CONFIG_DEFAULT, periodosVenta: [oct] };
+
+  it('el rango registrado manda, con inicio y fin inclusivos', () => {
+    expect(mesVenta(at(2026, 9, 26), config)).toBe('2026-10');
+    expect(mesVenta(new Date(2026, 9, 25, 23, 59).getTime(), config)).toBe('2026-10');
+    expect(periodoVentaPara(at(2026, 10, 1), config)?.id).toBe('oct');
+  });
+
+  it('fuera del rango aplica la regla por día', () => {
+    expect(mesVenta(at(2026, 9, 25), config)).toBe('2026-09');
+    expect(periodoVentaPara(at(2026, 9, 25), config)).toBeNull();
+  });
+
+  it('un día después del fin no suma a la racha del mes registrado', () => {
+    // La regla por día diría '2026-10', pero octubre ya terminó el 25.
+    expect(mesVenta(at(2026, 10, 27), config)).toBe('2026-11');
+  });
+
+  it('un día antes del inicio con la clave ocupada se recorre al mes anterior', () => {
+    const conf = {
+      ...CONFIG_DEFAULT,
+      periodosVenta: [{ id: 'x', clave: '2026-09', inicio: at(2026, 9, 10), fin: at(2026, 10, 5) }],
+    };
+    expect(mesVenta(at(2026, 9, 3), conf)).toBe('2026-08');
+  });
+
+  it('ignora periodos inválidos (fin antes del inicio, clave mala, fechas nulas)', () => {
+    const conf = {
+      ...CONFIG_DEFAULT,
+      periodosVenta: [
+        { id: 'a', clave: '2026-10', inicio: at(2026, 10, 20), fin: at(2026, 10, 1) },
+        { id: 'b', clave: '2026-13', inicio: at(2026, 10, 1), fin: at(2026, 10, 20) },
+        { id: 'c', clave: '2026-11', inicio: null, fin: at(2026, 10, 20) },
+      ],
+    };
+    expect(mesVenta(at(2026, 10, 10), conf)).toBe('2026-10');
+    expect(periodoVentaPara(at(2026, 10, 10), conf)).toBeNull();
+  });
+});
+
+describe('cambiosDeMesVenta', () => {
+  it('lista las comisiones cuyo mes guardado ya no corresponde', () => {
+    const config = {
+      ...CONFIG_DEFAULT,
+      periodosVenta: [{ id: 'o', clave: '2026-10', inicio: at(2026, 9, 26), fin: at(2026, 10, 25) }],
+    };
+    const comisiones = [
+      { id: 'a', fechaFacturacion: at(2026, 9, 10), mesVenta: '2026-09' },
+      { id: 'b', fechaFacturacion: at(2026, 9, 28), mesVenta: '2026-09' },
+      { id: 'c', fechaFacturacion: null, mesVenta: '2026-09' },
+    ];
+    expect(cambiosDeMesVenta(comisiones, config)).toEqual([
+      { id: 'b', de: '2026-09', a: '2026-10' },
+    ]);
+  });
+});
+
+describe('sumarMes / etiquetaMes', () => {
+  it('cruza el año en ambos sentidos', () => {
+    expect(sumarMes('2026-12', 1)).toBe('2027-01');
+    expect(sumarMes('2026-01', -1)).toBe('2025-12');
+  });
+
+  it('da el nombre del mes con mayúscula', () => {
+    expect(etiquetaMes('2026-10')).toBe('Octubre 2026');
   });
 });
 

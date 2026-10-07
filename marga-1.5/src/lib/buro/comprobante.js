@@ -15,6 +15,8 @@ const TINTA = {
   linea: '#dfe4ee',
 };
 
+import { saveBlob } from '../saveFile.js';
+
 export const LIENZO = { ancho: 1240, alto: 1754 };
 const MARGEN = 88;
 const TIPO = "'Segoe UI', system-ui, -apple-system, sans-serif";
@@ -190,18 +192,13 @@ function nombreArchivo(datos) {
 
 /** Baja el canvas como PNG. */
 export function descargarComprobante(lienzo, datos) {
-  return new Promise((resolver) => {
+  return new Promise((resolver, rechazar) => {
     lienzo.toBlob((blob) => {
-      const url = URL.createObjectURL(blob);
-      const enlace = document.createElement('a');
-      enlace.href = url;
-      enlace.download = nombreArchivo(datos);
-      document.body.append(enlace);
-      enlace.click();
-      enlace.remove();
-      // Se revoca tarde: si se libera de inmediato, Edge cancela la descarga.
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
-      resolver();
+      if (!blob) {
+        rechazar(new Error('No se pudo generar el comprobante.'));
+        return;
+      }
+      saveBlob(blob, nombreArchivo(datos)).then(resolver, rechazar);
     }, 'image/png');
   });
 }
