@@ -290,7 +290,22 @@ export default function ComisionesView() {
               </ul>
 
               <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[820px] text-left text-xs">
+                {/* table-fixed + anchos fijos: cada grupo es su propia tabla y,
+                    con anchos automáticos, las columnas quedaban desalineadas
+                    de un grupo a otro. Cliente toma el espacio que sobra. La
+                    fecha de pago no tiene columna: es la del encabezado. */}
+                <table className="w-full min-w-[820px] table-fixed text-left text-xs">
+                  <colgroup>
+                    {admin && <col className="w-[136px]" />}
+                    <col className="w-[32px]" />
+                    <col />
+                    {admin && <col className="w-[124px]" />}
+                    <col className={admin ? 'w-[100px]' : 'w-[160px]'} />
+                    {admin && <col className="w-[124px]" />}
+                    {admin && <col className="w-[116px]" />}
+                    <col className="w-[136px]" />
+                    {admin && <col className="w-[44px]" />}
+                  </colgroup>
                   <thead className="text-ink-faint">
                     <tr className="border-b border-white/10">
                       {admin && <th className="py-2 pr-3 font-medium">Vendedor</th>}
@@ -305,7 +320,6 @@ export default function ComisionesView() {
                         <th className="py-2 pr-3 text-right font-medium">Comisión total</th>
                       )}
                       <th className="py-2 pr-3 text-right font-medium">Comisión vendedor</th>
-                      <th className="py-2 pr-3 text-right font-medium">Fecha de pago</th>
                       {admin && <th className="py-2 font-medium" />}
                     </tr>
                   </thead>
@@ -326,13 +340,13 @@ export default function ComisionesView() {
                           </td>
                         )}
                         <td className="py-2 pr-3 text-right text-ink-muted">{c.numeroVenta}</td>
-                        <td className="py-2 pr-3 text-ink">{c.clienteNombre}</td>
+                        <td className="break-words py-2 pr-3 text-ink">{c.clienteNombre}</td>
                         {admin && (
-                          <td className="py-2 pr-3 text-ink-muted">
+                          <td className="break-words py-2 pr-3 text-ink-muted">
                             {c.promotor || PROMOTOR_DEFAULT}
                           </td>
                         )}
-                        <td className="py-2 pr-3 text-ink-muted">{c.moto}</td>
+                        <td className="break-words py-2 pr-3 text-ink-muted">{c.moto}</td>
                         {admin && (
                           <td className="py-2 pr-3 text-right text-sky2">
                             {formatMXN(c.montoFinanciado)}
@@ -345,9 +359,6 @@ export default function ComisionesView() {
                         )}
                         <td className="py-2 pr-3 text-right font-semibold text-gold">
                           {formatMXN(c.comisionVendedor)}
-                        </td>
-                        <td className="py-2 pr-3 text-right text-ink-muted">
-                          {formatDate(c.fechaPagoTs)}
                         </td>
                         {admin && (
                           <td className="py-2 text-right">
