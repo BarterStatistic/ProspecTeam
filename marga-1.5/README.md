@@ -372,6 +372,27 @@ cualquier hosting estático. La base de datos vive en Firestore, así que el hos
 entrega archivos. Recuerda configurar las variables de entorno de Firebase en el proveedor
 al momento de compilar.
 
+### Publicación automática en Firebase Hosting
+
+El workflow `.github/workflows/deploy-marga-2-5.yml` (en la raíz del repositorio) instala,
+corre las pruebas, compila y publica Marga 2.5 en el canal `live` de Firebase Hosting en
+cada push a `master` que toque `marga-1.5/`. También se puede lanzar a mano en
+**Actions → Deploy Marga 2.5 to Firebase Hosting → Run workflow**. Si fallan las pruebas,
+no se publica.
+
+Configuración, una sola vez, en **Settings → Secrets and variables → Actions → New
+repository secret**:
+
+| Secret | Valor |
+|---|---|
+| `FIREBASE_SERVICE_ACCOUNT` | JSON de una cuenta de servicio con permiso de Firebase Hosting. Lo crea `firebase init hosting:github` desde esta carpeta, o se genera en Google Cloud → IAM → Cuentas de servicio (rol *Firebase Hosting Admin*) → Claves → JSON. |
+| `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID` | Los mismos valores de tu `.env.local`. `VITE_FIREBASE_PROJECT_ID` es también el proyecto al que se publica. |
+| `VITE_GEMINI_API_KEY` | Opcional. Sin ella todo funciona menos el OCR del Buró Automático. |
+
+Si falta un secret obligatorio, el workflow se detiene antes de compilar y dice cuál falta,
+en vez de publicar una versión sin configurar. Marga 1 (`../marga/`) se sigue publicando
+aparte en GitHub Pages con `deploy-marga.yml`.
+
 ## Estructura
 
 ```

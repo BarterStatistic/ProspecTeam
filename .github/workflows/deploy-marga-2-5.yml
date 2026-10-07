@@ -1,0 +1,95 @@
+name: Deploy Marga 2.5 to Firebase Hosting
+
+# Compila Marga 2.5 (marga-1.5/), corre sus pruebas y la publica en el canal
+# "live" de Firebase Hosting en cada push a master que toque marga-1.5/. También
+# se puede lanzar a mano desde la pestaña Actions (workflow_dispatch).
+#
+# Secrets del repositorio (Settings → Secrets and variables → Actions):
+#   FIREBASE_SERVICE_ACCOUNT   JSON de una cuenta de servicio con permiso de
+#                              Firebase Hosting (la crea `firebase init hosting:github`).
+#   VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID,
+#   VITE_FIREBASE_STORAGE_BUCKET, VITE_FIREBASE_MESSAGING_SENDER_ID,
+#   VITE_FIREBASE_APP_ID       Los mismos valores del .env.local de marga-1.5/.
+#                              VITE_FIREBASE_PROJECT_ID es además el proyecto
+#                              al que se publica.
+#   VITE_GEMINI_API_KEY        Opcional: sin ella solo se apaga el OCR del Buró.
+#
+# Marga 1 (marga/) sigue publicándose en GitHub Pages con deploy-marga.yml.
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'marga-1.5/**'
+      - '.github/workflows/deploy-marga-2-5.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Un despliegue a la vez; uno nuevo espera a que termine el anterior en vez de
+# cancelarlo a medias.
+concurrency:
+  group: firebase-marga-2-5
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: marga-1.5
+    env:
+      VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+      VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+    steps:
+      # Sin la configuración de Firebase el build sale "sin configurar" (la app
+      # muestra la pantalla de configuración en vez del login). Mejor fallar
+      # aquí que publicar eso encima de la versión buena.
+      - name: Revisar secrets
+        working-directory: .
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          faltan=""
+          for nombre in FIREBASE_SERVICE_ACCOUNT VITE_FIREBASE_API_KEY VITE_FIREBASE_AUTH_DOMAIN \
+            VITE_FIREBASE_PROJECT_ID VITE_FIREBASE_STORAGE_BUCKET \
+            VITE_FIREBASE_MESSAGING_SENDER_ID VITE_FIREBASE_APP_ID; do
+            if [ -z "${!nombre}" ]; then faltan="$faltan $nombre"; fi
+          done
+          if [ -n "$faltan" ]; then
+            echo "::error::Faltan secrets del repositorio:$faltan"
+            exit 1
+          fi
+          if [ -z "$VITE_GEMINI_API_KEY" ]; then
+            echo "::warning::Sin VITE_GEMINI_API_KEY: el OCR del Buró Automático queda apagado."
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: marga-1.5/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Pruebas
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Publicar en Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          channelId: live
+          entryPoint: marga-1.5
