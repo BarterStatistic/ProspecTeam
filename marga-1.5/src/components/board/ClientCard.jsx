@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
@@ -28,6 +29,7 @@ import {
 import { BOARD_COLUMNS, sellerColor } from '../../lib/constants.js';
 import { fullName, regresoAColumna, mensajeEliminarCliente } from '../../lib/clients.js';
 import { formatDateTime } from '../../lib/format.js';
+import { posicionMenu } from '../../lib/floating.js';
 import Checkbox from '../ui/Checkbox.jsx';
 import CopyButton from '../ui/CopyButton.jsx';
 import Avatar from '../ui/Avatar.jsx';
@@ -52,6 +54,44 @@ export function CardBody({ client, dragging = false }) {
   const { user, role } = useAuth();
   const { openEditClient, openCancelClient, openFacturacion } = useUI();
   const [menuOpen, setMenuOpen] = useState(false);
+  // El menú se dibuja en un portal con position: fixed. Dentro de la columna lo
+  // recortaba su overflow (y el transform de dnd-kit), así que en columnas
+  // angostas se veía "subir", "enter"… en vez de las opciones completas.
+  const [menuPos, setMenuPos] = useState(null);
+  const menuButtonRef = useRef(null);
+  const menuRef = useRef(null);
+
+  function toggleMenu() {
+    if (menuOpen) {
+      setMenuOpen(false);
+      return;
+    }
+    const rect = menuButtonRef.current.getBoundingClientRect();
+    setMenuPos(posicionMenu(rect, { width: window.innerWidth, height: window.innerHeight }));
+    setMenuOpen(true);
+  }
+
+  // Fixed no sigue al botón: si la columna o la página se desplazan, o cambia
+  // el tamaño de la ventana, el menú se cierra en vez de quedar flotando
+  // lejos de su tarjeta. El scroll dentro del propio menú no cuenta.
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const cerrar = () => setMenuOpen(false);
+    const alDesplazar = (e) => {
+      if (!menuRef.current?.contains(e.target)) cerrar();
+    };
+    const alTeclear = (e) => {
+      if (e.key === 'Escape') cerrar();
+    };
+    window.addEventListener('resize', cerrar);
+    window.addEventListener('scroll', alDesplazar, true);
+    window.addEventListener('keydown', alTeclear);
+    return () => {
+      window.removeEventListener('resize', cerrar);
+      window.removeEventListener('scroll', alDesplazar, true);
+      window.removeEventListener('keydown', alTeclear);
+    };
+  }, [menuOpen]);
 
   const editable = canEditClient(role, client, user?.username);
   const deletable = canDeleteClient(role, client, user?.username);
@@ -105,16 +145,30 @@ export function CardBody({ client, dragging = false }) {
         {hasMenu && (
           <div className="relative shrink-0" {...noDrag}>
             <button
-              onClick={() => setMenuOpen((v) => !v)}
+              ref={menuButtonRef}
+              onClick={toggleMenu}
               className="rounded-md p-1 text-ink-faint transition hover:bg-white/5 hover:text-ink"
               aria-label="Acciones"
+              aria-expanded={menuOpen}
             >
               <MoreVertical size={16} />
             </button>
-            {menuOpen && (
+            {/* El portal saca el menú del DOM de la columna, pero en el árbol
+                de React sigue dentro de este div: noDrag sigue frenando que un
+                toque en el menú arranque un arrastre de la tarjeta. */}
+            {menuOpen && menuPos && createPortal(
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 z-50 mt-1 max-h-[70vh] w-56 overflow-y-auto rounded-lg border border-white/10 bg-navy-800 shadow-card">
+                <div
+                  ref={menuRef}
+                  className="fixed z-50 w-56 overflow-y-auto rounded-lg border border-white/10 bg-navy-800 shadow-card"
+                  style={{
+                    left: menuPos.left,
+                    top: menuPos.top,
+                    bottom: menuPos.bottom,
+                    maxHeight: menuPos.maxHeight,
+                  }}
+                >
                   {editable && (
                     <>
                       <button
@@ -203,7 +257,8 @@ export function CardBody({ client, dragging = false }) {
                     </button>
                   )}
                 </div>
-              </>
+              </>,
+              document.body,
             )}
           </div>
         )}
