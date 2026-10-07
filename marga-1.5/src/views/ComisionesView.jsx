@@ -8,6 +8,7 @@ import {
   fechaPago,
   mesVenta,
   numeroVentaPara,
+  agruparPorPago,
   PROMOTOR_DEFAULT,
   NIVELES_RACHA,
 } from '../lib/comisiones.js';
@@ -68,15 +69,19 @@ export default function ComisionesView() {
     [visibles],
   );
 
-  // Agrupación por fecha de pago, más próxima arriba.
-  const grupos = useMemo(() => {
-    const map = new Map();
-    for (const c of visibles) {
-      if (!map.has(c.fechaPagoTs)) map.set(c.fechaPagoTs, []);
-      map.get(c.fechaPagoTs).push(c);
+  // Agrupación por fecha de pago: pendientes del más cercano al más lejano y
+  // luego los pasados. Solo el pago pendiente más cercano lleva "Próximo".
+  const grupos = useMemo(() => agruparPorPago(visibles, Date.now()), [visibles]);
+
+  function confirmarEliminar(c) {
+    if (
+      window.confirm(
+        `¿Eliminar la comisión de ${c.clienteNombre}? La tarjeta quedará sin facturación.`,
+      )
+    ) {
+      eliminarComision(c.id);
     }
-    return [...map.entries()].sort((a, b) => b[0] - a[0]);
-  }, [visibles]);
+  }
 
   // Racha del mes en curso, solo para la vista del vendedor.
   const rachaActual = useMemo(() => {
@@ -203,12 +208,12 @@ export default function ComisionesView() {
             </p>
           </Card>
         ) : (
-          grupos.map(([ts, filas]) => (
+          grupos.map(({ ts, filas, proximo }) => (
             <Card key={ts} className="p-4">
               <div className="mb-3 flex items-baseline justify-between gap-3">
                 <h3 className="text-sm font-semibold text-ink">
                   Pago del {formatDate(ts)}
-                  {ts > Date.now() && (
+                  {proximo && (
                     <span className="m-chip ml-2 bg-sky2/15 text-sky2">Próximo</span>
                   )}
                 </h3>
@@ -222,7 +227,69 @@ export default function ComisionesView() {
                 </span>
               </div>
 
-              <div className="overflow-x-auto">
+              {/* Celular: una tarjeta por comisión. La tabla necesita 820 px y
+                  en un teléfono dejaba fuera la mitad de las columnas. La
+                  fecha de pago no se repite: es la del encabezado del grupo. */}
+              <ul className="space-y-2 md:hidden">
+                {filas.map((c) => {
+                  const color = sellerColor(c.vendedor, sellerColors);
+                  return (
+                    <li key={c.id} className="rounded-xl border border-white/5 bg-navy-900/40 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="break-words text-sm font-semibold text-ink">
+                            {c.clienteNombre}
+                          </p>
+                          <p className="mt-0.5 text-xs text-ink-muted">
+                            Venta #{c.numeroVenta} · {c.moto}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-semibold text-gold">
+                            {formatMXN(c.comisionVendedor)}
+                          </p>
+                          <p className="text-[11px] text-ink-faint">Comisión vendedor</p>
+                        </div>
+                      </div>
+
+                      {admin && (
+                        <>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span
+                              className="m-chip font-semibold"
+                              style={{ backgroundColor: `${color}26`, color }}
+                            >
+                              {c.vendedor || 'Sin asignar'}
+                            </span>
+                            <span className="m-chip bg-white/5 text-ink-muted">
+                              Promotor: {c.promotor || PROMOTOR_DEFAULT}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex items-end justify-between gap-3 border-t border-white/5 pt-2">
+                            <dl className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs">
+                              <dt className="text-ink-faint">Financiado</dt>
+                              <dt className="text-ink-faint">Comisión total</dt>
+                              <dd className="text-sky2">{formatMXN(c.montoFinanciado)}</dd>
+                              <dd className="text-ink-muted">{formatMXN(c.comisionTotal)}</dd>
+                            </dl>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="-mb-1 -mr-1 h-10 w-10"
+                              aria-label={`Eliminar la comisión de ${c.clienteNombre}`}
+                              onClick={() => confirmarEliminar(c)}
+                            >
+                              <Trash2 size={16} className="text-state-danger" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[820px] text-left text-xs">
                   <thead className="text-ink-faint">
                     <tr className="border-b border-white/10">
@@ -288,15 +355,7 @@ export default function ComisionesView() {
                               variant="ghost"
                               size="sm"
                               aria-label={`Eliminar la comisión de ${c.clienteNombre}`}
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    `¿Eliminar la comisión de ${c.clienteNombre}? La tarjeta quedará sin facturación.`,
-                                  )
-                                ) {
-                                  eliminarComision(c.id);
-                                }
-                              }}
+                              onClick={() => confirmarEliminar(c)}
                             >
                               <Trash2 size={13} className="text-state-danger" />
                             </Button>

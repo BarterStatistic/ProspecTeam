@@ -143,7 +143,7 @@ sustituye a Firebase Auth.
 npm test
 ```
 
-Corre **155 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
+Corre **160 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
 snapshot del catálogo completo, y `src/lib/cotizador.js`), comisiones
 (`src/lib/comisiones.js`), textos de notificaciones (`src/lib/notificaciones.js`),
 analítica del Panel ADMIN (`src/lib/analytics.js`) y la capa de dominio
