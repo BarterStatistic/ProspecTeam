@@ -8,7 +8,14 @@ import AppShell from './components/Layout/AppShell.jsx';
 import SetupScreen from './components/SetupScreen.jsx';
 
 function Gate() {
-  const { user } = useAuth();
+  const { user, verificando } = useAuth();
+  if (verificando) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="animate-pulse text-sm text-ink-muted">Verificando sesión…</p>
+      </div>
+    );
+  }
   if (!user) return <Login />;
   return (
     <DataProvider>

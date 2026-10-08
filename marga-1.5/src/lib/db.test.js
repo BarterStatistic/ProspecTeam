@@ -286,6 +286,54 @@ describe('eliminarComision', () => {
   });
 });
 
+describe('deleteClient', () => {
+  const ADMIN_ROL = { username: 'admin_braulio', role: 'admin' };
+
+  it('el admin elimina un cliente facturado junto con su comisión', async () => {
+    const cliente = await sembrarCliente();
+    await db.registrarFacturacion(cliente.id, facturacion(at(2026, 9, 20)), ADMIN);
+
+    await db.deleteClient(cliente.id, ADMIN_ROL);
+
+    expect(tarjeta(cliente.id)).toBeUndefined();
+    expect(store.getComisiones()).toHaveLength(0);
+  });
+
+  it('también borra una comisión huérfana ligada solo por clienteId', async () => {
+    const cliente = await sembrarCliente();
+    const comision = await db.registrarFacturacion(cliente.id, facturacion(at(2026, 9, 20)), ADMIN);
+    // Escritura parcial: la comisión existe pero la tarjeta no quedó estampada.
+    await store.patchClient(cliente.id, { comisionId: null });
+
+    await db.deleteClient(cliente.id, ADMIN_ROL);
+
+    expect(store.getComisiones().find((c) => c.id === comision.id)).toBeUndefined();
+  });
+
+  it('no deja que un vendedor elimine un cliente con comisión', async () => {
+    const cliente = await sembrarCliente();
+    await db.registrarFacturacion(cliente.id, facturacion(at(2026, 9, 20)), ADMIN);
+    await db.moveClient(cliente.id, 'prospectos', 'envio_docs_cita', ADMIN);
+
+    await expect(
+      db.deleteClient(cliente.id, { username: VENDEDOR, role: 'vendedor' }),
+    ).rejects.toThrow(/solo el administrador/);
+    expect(tarjeta(cliente.id)).toBeDefined();
+    expect(comisionesDe(cliente.id)).toHaveLength(1);
+  });
+
+  it('un cliente sin comisión se elimina igual que antes y no toca otras comisiones', async () => {
+    const facturado = await sembrarCliente();
+    await db.registrarFacturacion(facturado.id, facturacion(at(2026, 9, 20)), ADMIN);
+    const otro = await sembrarCliente({ firstName: 'Luis', phone: '8440000000' });
+
+    await db.deleteClient(otro.id, { username: VENDEDOR, role: 'vendedor' });
+
+    expect(tarjeta(otro.id)).toBeUndefined();
+    expect(store.getComisiones()).toHaveLength(1);
+  });
+});
+
 describe('renumerarMes', () => {
   it('reordena por fecha de facturación y recalcula los importes', async () => {
     const tarde = await sembrarCliente({ firstName: 'Tarde' });
@@ -408,5 +456,156 @@ describe('respaldo (exportAll / importAll)', () => {
     expect(store.getComisiones().map((c) => c.id)).toEqual([comision.id]);
     expect(store.getCotizaciones()).toHaveLength(1);
     expect(store.getConfig()).toMatchObject({ diaPago: 4 });
+  });
+});
+
+describe('avisos al admin por lo que hace un vendedor', () => {
+  const VEND = { username: VENDEDOR, role: 'vendedor' };
+  const ADMIN_SEMILLA = 'Braulio Acosta'; // admin de SEED_USERS
+  const avisosAdmin = (tipo) =>
+    store.getNotificaciones().filter((n) => n.destinatario === ADMIN_SEMILLA && n.tipo === tipo);
+
+  it('pasar un prospecto a Procesos avisa a cada admin', async () => {
+    const p = await db.createClient(
+      { section: 'prospectos', stage: 'primer_contacto', firstName: 'Ana', lastName: 'Ruiz' },
+      VEND,
+    );
+    await db.moveClient(p.id, 'prospectos', 'proceso_comenzado', VEND);
+
+    const avisos = avisosAdmin(TIPOS.PROCESO_NUEVO);
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0].clienteId).toBe(p.id);
+    expect(avisos[0].mensaje).toBe(`${VENDEDOR} pasó a Ana Ruiz a Procesos`);
+  });
+
+  it('capturar un prospecto directo en "Proceso comenzado" también avisa', async () => {
+    await db.createClient(
+      { section: 'prospectos', stage: 'proceso_comenzado', firstName: 'Luis', lastName: 'Mora' },
+      VEND,
+    );
+    expect(avisosAdmin(TIPOS.PROCESO_NUEVO)).toHaveLength(1);
+  });
+
+  it('mover dentro de Prospectos o que lo haga el admin no avisa', async () => {
+    const p = await db.createClient(
+      { section: 'prospectos', stage: 'primer_contacto', firstName: 'Ana', lastName: 'Ruiz' },
+      VEND,
+    );
+    await db.moveClient(p.id, 'prospectos', 'preguntas', VEND);
+    await db.moveClient(p.id, 'prospectos', 'proceso_comenzado', {
+      username: 'Otro Admin',
+      role: 'admin',
+    });
+    expect(avisosAdmin(TIPOS.PROCESO_NUEVO)).toHaveLength(0);
+  });
+
+  it('agendar una cita avisa a cada admin con la fecha', async () => {
+    const fechaCita = new Date(2026, 9, 2, 11, 30).getTime();
+    const cita = await db.createCita(
+      { clientName: 'Pedro Gil', phone: '8440000000', fechaCita, hasTime: true },
+      VEND,
+    );
+
+    const avisos = avisosAdmin(TIPOS.CITA_NUEVA);
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0].citaId).toBe(cita.id);
+    expect(avisos[0].mensaje).toContain(`${VENDEDOR} agendó una cita con Pedro Gil para el`);
+  });
+
+  it('una cita del admin o de un promotor no avisa', async () => {
+    const fechaCita = at(2026, 10, 2);
+    await db.createCita({ clientName: 'X', phone: '1', fechaCita }, { username: ADMIN_SEMILLA, role: 'admin' });
+    await db.createCita({ clientName: 'Y', phone: '2', fechaCita }, { username: 'Pro', role: 'promotor' });
+    expect(avisosAdmin(TIPOS.CITA_NUEVA)).toHaveLength(0);
+  });
+});
+
+describe('guardarPeriodosVenta', () => {
+  it('reacomoda las ventas ya facturadas al mes de venta que les toca y renumera las rachas', async () => {
+    // Con la regla por día (1), el 28 y el 29 de sept son de septiembre.
+    const a = await sembrarCliente({ firstName: 'A' });
+    const b = await sembrarCliente({ firstName: 'B' });
+    const c = await sembrarCliente({ firstName: 'C' });
+    await db.registrarFacturacion(a.id, facturacion(at(2026, 9, 10)), ADMIN);
+    await db.registrarFacturacion(b.id, facturacion(at(2026, 9, 28)), ADMIN);
+    await db.registrarFacturacion(c.id, facturacion(at(2026, 10, 2)), ADMIN);
+    expect(comisionesDe(b.id)[0]).toMatchObject({ mesVenta: '2026-09', numeroVenta: 2 });
+    expect(comisionesDe(c.id)[0]).toMatchObject({ mesVenta: '2026-10', numeroVenta: 1 });
+
+    // Octubre arranca el 26 de septiembre: B se pasa a octubre, antes que C.
+    const movidas = await db.guardarPeriodosVenta([
+      { id: 'oct', clave: '2026-10', inicio: at(2026, 9, 26), fin: at(2026, 10, 25) },
+    ]);
+
+    expect(movidas).toBe(1);
+    expect(comisionesDe(a.id)[0]).toMatchObject({ mesVenta: '2026-09', numeroVenta: 1 });
+    expect(comisionesDe(b.id)[0]).toMatchObject({ mesVenta: '2026-10', numeroVenta: 1 });
+    const comC = comisionesDe(c.id)[0];
+    expect(comC).toMatchObject({ mesVenta: '2026-10', numeroVenta: 2 });
+    const esperado = calcularComision({
+      montoFinanciado: comC.montoFinanciado,
+      esquemaId: comC.esquemaId,
+      numeroVenta: 2,
+      tienePromotor: false,
+    });
+    expect(comC.comisionVendedor).toBeCloseTo(esperado.comisionVendedor, 6);
+    expect(store.getConfig().periodosVenta).toHaveLength(1);
+  });
+
+  it('registrar un mes a futuro no toca ninguna comisión', async () => {
+    const a = await sembrarCliente();
+    await db.registrarFacturacion(a.id, facturacion(at(2026, 9, 10)), ADMIN);
+    const antes = comisionesDe(a.id)[0];
+
+    const movidas = await db.guardarPeriodosVenta([
+      { id: 'nov', clave: '2026-11', inicio: at(2026, 10, 26), fin: at(2026, 11, 25) },
+    ]);
+
+    expect(movidas).toBe(0);
+    expect(comisionesDe(a.id)[0]).toEqual(antes);
+  });
+
+  it('una facturación nueva dentro del rango cae en su mes de venta', async () => {
+    await db.guardarPeriodosVenta([
+      { id: 'oct', clave: '2026-10', inicio: at(2026, 9, 26), fin: at(2026, 10, 25) },
+    ]);
+    const a = await sembrarCliente();
+    const com = await db.registrarFacturacion(a.id, facturacion(at(2026, 9, 29)), ADMIN);
+    expect(com.mesVenta).toBe('2026-10');
+  });
+});
+
+describe('cambiarDisponibilidad', () => {
+  it('guarda el estado de la moto con quién y cuándo lo cambió', async () => {
+    await db.cambiarDisponibilidad('DNM 2.5', 'bajo_pedido', ADMIN);
+    const r = store.getDisponibilidad()['DNM 2.5'];
+    expect(r.estado).toBe('bajo_pedido');
+    expect(r.updatedBy).toBe(ADMIN.username);
+    expect(typeof r.updatedAt).toBe('number');
+
+    await db.cambiarDisponibilidad('DNM 2.5', 'no_disponible', ADMIN);
+    expect(store.getDisponibilidad()['DNM 2.5'].estado).toBe('no_disponible');
+  });
+
+  it('rechaza una moto fuera del catálogo o un estado inválido', async () => {
+    await expect(db.cambiarDisponibilidad('MOTO FANTASMA', 'disponible', ADMIN)).rejects.toThrow(
+      /no está en el catálogo/,
+    );
+    await expect(db.cambiarDisponibilidad('U2', 'agotada', ADMIN)).rejects.toThrow(/inválido/);
+    expect(store.getDisponibilidad()).toEqual({});
+  });
+
+  it('viaja en el respaldo y se restaura', async () => {
+    await db.cambiarDisponibilidad('U2', 'no_disponible', ADMIN);
+    const respaldo = await db.exportAll('vendedor');
+    expect(respaldo.disponibilidad.U2.estado).toBe('no_disponible');
+
+    vi.resetModules();
+    vi.stubGlobal('localStorage', localStorageDeMentira());
+    db = await import('./db.js');
+    ({ store } = await import('./store/index.js'));
+    await store.init();
+    await db.importAll(respaldo);
+    expect(store.getDisponibilidad().U2.estado).toBe('no_disponible');
   });
 });

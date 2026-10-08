@@ -1,4 +1,4 @@
-# Marga 2.0 — Organizador de clientes (multiusuario)
+# Marga 2.5 — Organizador de clientes (multiusuario)
 
 Herramienta interna del equipo de ventas de **Dinamo Saltillo** para dar seguimiento a
 clientes de venta de motos: tableros Kanban de **Prospectos** y **Procesos**, listas de
@@ -6,6 +6,51 @@ clientes de venta de motos: tableros Kanban de **Prospectos** y **Procesos**, li
 para que todo el equipo vea los mismos datos desde cualquier dispositivo, en tiempo real.
 
 > La versión anterior (un solo usuario, datos locales) se conserva intacta en `../marga/`.
+
+## Novedades de Marga 2.5
+
+- **Badge de Citas = citas de hoy.** El número junto a **Citas** en el menú cuenta las
+  citas cuya fecha es hoy (atendidas o no), no el total histórico
+  (`src/lib/citas.js`, `contarCitasDeHoy`).
+- **Meses de venta** (Panel ADMIN). El admin registra cada mes de venta con su fecha de
+  inicio y de fin (`config/comisiones.periodosVenta`, `[{ id, clave: 'YYYY-MM', inicio,
+  fin }]`); ese rango es lo que dura la racha de los vendedores en ese mes
+  (`src/lib/comisiones.js`, `mesVenta`). Los días que no cubre ningún mes registrado
+  siguen la regla anterior "el mes arranca el día N"; si esa regla cae en una clave ya
+  registrada, se recorre al mes libre siguiente (o anterior), para que un día fuera del
+  rango de octubre nunca sume a la racha de octubre. Al guardar, las ventas ya
+  facturadas que cambian de mes se reacomodan y se renumera la racha de los meses
+  afectados (`src/lib/db.js`, `guardarPeriodosVenta`); registrar un mes a futuro no
+  toca nada.
+- **Avisos al admin.** Cuando un **vendedor** pasa un prospecto a Procesos (lo suelta en
+  "Proceso comenzado" o lo captura directo ahí) o agenda una cita, cada admin recibe una
+  notificación (`TIPOS.PROCESO_NUEVO`, `TIPOS.CITA_NUEVA`). Lo que hacen el admin o un
+  promotor no se reporta.
+- **Clientes cancelados para vendedores.** El vendedor ve la sección, en **solo
+  lectura**, con únicamente los cancelados que registró (`createdBy`) o que lo nombran
+  como "Vendedor Prospect Team" (sin distinguir mayúsculas ni acentos) —
+  `src/lib/permissions.js`, `canSeeClient`. El mismo filtro aplica al contador del menú
+  y a la búsqueda global.
+- **Disponibilidad de motos.** Herramienta nueva (menú **Herramientas**), visible para todos los roles:
+  los 37 modelos del catálogo (`MODELS` de `src/lib/motos.js`) con su precio de lista y
+  uno de tres estados — **Disponible** (verde), **Bajo pedido** (amarillo) o **No
+  disponible** (rojo) —, filtros por estado con conteo y búsqueda por modelo. Solo el
+  **admin** cambia estados (`permissions.canEditDisponibilidad`); el resto los consulta.
+  Se guarda en el documento único `config/disponibilidad` como
+  `{ [nombreMoto]: { estado, updatedAt, updatedBy } }` (`src/lib/disponibilidad.js`,
+  `db.cambiarDisponibilidad`); una moto sin registro se considera disponible. Viaja en el
+  respaldo JSON.
+- **Vale de cita.** Al agendar una cita se abre solo el "Vale de cita": una imagen
+  vertical (1080 px) para que el vendedor se la mande al cliente, quien la muestra al
+  llegar a la agencia para que la cita cuente como válida. Dice en grande "Cita agendada
+  con Braulio Acosta" (`ATIENDE_CITAS` en `constants.js`), luego fecha y hora, cliente,
+  teléfono y moto de interés, la indicación de preguntar por Braulio Acosta, y un folio
+  corto (`citas.folioCita`, primeros 8 caracteres del id) para validarlo contra la
+  agenda. No lleva la INE ni las notas internas (eso sigue en "Descargar resumen"). Se
+  vuelve a abrir al reagendar o al editar la fecha, y cada cita tiene su botón **Vale de
+  cita**. El botón usa `saveBlob`: en el celular abre el menú de compartir (WhatsApp);
+  el vale se genera antes del toque porque iOS exige `navigator.share` dentro del gesto
+  (`src/lib/valeCita.js`, `components/forms/ValeCitaModal.jsx`).
 
 ## Novedades frente a Marga 1.5
 
@@ -125,6 +170,20 @@ snapshot (`motos.catalogo.test.js`).
 - El **vendedor solo ve sus propias comisiones** en su pestaña Comisiones.
 - **Admin y promotor** son quienes capturan una facturación (soltar la tarjeta en
   "Moto Facturada" o reabrir el chip "Facturada").
+- **Eliminar un cliente facturado** lo hace solo el **admin**, y borra también su
+  comisión en la misma escritura (el aviso de confirmación muestra cuánto). Antes la
+  comisión quedaba huérfana y seguía sumando en la nómina y en la racha. Como al
+  eliminar una comisión, el mes no se renumera solo (`src/lib/db.js`, `deleteClient`).
+
+### Sesión
+
+La sesión guardada en la pestaña es solo `{ id, firma }` (`src/lib/auth.js`). El
+nombre y el **rol se leen siempre del registro vivo** en `users`, así que editar
+`sessionStorage` a mano ya no da permisos de admin, y un cambio de rol, de contraseña o
+una baja hecha por el admin se aplica al instante en las sesiones abiertas (cambiar o
+borrar la cuenta cierra la sesión con un aviso; cambiar tu propia contraseña no te
+saca). Mientras las reglas de Firestore sigan abiertas esto sube la barrera, pero no
+sustituye a Firebase Auth.
 
 ## Pruebas
 
@@ -132,7 +191,7 @@ snapshot (`motos.catalogo.test.js`).
 npm test
 ```
 
-Corre **150 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
+Corre **213 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
 snapshot del catálogo completo, `src/lib/catalogoRemoto.js` y `src/lib/cotizador.js`), comisiones
 (`src/lib/comisiones.js`), textos de notificaciones (`src/lib/notificaciones.js`),
 analítica del Panel ADMIN (`src/lib/analytics.js`) y la capa de dominio
@@ -315,6 +374,27 @@ El build (`dist/`) es estático: puede servirse desde Netlify, Vercel, Firebase 
 cualquier hosting estático. La base de datos vive en Firestore, así que el hosting solo
 entrega archivos. Recuerda configurar las variables de entorno de Firebase en el proveedor
 al momento de compilar.
+
+### Publicación automática en Firebase Hosting
+
+El workflow `.github/workflows/deploy-marga-2-5.yml` (en la raíz del repositorio) instala,
+corre las pruebas, compila y publica Marga 2.5 en el canal `live` de Firebase Hosting en
+cada push a `master` que toque `marga-1.5/`. También se puede lanzar a mano en
+**Actions → Deploy Marga 2.5 to Firebase Hosting → Run workflow**. Si fallan las pruebas,
+no se publica.
+
+Configuración, una sola vez, en **Settings → Secrets and variables → Actions → New
+repository secret**:
+
+| Secret | Valor |
+|---|---|
+| `FIREBASE_SERVICE_ACCOUNT` | JSON de una cuenta de servicio con permiso de Firebase Hosting. Lo crea `firebase init hosting:github` desde esta carpeta, o se genera en Google Cloud → IAM → Cuentas de servicio (rol *Firebase Hosting Admin*) → Claves → JSON. |
+| `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID` | Los mismos valores de tu `.env.local`. `VITE_FIREBASE_PROJECT_ID` es también el proyecto al que se publica. |
+| `VITE_GEMINI_API_KEY` | Opcional. Sin ella todo funciona menos el OCR del Buró Automático. |
+
+Si falta un secret obligatorio, el workflow se detiene antes de compilar y dice cuál falta,
+en vez de publicar una versión sin configurar. Marga 1 (`../marga/`) se sigue publicando
+aparte en GitHub Pages con `deploy-marga.yml`.
 
 ## Estructura
 

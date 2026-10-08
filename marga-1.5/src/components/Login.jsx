@@ -5,7 +5,7 @@ import Button from './ui/Button.jsx';
 import Checkbox from './ui/Checkbox.jsx';
 
 export default function Login() {
-  const { login, rememberedUser } = useAuth();
+  const { login, rememberedUser, aviso } = useAuth();
   const [username, setUsername] = useState(rememberedUser);
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(!!rememberedUser);
@@ -32,7 +32,7 @@ export default function Login() {
       >
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-extrabold tracking-tight">
-            <span className="text-gold">Marga 2.0</span>
+            <span className="text-gold">Marga 2.5</span>
           </h1>
           <p className="mt-1 text-sm text-ink-muted">Organizador de clientes · Dinamo Saltillo</p>
         </div>
@@ -72,6 +72,10 @@ export default function Login() {
         <div className="mb-5 flex items-center justify-between">
           <Checkbox checked={remember} onChange={setRemember} label="Recordarme" />
         </div>
+
+        {aviso && !error && (
+          <p className="mb-4 rounded-lg bg-gold/10 px-3 py-2 text-sm text-gold">{aviso}</p>
+        )}
 
         {error && (
           <p className="mb-4 rounded-lg bg-state-danger/10 px-3 py-2 text-sm text-state-danger">

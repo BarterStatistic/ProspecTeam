@@ -14,11 +14,13 @@ export default function Column({ column, clients, locked = false }) {
   });
 
   // Mobile keeps a fixed, comfortable width (the board scrolls one column at a
-  // time). From `md` up the columns share ALL the available width (flex-1, no
-  // max cap) so the board fills the whole screen instead of leaving dead space
-  // on the right — and every stage stays on screen for easy dragging.
+  // time). From `md` up the columns share the available width (flex-1, no max
+  // cap) so the board fills the screen instead of leaving dead space on the
+  // right — but never narrower than 15rem (240 px): below that the cards break
+  // names mid-word and truncate every line. When the columns don't fit (the
+  // 7 of Procesos on a laptop), the board scrolls horizontally instead.
   return (
-    <div className="flex h-full min-h-0 w-72 shrink-0 flex-col md:w-auto md:min-w-[9.5rem] md:flex-1 md:shrink">
+    <div className="flex h-full min-h-0 w-72 shrink-0 flex-col md:w-auto md:min-w-[15rem] md:flex-1 md:shrink">
       {/* min-h reserva el alto de 2 líneas de texto (text-sm: 1.25rem por
           línea) para que un encabezado largo ("Entrega agendada", "Moto
           Facturada"...) que se parte en dos renglones no empiece la zona de

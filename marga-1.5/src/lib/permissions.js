@@ -4,7 +4,10 @@
 // `client.createdBy`.
 //
 // Vendedor rules (ownership-based):
-//   - Sees Prospectos, Procesos (read-only), Ventas concretadas (read-only) y Citas.
+//   - Sees Prospectos, Procesos (read-only), Ventas concretadas (read-only),
+//     Clientes cancelados (read-only) y Citas. In Clientes cancelados only the
+//     clients they registered (createdBy) or that name them as their
+//     "Vendedor Prospect Team" (prospectTeamSeller) — see canSeeClient.
 //   - Adds clients only from the Prospectos view.
 //   - May edit/move/cancel/delete a client only while it sits in Prospectos AND
 //     the client was registered by them (createdBy). Moving into "Proceso
@@ -26,6 +29,7 @@
 // Admin: everything.
 
 import { ROLES, SECTION_ORDER, TOOL_IDS } from './constants.js';
+import { normalizeName } from './clients.js';
 
 export function isAdmin(role) {
   return role === ROLES.ADMIN;
@@ -39,7 +43,22 @@ export function isPromotor(role) {
 export function visibleSections(role) {
   if (isAdmin(role)) return SECTION_ORDER;
   if (isPromotor(role)) return ['procesos'];
-  return ['prospectos', 'procesos', 'ventas'];
+  return ['prospectos', 'procesos', 'ventas', 'cancelados'];
+}
+
+/**
+ * Can this user see the given client at all? Every section this role opens is
+ * fully visible, except Clientes cancelados for a vendedor: only the clients
+ * they registered or that were assigned to them ("Vendedor Prospect Team",
+ * a free-text field, compared ignoring case and accents).
+ */
+export function canSeeClient(role, client, username) {
+  if (!visibleSections(role).includes(client.section)) return false;
+  if (isAdmin(role) || client.section !== 'cancelados') return true;
+  if (!username) return false;
+  if (client.createdBy && client.createdBy === username) return true;
+  const asignado = normalizeName(client.prospectTeamSeller ?? '');
+  return !!asignado && asignado === normalizeName(username);
 }
 
 export function canViewSection(role, section) {
@@ -72,11 +91,15 @@ export function canEditClient(role, client, username) {
   return ownsProspect(client, username);
 }
 
-/** Can this user permanently delete the given client? */
+/**
+ * Can this user permanently delete the given client? A client that already
+ * has a comisión (e.g. returned to Prospectos after being facturado) is
+ * admin-only: deleting it also deletes the comisión.
+ */
 export function canDeleteClient(role, client, username) {
   if (isAdmin(role)) return true;
   if (isPromotor(role)) return false;
-  return ownsProspect(client, username);
+  return ownsProspect(client, username) && !client.comisionId;
 }
 
 /** Can this role drop a card into section/stage? (drag target check) */
@@ -94,6 +117,11 @@ export function canDropTo(role, section) {
  */
 export function canAssignPromotor(role) {
   return isAdmin(role) || isPromotor(role);
+}
+
+/** Disponibilidad de motos: todos la consultan, solo el admin cambia estados. */
+export function canEditDisponibilidad(role) {
+  return isAdmin(role);
 }
 
 export function canImportBackup(role) {

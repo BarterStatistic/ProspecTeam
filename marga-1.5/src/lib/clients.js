@@ -2,6 +2,7 @@
 // blank-form factory. No database access here so these stay easy to reason about.
 
 import { DEFAULT_STAGE } from './constants.js';
+import { formatMXN } from './format.js';
 
 /** Lowercase, trim, collapse inner whitespace and strip accents. */
 export function normalizeName(str = '') {
@@ -80,4 +81,27 @@ export function regresoAColumna(columna, movedId, fromStage) {
     stageChanged: true,
     orderedIds: [...columna.filter((c) => c.id !== movedId).map((c) => c.id), movedId],
   };
+}
+
+/**
+ * Texto del confirm() para eliminar un cliente. Si tiene comisiones ligadas
+ * (ver `comisionesDeCliente` en db.js), avisa que también se borran y cuánto.
+ */
+export function mensajeEliminarCliente(client, comisiones = []) {
+  const nombre = fullName(client) || 'este cliente';
+  if (!comisiones.length) {
+    return `¿Eliminar a ${nombre}? Esta acción no se puede deshacer.`;
+  }
+  const lineas = comisiones.map(
+    (c) =>
+      `• ${c.vendedor || 'Sin vendedor'}: ${formatMXN(c.comisionVendedor)} ` +
+      `(comisión total ${formatMXN(c.comisionTotal)})`,
+  );
+  const cual = comisiones.length === 1 ? 'su comisión' : `sus ${comisiones.length} comisiones`;
+  return (
+    `¿Eliminar a ${nombre}?\n\n` +
+    `Este cliente ya está facturado: también se eliminará ${cual}.\n` +
+    `${lineas.join('\n')}\n\n` +
+    'Esta acción no se puede deshacer.'
+  );
 }

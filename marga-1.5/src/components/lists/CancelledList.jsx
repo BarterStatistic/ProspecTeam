@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { XCircle, Trash2, Phone, Bike, RotateCcw, CalendarX } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useData } from '../../context/DataContext.jsx';
-import { fullName } from '../../lib/clients.js';
+import { canDeleteClient, canEditClient, canSeeClient, isAdmin } from '../../lib/permissions.js';
+import { fullName, mensajeEliminarCliente } from '../../lib/clients.js';
 import { sellerColor } from '../../lib/constants.js';
 import { formatDateTime } from '../../lib/format.js';
 import Card from '../ui/Card.jsx';
@@ -11,8 +13,20 @@ import CopyButton from '../ui/CopyButton.jsx';
 import Avatar from '../ui/Avatar.jsx';
 
 function CancelledRow({ client }) {
-  const { updateClient, deleteClient, moveClient, sellerColors, sellerAvatars } = useData();
+  const { user, role } = useAuth();
+  const {
+    updateClient,
+    deleteClient,
+    comisionesDeCliente,
+    moveClient,
+    sellerColors,
+    sellerAvatars,
+  } = useData();
   const [notas, setNotas] = useState(client.notasRechazo ?? '');
+  // Un vendedor solo consulta sus cancelados: ni borra, ni edita la nota, ni
+  // restablece el crédito.
+  const editable = canEditClient(role, client, user?.username);
+  const borrable = canDeleteClient(role, client, user?.username);
 
   // Puts the credit process back on track: the client returns to the Procesos
   // board, at its first column.
@@ -53,49 +67,69 @@ function CancelledRow({ client }) {
             )}
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => confirm(`¿Eliminar a ${fullName(client)}?`) && deleteClient(client.id)}
-          aria-label="Eliminar"
-        >
-          <Trash2 size={16} className="text-state-danger" />
-        </Button>
+        {borrable && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() =>
+              confirm(mensajeEliminarCliente(client, comisionesDeCliente(client))) &&
+              deleteClient(client.id).catch((err) => alert(err.message))
+            }
+            aria-label="Eliminar"
+          >
+            <Trash2 size={16} className="text-state-danger" />
+          </Button>
+        )}
       </div>
 
-      <Textarea
-        label="Notas de rechazo"
-        className="mt-3"
-        value={notas}
-        onChange={(e) => setNotas(e.target.value)}
-        onBlur={() => updateClient(client.id, { notasRechazo: notas })}
-        placeholder="Motivo del rechazo…"
-        rows={2}
-      />
+      {editable ? (
+        <Textarea
+          label="Notas de rechazo"
+          className="mt-3"
+          value={notas}
+          onChange={(e) => setNotas(e.target.value)}
+          onBlur={() => updateClient(client.id, { notasRechazo: notas })}
+          placeholder="Motivo del rechazo…"
+          rows={2}
+        />
+      ) : (
+        <div className="mt-3">
+          <p className="m-label">Notas de rechazo</p>
+          <p className="whitespace-pre-line rounded-xl bg-navy-900/50 px-3 py-2 text-xs text-ink-muted">
+            {client.notasRechazo || 'Sin nota de rechazo.'}
+          </p>
+        </div>
+      )}
 
-      <div className="mt-3 flex justify-end">
-        <Button variant="sky" size="sm" onClick={restoreCredit}>
-          <RotateCcw size={14} /> Restablecer crédito
-        </Button>
-      </div>
+      {editable && (
+        <div className="mt-3 flex justify-end">
+          <Button variant="sky" size="sm" onClick={restoreCredit}>
+            <RotateCcw size={14} /> Restablecer crédito
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }
 
 export default function CancelledList() {
+  const { user, role } = useAuth();
   const { clients } = useData();
+  // El vendedor solo ve los cancelados que registró o que tiene asignados.
   const cancelados = useMemo(
     () =>
       clients
-        .filter((c) => c.section === 'cancelados')
+        .filter((c) => c.section === 'cancelados' && canSeeClient(role, c, user?.username))
         .sort((a, b) => (b.fechaCancelacion ?? b.updatedAt ?? 0) - (a.fechaCancelacion ?? a.updatedAt ?? 0)),
-    [clients],
+    [clients, role, user],
   );
 
   if (cancelados.length === 0) {
     return (
       <p className="px-2 py-16 text-center text-sm text-ink-faint">
-        No hay clientes cancelados.
+        {isAdmin(role)
+          ? 'No hay clientes cancelados.'
+          : 'No tienes clientes cancelados.'}
       </p>
     );
   }

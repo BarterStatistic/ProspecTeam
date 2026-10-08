@@ -48,6 +48,7 @@ import LineChart from '../components/charts/LineChart.jsx';
 import DonutChart from '../components/charts/DonutChart.jsx';
 import HBarChart from '../components/charts/HBarChart.jsx';
 import ReglasPagoCard from '../components/admin/ReglasPagoCard.jsx';
+import MesesVentaCard from '../components/admin/MesesVentaCard.jsx';
 
 const DAY = 86_400_000;
 
@@ -90,6 +91,22 @@ function StatCard({ icon: Icon, label, value, hint, tone = 'sky' }) {
       <p className="mt-1 text-2xl font-bold text-ink">{value}</p>
       {hint && <p className="text-[11px] text-ink-faint">{hint}</p>}
     </Card>
+  );
+}
+
+/**
+ * Grupo de KPIs con su subtítulo. Separa lo que mide el embudo de lo que mide
+ * la operación y el dinero: en una sola cuadrícula de 10 tarjetas todo pesaba
+ * igual y la última quedaba sola en su renglón.
+ */
+function KpiGroup({ title, gridClassName, children }) {
+  return (
+    <section>
+      <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+        {title}
+      </h2>
+      <div className={`grid gap-3 ${gridClassName}`}>{children}</div>
+    </section>
   );
 }
 
@@ -358,22 +375,22 @@ export default function AdminPanelView() {
           )}
 
           <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-white/5 pt-3">
-            <span className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+            <span className="mb-2 flex w-full items-center gap-1.5 text-xs font-medium text-ink-muted sm:w-auto">
               <CalendarRange size={14} className="text-sky2" /> Periodo
             </span>
             <Input
-              label="Inicio (dd/mm/aa)"
+              label="Inicio"
               type="date"
               value={desde}
               onChange={(e) => setDesde(e.target.value)}
-              className="w-44"
+              className="min-w-0 flex-1 sm:w-44 sm:flex-none"
             />
             <Input
-              label="Fin (dd/mm/aa)"
+              label="Fin"
               type="date"
               value={hasta}
               onChange={(e) => setHasta(e.target.value)}
-              className="w-44"
+              className="min-w-0 flex-1 sm:w-44 sm:flex-none"
             />
             <div className="mb-1 flex flex-wrap gap-1.5">
               {QUICK.map((q) => (
@@ -405,73 +422,79 @@ export default function AdminPanelView() {
         </Card>
 
         {/* ---------------- KPIs ---------------- */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-          <StatCard
-            icon={UserPlus}
-            label="Prospectos registrados"
-            value={totals.registros}
-            hint="Alta dentro del periodo"
-          />
-          <StatCard
-            icon={CheckCircle2}
-            label="Ventas concretadas"
-            value={totals.ventas}
-            hint="Por fecha de entrega"
-            tone="success"
-          />
-          <StatCard
-            icon={TrendingUp}
-            label="Conversión"
-            value={`${totals.conversion.toFixed(1)}%`}
-            hint="Ventas ÷ registros del periodo"
-            tone="gold"
-          />
-          <StatCard
-            icon={XCircle}
-            label="Cancelados"
-            value={totals.cancelados}
-            hint={`${totals.cancelacion.toFixed(1)}% de los registros`}
-            tone="danger"
-          />
-          <StatCard
-            icon={CalendarClock}
-            label="Citas agendadas"
-            value={totals.citas}
-            hint={`${totals.citasAtendidas} atendidas`}
-          />
-          <StatCard
-            icon={Layers}
-            label="Cartera activa"
-            value={totals.enProceso}
-            hint="Prospectos + procesos hoy"
-          />
-          <StatCard
-            icon={ShieldCheck}
-            label="Autorizaciones (Buró)"
-            value={totalAutorizaciones}
-            hint="Llenados completos vía extensión o servicio"
-          />
-          <StatCard
-            icon={Wallet}
-            label="Ingreso total global"
-            value={formatMXN(dinero.ingreso)}
-            hint="Comisiones con fecha de pago dentro del periodo"
-            tone="gold"
-          />
-          <StatCard
-            icon={TrendingUp}
-            label="Neto admin"
-            value={formatMXN(dinero.neto)}
-            hint="Total menos vendedor y promotor, por fecha de pago"
-            tone="success"
-          />
-          <StatCard
-            icon={Banknote}
-            label="Total monto financiado"
-            value={formatMXN(dinero.financiado)}
-            hint={`${comisionesEnRango.length} pago${comisionesEnRango.length === 1 ? '' : 's'} dentro del periodo`}
-          />
-        </div>
+        <KpiGroup title="Embudo" gridClassName="grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              icon={UserPlus}
+              label="Prospectos registrados"
+              value={totals.registros}
+              hint="Alta dentro del periodo"
+            />
+            <StatCard
+              icon={CheckCircle2}
+              label="Ventas concretadas"
+              value={totals.ventas}
+              hint="Por fecha de entrega"
+              tone="success"
+            />
+            <StatCard
+              icon={TrendingUp}
+              label="Conversión"
+              value={`${totals.conversion.toFixed(1)}%`}
+              hint="Ventas ÷ registros del periodo"
+              tone="gold"
+            />
+            <StatCard
+              icon={XCircle}
+              label="Cancelados"
+              value={totals.cancelados}
+              hint={`${totals.cancelacion.toFixed(1)}% de los registros`}
+              tone="danger"
+            />
+        </KpiGroup>
+
+        <KpiGroup title="Operación" gridClassName="grid-cols-2 sm:grid-cols-3">
+            <StatCard
+              icon={CalendarClock}
+              label="Citas agendadas"
+              value={totals.citas}
+              hint={`${totals.citasAtendidas} atendidas`}
+            />
+            <StatCard
+              icon={Layers}
+              label="Cartera activa"
+              value={totals.enProceso}
+              hint="Prospectos + procesos hoy"
+            />
+            <StatCard
+              icon={ShieldCheck}
+              label="Autorizaciones (Buró)"
+              value={totalAutorizaciones}
+              hint="Llenados completos vía extensión o servicio"
+            />
+        </KpiGroup>
+
+        <KpiGroup title="Dinero" gridClassName="grid-cols-1 sm:grid-cols-3">
+            <StatCard
+              icon={Wallet}
+              label="Ingreso total global"
+              value={formatMXN(dinero.ingreso)}
+              hint="Comisiones con fecha de pago dentro del periodo"
+              tone="gold"
+            />
+            <StatCard
+              icon={TrendingUp}
+              label="Neto admin"
+              value={formatMXN(dinero.neto)}
+              hint="Total menos vendedor y promotor, por fecha de pago"
+              tone="success"
+            />
+            <StatCard
+              icon={Banknote}
+              label="Total monto financiado"
+              value={formatMXN(dinero.financiado)}
+              hint={`${comisionesEnRango.length} pago${comisionesEnRango.length === 1 ? '' : 's'} dentro del periodo`}
+            />
+        </KpiGroup>
 
         {/* ---------------- Comparativa por vendedor ---------------- */}
         <Section
@@ -676,6 +699,9 @@ export default function AdminPanelView() {
             </ul>
           )}
         </Section>
+
+        {/* ---------------- Meses de venta (duración de las rachas) ---------------- */}
+        <MesesVentaCard />
 
         {/* ---------------- Reglas de comisiones ---------------- */}
         <ReglasPagoCard />

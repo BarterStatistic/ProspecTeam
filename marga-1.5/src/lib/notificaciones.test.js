@@ -6,6 +6,8 @@ import {
   mensajeEntrega,
   mensajeFacturacion,
   mensajeEdicion,
+  mensajeProcesoNuevo,
+  mensajeCitaNueva,
 } from './notificaciones.js';
 
 describe('formatMXN', () => {
@@ -48,7 +50,29 @@ describe('mensajes', () => {
     );
   });
 
-  it('expone los cuatro tipos de evento', () => {
-    expect(Object.values(TIPOS)).toEqual(['columna', 'entrega', 'facturacion', 'edicion']);
+  it('avisa al admin del prospecto que un vendedor pasó a Procesos', () => {
+    expect(mensajeProcesoNuevo('Alejandro Acosta', 'Ana López')).toBe(
+      'Alejandro Acosta pasó a Ana López a Procesos',
+    );
+  });
+
+  it('avisa al admin de la cita agendada, con hora solo si la tiene', () => {
+    const conHora = new Date(2026, 9, 2, 11, 30).getTime();
+    const sinHora = new Date(2026, 9, 2).getTime();
+    expect(mensajeCitaNueva('Alejandro Acosta', 'Ana López', conHora, true)).toMatch(
+      /^Alejandro Acosta agendó una cita con Ana López para el .*11:30/,
+    );
+    expect(mensajeCitaNueva('Alejandro Acosta', 'Ana López', sinHora, false)).not.toMatch(/:/);
+  });
+
+  it('expone los seis tipos de evento', () => {
+    expect(Object.values(TIPOS)).toEqual([
+      'columna',
+      'entrega',
+      'facturacion',
+      'edicion',
+      'proceso_nuevo',
+      'cita_nueva',
+    ]);
   });
 });

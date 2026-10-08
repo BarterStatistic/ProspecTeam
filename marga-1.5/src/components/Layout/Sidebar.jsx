@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Wallet,
   Calculator,
+  Bike,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useData } from '../../context/DataContext.jsx';
@@ -29,8 +30,11 @@ import {
   canManageUsers,
   canViewAdminPanel,
   canViewComisiones,
+  canSeeClient,
 } from '../../lib/permissions.js';
+import { contarCitasDeHoy } from '../../lib/citas.js';
 import Avatar from '../ui/Avatar.jsx';
+import BackupMenu from './BackupMenu.jsx';
 
 const ICONS = {
   prospectos: UserPlus,
@@ -43,6 +47,7 @@ const ICONS = {
 const TOOL_ICONS = {
   buro: ScanLine,
   cotizador: Calculator,
+  disponibilidad: Bike,
 };
 
 function NavButton({ icon: Icon, label, badge, isActive, onClick, nested = false }) {
@@ -97,10 +102,14 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
   const { user, role, logout } = useAuth();
   const { clients, citas, myProfile } = useData();
 
+  // Solo cuenta lo que este usuario puede ver: un vendedor ve únicamente sus
+  // propios clientes cancelados.
   const counts = clients.reduce((acc, c) => {
+    if (!canSeeClient(role, c, user?.username)) return acc;
     acc[c.section] = (acc[c.section] ?? 0) + 1;
     return acc;
   }, {});
+  const citasHoy = contarCitasDeHoy(citas);
 
   const sections = visibleSections(role);
   const enHerramientas = TOOLS.some((t) => t.id === active);
@@ -109,7 +118,7 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
     <div className="flex h-full w-64 flex-col border-r border-white/5 bg-navy-800/80 backdrop-blur-md">
       <div className="flex items-center justify-between px-5 py-5">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-gold">Marga 2.0</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-gold">Marga 2.5</h1>
           <p className="text-[11px] text-ink-faint">Dinamo Saltillo</p>
         </div>
         <button
@@ -137,7 +146,7 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
         <NavButton
           icon={CalendarDays}
           label="Citas"
-          badge={citas.length}
+          badge={citasHoy}
           isActive={active === 'citas'}
           onClick={() => onNavigate('citas')}
         />
@@ -216,6 +225,10 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
             {ROLE_LABELS[role] ?? role}
           </span>
         </button>
+        {/* Solo en celular: en escritorio Respaldo está en la barra superior. */}
+        <div className="md:hidden">
+          <BackupMenu variant="sidebar" />
+        </div>
         <button
           onClick={logout}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-state-danger/10 hover:text-state-danger"

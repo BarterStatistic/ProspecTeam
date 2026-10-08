@@ -14,6 +14,7 @@ import {
   IdCard,
   CheckCircle2,
   X,
+  Ticket,
 } from 'lucide-react';
 import { useData } from '../context/DataContext.jsx';
 import { sellerColor } from '../lib/constants.js';
@@ -27,6 +28,7 @@ import Checkbox from '../components/ui/Checkbox.jsx';
 import Input, { Textarea } from '../components/ui/Input.jsx';
 import CopyButton from '../components/ui/CopyButton.jsx';
 import Avatar from '../components/ui/Avatar.jsx';
+import ValeCitaModal from '../components/forms/ValeCitaModal.jsx';
 
 // Period filters for the shared agenda. Week runs Monday–Sunday (es-MX).
 const FILTERS = [
@@ -350,7 +352,7 @@ function AttendModal({ cita, onClose, onConfirm }) {
   );
 }
 
-function CitaRow({ cita, onEdit, onDelete, onToggleAttended, onReagendar }) {
+function CitaRow({ cita, onEdit, onDelete, onToggleAttended, onReagendar, onVale }) {
   const { sellerColors, sellerAvatars } = useData();
   const [downloading, setDownloading] = useState(false);
   // A cita counts as past once its day (or exact time) has gone by.
@@ -447,6 +449,9 @@ function CitaRow({ cita, onEdit, onDelete, onToggleAttended, onReagendar }) {
           <Button variant="outline" size="sm" onClick={onReagendar}>
             <RefreshCw size={14} /> Reagendar
           </Button>
+          <Button variant="gold" size="sm" onClick={onVale}>
+            <Ticket size={14} /> Vale de cita
+          </Button>
           <Button variant="sky" size="sm" onClick={handleDownload} disabled={downloading}>
             <Download size={14} /> {downloading ? 'Generando…' : 'Descargar resumen'}
           </Button>
@@ -466,6 +471,8 @@ export default function CitasView() {
   const [modal, setModal] = useState({ open: false, initial: null });
   const [attendTarget, setAttendTarget] = useState(null);
   const [reagendarTarget, setReagendarTarget] = useState(null);
+  // Cita cuyo "Vale de cita" se está mostrando (se abre solo al agendar).
+  const [valeTarget, setValeTarget] = useState(null);
 
   const rangeActive = !!(desde || hasta);
   const showingAttended = !rangeActive && filter === 'atendidas';
@@ -494,9 +501,18 @@ export default function CitasView() {
     setHasta('');
   }
 
+  // Cada cita nueva abre su vale para mandárselo al cliente. Al editar, solo
+  // si cambió la fecha u hora: el vale que ya tiene el cliente quedó viejo.
   async function handleSave(values) {
-    if (modal.initial) await updateCita(modal.initial.id, values);
-    else await createCita(values);
+    const previa = modal.initial;
+    if (previa) {
+      await updateCita(previa.id, values);
+      if (previa.fechaCita !== values.fechaCita || !!previa.hasTime !== values.hasTime) {
+        setValeTarget({ ...previa, ...values });
+      }
+    } else {
+      setValeTarget(await createCita(values));
+    }
   }
 
   function handleDelete(cita) {
@@ -536,7 +552,7 @@ export default function CitasView() {
         </div>
 
         <div className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-white/5 bg-navy-900/40 px-4 py-3">
-          <span className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+          <span className="mb-2 flex w-full items-center gap-1.5 text-xs font-medium text-ink-muted sm:w-auto">
             <CalendarRange size={14} className="text-sky2" /> Rango de fechas
           </span>
           <Input
@@ -544,14 +560,14 @@ export default function CitasView() {
             type="date"
             value={desde}
             onChange={(e) => setDesde(e.target.value)}
-            className="w-40"
+            className="min-w-0 flex-1 sm:w-40 sm:flex-none"
           />
           <Input
             label="Hasta"
             type="date"
             value={hasta}
             onChange={(e) => setHasta(e.target.value)}
-            className="w-40"
+            className="min-w-0 flex-1 sm:w-40 sm:flex-none"
           />
           {rangeActive && (
             <Button
@@ -566,7 +582,7 @@ export default function CitasView() {
               <X size={14} /> Limpiar
             </Button>
           )}
-          <span className="mb-2 ml-auto text-xs text-ink-faint">
+          <span className="mb-2 w-full text-right text-xs text-ink-faint sm:ml-auto sm:w-auto">
             {filtered.length} de {citas.length} cita(s)
           </span>
         </div>
@@ -593,6 +609,7 @@ export default function CitasView() {
                 onDelete={() => handleDelete(cita)}
                 onToggleAttended={(checked) => handleToggleAttended(cita, checked)}
                 onReagendar={() => setReagendarTarget(cita)}
+                onVale={() => setValeTarget(cita)}
               />
             ))}
           </div>
@@ -611,15 +628,15 @@ export default function CitasView() {
       <ReagendarModal
         cita={reagendarTarget}
         onClose={() => setReagendarTarget(null)}
-        onSave={(patch) =>
-          updateCita(reagendarTarget.id, {
-            ...patch,
-            atendida: false,
-            notaAtencion: '',
-            fechaAtencion: null,
-          })
-        }
+        onSave={async (patch) => {
+          const cambios = { ...patch, atendida: false, notaAtencion: '', fechaAtencion: null };
+          await updateCita(reagendarTarget.id, cambios);
+          // Nueva fecha → el cliente necesita un vale nuevo.
+          setValeTarget({ ...reagendarTarget, ...cambios });
+        }}
       />
+
+      <ValeCitaModal cita={valeTarget} onClose={() => setValeTarget(null)} />
 
       <AttendModal
         cita={attendTarget}

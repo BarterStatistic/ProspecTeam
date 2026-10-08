@@ -189,7 +189,7 @@ export default function SalesList() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-white/5 bg-navy-900/40 px-4 py-3">
-        <span className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+        <span className="mb-2 flex w-full items-center gap-1.5 text-xs font-medium text-ink-muted sm:w-auto">
           <CalendarRange size={14} className="text-sky2" /> Filtrar por fecha de entrega
         </span>
         <Input
@@ -197,14 +197,14 @@ export default function SalesList() {
           type="date"
           value={desde}
           onChange={(e) => setDesde(e.target.value)}
-          className="w-40"
+          className="min-w-0 flex-1 sm:w-40 sm:flex-none"
         />
         <Input
           label="Hasta"
           type="date"
           value={hasta}
           onChange={(e) => setHasta(e.target.value)}
-          className="w-40"
+          className="min-w-0 flex-1 sm:w-40 sm:flex-none"
         />
         {filterActive && (
           <Button
@@ -219,7 +219,7 @@ export default function SalesList() {
             <X size={14} /> Limpiar
           </Button>
         )}
-        <span className="mb-2 ml-auto text-xs text-ink-faint">
+        <span className="mb-2 w-full text-right text-xs text-ink-faint sm:ml-auto sm:w-auto">
           {ventas.length} de {totalVentas} venta(s)
         </span>
       </div>

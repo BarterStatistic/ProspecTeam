@@ -43,6 +43,7 @@ export function createFirestoreStore(config) {
   const notificacionesCol = collection(db, 'notificaciones');
   const configCol = collection(db, 'config');
   const configDoc = doc(configCol, 'comisiones');
+  const disponibilidadDoc = doc(configCol, 'disponibilidad');
 
   let clients = [];
   let users = [];
@@ -54,6 +55,7 @@ export function createFirestoreStore(config) {
   // Named comisionesConfig (not "config") to avoid shadowing the Firebase
   // config parameter of createFirestoreStore above.
   let comisionesConfig = {};
+  let disponibilidad = {};
   const clientListeners = new Set();
   const userListeners = new Set();
   const citaListeners = new Set();
@@ -62,6 +64,7 @@ export function createFirestoreStore(config) {
   const cotizacionListeners = new Set();
   const notificacionListeners = new Set();
   const configListeners = new Set();
+  const disponibilidadListeners = new Set();
 
   function notify(listeners, data) {
     for (const cb of listeners) cb(data);
@@ -134,6 +137,10 @@ export function createFirestoreStore(config) {
       comisionesConfig = snap.exists() ? snap.data() : {};
       notify(configListeners, comisionesConfig);
     });
+    listen(disponibilidadDoc, (snap) => {
+      disponibilidad = snap.exists() ? snap.data() : {};
+      notify(disponibilidadListeners, disponibilidad);
+    });
   }
 
   return {
@@ -155,6 +162,14 @@ export function createFirestoreStore(config) {
       await batch.commit();
     },
     deleteClient: (id) => deleteDoc(doc(clientsCol, id)),
+    // Un solo batch: o se borran el cliente y sus comisiones, o nada. Así no
+    // quedan comisiones huérfanas sumando en la nómina si la conexión se corta.
+    async deleteClientConComisiones(id, comisionIds) {
+      const batch = writeBatch(db);
+      for (const cid of comisionIds) batch.delete(doc(comisionesCol, cid));
+      batch.delete(doc(clientsCol, id));
+      await batch.commit();
+    },
     async bulkSetClients(records) {
       // Firestore batches cap at 500 ops; chunk to stay safe on big backups.
       for (let i = 0; i < records.length; i += 400) {
@@ -275,5 +290,18 @@ export function createFirestoreStore(config) {
       return () => configListeners.delete(cb);
     },
     setConfig: (patch) => setDoc(configDoc, patch, { merge: true }),
+
+    // --- disponibilidad de motos (documento único config/disponibilidad) ---
+    getDisponibilidad: () => disponibilidad,
+    onDisponibilidadChange(cb) {
+      disponibilidadListeners.add(cb);
+      cb(disponibilidad);
+      return () => disponibilidadListeners.delete(cb);
+    },
+    // Un campo por moto. Con setDoc + merge las llaves del objeto son nombres
+    // de campo literales, así que "DNM 2.5" no se toma como ruta anidada
+    // (updateDoc sí lo haría).
+    setDisponibilidadMoto: (nombre, registro) =>
+      setDoc(disponibilidadDoc, { [nombre]: registro }, { merge: true }),
   };
 }

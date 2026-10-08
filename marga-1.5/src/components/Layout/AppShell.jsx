@@ -10,6 +10,7 @@ import ProcesosView from '../../views/ProcesosView.jsx';
 import VentasView from '../../views/VentasView.jsx';
 import CanceladosView from '../../views/CanceladosView.jsx';
 import CitasView from '../../views/CitasView.jsx';
+import DisponibilidadView from '../../views/DisponibilidadView.jsx';
 import UsuariosView from '../../views/UsuariosView.jsx';
 import AdminPanelView from '../../views/AdminPanelView.jsx';
 import BuroAutomaticoView from '../../views/BuroAutomaticoView.jsx';
@@ -33,6 +34,7 @@ const VIEWS = {
   // Tools (see TOOLS in constants.js) — keyed by tool id.
   buro: BuroAutomaticoView,
   cotizador: CotizadorView,
+  disponibilidad: DisponibilidadView,
 };
 
 export default function AppShell() {
