@@ -38,6 +38,26 @@ node dinamo-catalogo/scripts/generar-paridad-sql.mjs > paridad.sql
 Pegar `paridad.sql` en el SQL Editor. Esperado: `grupos_distintos = 0` y
 `parcialidades_js = parcialidades_sql`.
 
+## Quién lee el catálogo
+
+- **Alex (n8n):** vista `Motos` y `cotizar_monto()`.
+- **Los 5 cotizadores** (PT, Diana, Cintya, Alan, Fernanda): al abrir llaman a
+  `rpc/catalogo` con la clave publicable. Si responde en menos de 3 s con la forma
+  esperada, reemplaza sus datos embebidos; si no, usa los embebidos como respaldo.
+  Cintya, Alan y Fernanda solo actualizan los 6 esquemas que muestran (no tienen
+  Motonomina Flex).
+- **Marga** (`marga-1.5/src/lib/catalogoRemoto.js`): mismo criterio, antes de montar la app.
+
+Prueba en navegador del cargador de los cotizadores (simula Supabase, no necesita red):
+
+```bash
+node dinamo-catalogo/navegador/prueba-cotizador.mjs cotizador-pt/index.html nuevo
+node dinamo-catalogo/navegador/prueba-cotizador.mjs ../dnm-cotizador-cintya-c.github.io/index.html viejo
+```
+
+`nuevo` es la plantilla de PT y Diana; `viejo`, la de Cintya, Alan y Fernanda.
+`catalogo-ejemplo.json` es una copia de `select public.catalogo()`.
+
 ## Cambiar precios o multiplicadores
 
 1. Editar en el Table Editor de Supabase (`modelos`, `multiplicadores`) o con SQL.
