@@ -51,7 +51,7 @@ export const SCHEMES = {
     ],
   },
   motoxpress: {
-    id: 'motoxpress', label: 'Motoxpress', min: 15, max: 75, termUnit: 'quincenas',
+    id: 'motoxpress', label: 'Motoxpress', min: 25, max: 75, termUnit: 'quincenas',
     terms: [12, 18, 24, 36, 48, 60, 72],
     levels: [
       { range: [0, 100], m: { 12: 0.106526, 18: 0.079696, 24: 0.065980, 36: 0.054497, 48: 0.050399, 60: 0.049320, 72: 0.047874 } },
@@ -85,7 +85,7 @@ export const SCHEMES = {
     ],
   },
   motoxpress_flex: {
-    id: 'motoxpress_flex', label: 'Motoxpress Flex', min: 15, max: 75, termUnit: 'semanas',
+    id: 'motoxpress_flex', label: 'Motoxpress Flex', min: 25, max: 75, termUnit: 'semanas',
     terms: [52, 65, 96, 128, 142, 144, 154, 170],
     levels: [
       { range: [0, 100], m: { 52: 0.029955, 65: 0.026416, 96: 0.022169, 128: 0.020269, 142: 0.019777, 144: 0.019714, 154: 0.019470, 170: 0.019148 } },
