@@ -375,13 +375,24 @@ cualquier hosting estático. La base de datos vive en Firestore, así que el hos
 entrega archivos. Recuerda configurar las variables de entorno de Firebase en el proveedor
 al momento de compilar.
 
-### Publicación automática en Firebase Hosting
+### Publicación en Firebase Hosting
+
+Hoy Marga 2.5 se publica desde una computadora, en esta carpeta, con `master` actualizado
+y el `.env.local` presente:
+
+```powershell
+npm ci
+npm run build
+npx firebase-tools deploy --only hosting --project marga-6bb72
+```
 
 El workflow `.github/workflows/deploy-marga-2-5.yml` (en la raíz del repositorio) instala,
-corre las pruebas, compila y publica Marga 2.5 en el canal `live` de Firebase Hosting en
-cada push a `master` que toque `marga-1.5/`. También se puede lanzar a mano en
-**Actions → Deploy Marga 2.5 to Firebase Hosting → Run workflow**. Si fallan las pruebas,
-no se publica.
+corre las pruebas, compila y publica en el canal `live`, pero **solo se lanza a mano**
+(**Actions → Deploy Marga 2.5 to Firebase Hosting → Run workflow**): la organización de
+Google Cloud no permite crear la clave de `FIREBASE_SERVICE_ACCOUNT`, y sin ella fallaba en
+cada push. Cuando exista el secret, se puede volver a lanzar en cada push a `master`
+restaurando el bloque `push:` que está comentado en el propio workflow. Si fallan las
+pruebas, no se publica.
 
 Configuración, una sola vez, en **Settings → Secrets and variables → Actions → New
 repository secret**:

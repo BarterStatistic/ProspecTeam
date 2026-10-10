@@ -1,8 +1,16 @@
 name: Deploy Marga 2.5 to Firebase Hosting
 
 # Compila Marga 2.5 (marga-1.5/), corre sus pruebas y la publica en el canal
-# "live" de Firebase Hosting en cada push a master que toque marga-1.5/. También
-# se puede lanzar a mano desde la pestaña Actions (workflow_dispatch).
+# "live" de Firebase Hosting. Solo se lanza a mano desde la pestaña Actions
+# (workflow_dispatch): la organización de Google Cloud no permite crear la clave
+# de FIREBASE_SERVICE_ACCOUNT, así que en cada push fallaba sin publicar nada.
+# Mientras tanto Marga se publica desde una computadora (`firebase deploy`).
+# Para volver a publicar en automático, agregar el secret y restaurar:
+#   push:
+#     branches: [master]
+#     paths:
+#       - 'marga-1.5/**'
+#       - '.github/workflows/deploy-marga-2-5.yml'
 #
 # Secrets del repositorio (Settings → Secrets and variables → Actions):
 #   FIREBASE_SERVICE_ACCOUNT   JSON de una cuenta de servicio con permiso de
@@ -16,11 +24,6 @@ name: Deploy Marga 2.5 to Firebase Hosting
 #
 # Marga 1 (marga/) sigue publicándose en GitHub Pages con deploy-marga.yml.
 on:
-  push:
-    branches: [master]
-    paths:
-      - 'marga-1.5/**'
-      - '.github/workflows/deploy-marga-2-5.yml'
   workflow_dispatch:
 
 permissions:
