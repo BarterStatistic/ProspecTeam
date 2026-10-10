@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Phone } from 'lucide-react';
 import { useData } from '../../context/DataContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
+import { canEditClient, canSeeClient } from '../../lib/permissions.js';
 import { fullName, normalizeName, normalizePhone } from '../../lib/clients.js';
 import { SECTIONS, stageLabel } from '../../lib/constants.js';
+import CopyButton from '../ui/CopyButton.jsx';
 
 export default function GlobalSearch({ open, onClose }) {
   const { clients } = useData();
+  const { user, role } = useAuth();
   const { openEditClient, goToSection } = useUI();
   const [query, setQuery] = useState('');
 
@@ -25,7 +29,10 @@ export default function GlobalSearch({ open, onClose }) {
     const q = normalizeName(query);
     const digits = normalizePhone(query);
     if (!query.trim()) return [];
+    // Only surface clients this user can open (a vendedor sees only their own
+    // cancelled clients).
     return clients
+      .filter((c) => canSeeClient(role, c, user?.username))
       .filter((c) => {
         const name = normalizeName(fullName(c));
         const moto = normalizeName(c.motorcycles || '');
@@ -35,13 +42,14 @@ export default function GlobalSearch({ open, onClose }) {
         );
       })
       .slice(0, 40);
-  }, [clients, query]);
+  }, [clients, query, role, user]);
 
   if (!open) return null;
 
   function pick(client) {
     goToSection(client.section);
-    openEditClient(client);
+    // Read-only records just navigate to their section; the card/row shows the details.
+    if (canEditClient(role, client, user?.username)) openEditClient(client);
     onClose();
   }
 
@@ -66,25 +74,38 @@ export default function GlobalSearch({ open, onClose }) {
           {query.trim() && results.length === 0 && (
             <p className="px-4 py-8 text-center text-sm text-ink-faint">Sin resultados.</p>
           )}
+          {/* The row opens the client, but "copiar teléfono" must stay its own
+              button — so the row action is an absolute overlay and the copy
+              control opts back into pointer events above it. */}
           {results.map((c) => (
-            <button
+            <div
               key={c.id}
-              onClick={() => pick(c)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/5"
+              className="relative flex w-full items-center gap-3 px-4 py-3 transition hover:bg-white/5"
             >
-              <div className="min-w-0 flex-1">
+              <button
+                onClick={() => pick(c)}
+                aria-label={`Abrir ${fullName(c)}`}
+                className="absolute inset-0"
+              />
+              <div className="pointer-events-none relative min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-ink">{fullName(c)}</p>
                 {c.phone && (
                   <span className="flex items-center gap-1 text-xs text-gold">
                     <Phone size={11} /> {c.phone}
+                    <CopyButton
+                      value={c.phone}
+                      label="Copiar teléfono"
+                      size={11}
+                      className="pointer-events-auto"
+                    />
                   </span>
                 )}
               </div>
-              <span className="m-chip shrink-0 bg-white/5 text-ink-muted">
+              <span className="m-chip pointer-events-none relative shrink-0 bg-white/5 text-ink-muted">
                 {SECTIONS[c.section]?.label}
                 {c.stage ? ` · ${stageLabel(c.section, c.stage)}` : ''}
               </span>
-            </button>
+            </div>
           ))}
         </div>
       </div>

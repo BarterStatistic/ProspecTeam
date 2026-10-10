@@ -1,75 +1,260 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { MoreVertical, Pencil, Ban, Trash2, Phone, Bike, Clock, UserCheck } from 'lucide-react';
+import {
+  MoreVertical,
+  Pencil,
+  Ban,
+  Trash2,
+  Undo2,
+  Phone,
+  Bike,
+  Clock,
+  UserCheck,
+  UserRound,
+  UserCog,
+  StickyNote,
+} from 'lucide-react';
 import { useData } from '../../context/DataContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
-import { fullName } from '../../lib/clients.js';
+import { etiquetaEsquema } from '../../lib/motos.js';
+import {
+  canDeleteClient,
+  canDropTo,
+  canEditClient,
+  canRegistrarFacturacion,
+} from '../../lib/permissions.js';
+import { BOARD_COLUMNS, sellerColor } from '../../lib/constants.js';
+import { fullName, regresoAColumna, mensajeEliminarCliente } from '../../lib/clients.js';
 import { formatDateTime } from '../../lib/format.js';
 import Checkbox from '../ui/Checkbox.jsx';
+import CopyButton from '../ui/CopyButton.jsx';
+import Avatar from '../ui/Avatar.jsx';
 
-// Stops a pointer-down from bubbling to the drag sensor, so interactive controls
-// (checkbox, menu) keep working without starting a drag.
-const noDrag = { onPointerDown: (e) => e.stopPropagation() };
+// Stops press events from bubbling to the drag sensors, so interactive controls
+// (checkbox, menu) keep working without starting a drag. MouseSensor listens to
+// mousedown and TouchSensor to touchstart, so all three streams must be stopped.
+const stopPress = (e) => e.stopPropagation();
+const noDrag = { onPointerDown: stopPress, onMouseDown: stopPress, onTouchStart: stopPress };
 
 export function CardBody({ client, dragging = false }) {
-  const { updateClient, deleteClient } = useData();
-  const { openEditClient, openCancelClient } = useUI();
+  const {
+    clients,
+    updateClient,
+    deleteClient,
+    comisionesDeCliente,
+    moveClient,
+    applyBoardReorder,
+    sellerColors,
+    sellerAvatars,
+  } = useData();
+  const { user, role } = useAuth();
+  const { openEditClient, openCancelClient, openFacturacion } = useUI();
   const [menuOpen, setMenuOpen] = useState(false);
+  // Posición del menú en coordenadas de viewport: se calcula al abrir y el
+  // menú se porta al <body>, para que no lo recorte el `overflow-y-auto` de
+  // la columna cuando la tarjeta queda cerca del borde de la pantalla.
+  const [menuPos, setMenuPos] = useState(null);
+  const menuBtnRef = useRef(null);
+
+  function toggleMenu() {
+    if (!menuOpen) {
+      const MENU_WIDTH = 224; // w-56
+      const MARGIN = 8;
+      const rect = menuBtnRef.current.getBoundingClientRect();
+      const left = Math.min(
+        Math.max(rect.right - MENU_WIDTH, MARGIN),
+        window.innerWidth - MENU_WIDTH - MARGIN,
+      );
+      const espacioAbajo = window.innerHeight - rect.bottom;
+      const abrirArriba = espacioAbajo < 200 && rect.top > espacioAbajo;
+      setMenuPos({
+        left,
+        top: abrirArriba ? null : rect.bottom + 4,
+        bottom: abrirArriba ? window.innerHeight - rect.top + 4 : null,
+      });
+    }
+    setMenuOpen((v) => !v);
+  }
+
+  // El menú queda fijo a coordenadas del viewport, así que si la columna se
+  // desplaza mientras está abierto se cierra en vez de quedar flotando lejos
+  // del botón que lo abrió.
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const cerrar = () => setMenuOpen(false);
+    window.addEventListener('scroll', cerrar, true);
+    window.addEventListener('resize', cerrar);
+    return () => {
+      window.removeEventListener('scroll', cerrar, true);
+      window.removeEventListener('resize', cerrar);
+    };
+  }, [menuOpen]);
+
+  const editable = canEditClient(role, client, user?.username);
+  const deletable = canDeleteClient(role, client, user?.username);
+  const hasMenu = editable || deletable;
+  const inProcesos = client.section === 'procesos';
+  // "Mover a…" list: lets a card jump to any column without dragging, which
+  // matters because the last columns sit off-screen on most displays.
+  const boardColumns = BOARD_COLUMNS[client.section] ?? [];
+  const canMove = editable && canDropTo(role, client.section) && boardColumns.length > 1;
+  // Accent colour by who captured the client (createdBy): a left stripe on the
+  // card + a tinted "Registró" line, so cards are scannable by seller.
+  const accent = sellerColor(client.createdBy, sellerColors);
+  const puedeFacturar = canRegistrarFacturacion(role);
+  // En "Moto Facturada" sin comisión: movida antes de esta corrección, fallo
+  // parcial offline o comisión eliminada. El chip "Sin facturar" la recupera.
+  const sinFacturar = client.stage === 'moto_facturada' && !client.comisionId;
+
+  // "Mover a" no debe saltarse la facturación: llevar la tarjeta a "Moto
+  // Facturada" abre la captura, y cancelarla la regresa a su columna de
+  // origen con la misma reversión que usa el arrastre (KanbanBoard).
+  async function moverA(stage) {
+    const origen = client.stage;
+    await moveClient(client.id, client.section, stage);
+    if (stage !== 'moto_facturada' || !puedeFacturar) return;
+    openFacturacion(client, () => {
+      const columna = clients
+        .filter((c) => c.section === client.section && c.stage === origen)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      return applyBoardReorder(regresoAColumna(columna, client.id, origen));
+    });
+  }
 
   return (
     <div
+      style={{ borderLeftColor: accent, borderLeftWidth: '4px' }}
       className={`group relative rounded-xl border border-white/10 bg-navy-700/80 p-3 shadow-card transition
         ${dragging ? 'ring-2 ring-sky2/60' : 'hover:border-white/20'}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <h4 className="min-w-0 break-words pr-1 text-sm font-semibold text-ink">
+        {/* Profile picture of whoever registered the client, when they set one */}
+        <Avatar
+          photo={sellerAvatars[client.createdBy]}
+          name={client.createdBy}
+          color={accent}
+          size={22}
+          className="mt-0.5"
+        />
+        <h4 className="min-w-0 flex-1 break-words pr-1 text-sm font-semibold text-ink">
           {fullName(client) || 'Sin nombre'}
         </h4>
-        <div className="relative shrink-0" {...noDrag}>
-          <button
-            onClick={() => setMenuOpen((v) => !v)}
-            className="rounded-md p-1 text-ink-faint transition hover:bg-white/5 hover:text-ink"
-            aria-label="Acciones"
-          >
-            <MoreVertical size={16} />
-          </button>
-          {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 z-50 mt-1 w-40 overflow-hidden rounded-lg border border-white/10 bg-navy-800 shadow-card">
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    openEditClient(client);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-ink hover:bg-white/5"
-                >
-                  <Pencil size={14} /> Editar
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    openCancelClient(client);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-state-warning hover:bg-white/5"
-                >
-                  <Ban size={14} /> Cancelar cliente
-                </button>
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    if (confirm(`¿Eliminar a ${fullName(client)}? Esta acción no se puede deshacer.`))
-                      deleteClient(client.id);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-xs text-state-danger hover:bg-white/5"
-                >
-                  <Trash2 size={14} /> Eliminar
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        {hasMenu && (
+          <div className="relative shrink-0" {...noDrag}>
+            <button
+              ref={menuBtnRef}
+              onClick={toggleMenu}
+              className="rounded-md p-1 text-ink-faint transition hover:bg-white/5 hover:text-ink"
+              aria-label="Acciones"
+              aria-expanded={menuOpen}
+            >
+              <MoreVertical size={16} />
+            </button>
+            {menuOpen &&
+              menuPos &&
+              createPortal(
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                  <div
+                    style={{ left: menuPos.left, top: menuPos.top ?? 'auto', bottom: menuPos.bottom ?? 'auto' }}
+                    className="fixed z-50 max-h-[70vh] w-56 overflow-y-auto rounded-lg border border-white/10 bg-navy-800 shadow-card"
+                  >
+                  {editable && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          openEditClient(client);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-ink hover:bg-white/5"
+                      >
+                        <Pencil size={14} /> Editar
+                      </button>
+
+                      {canMove && (
+                        <>
+                          <div className="border-t border-white/5 px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wide text-ink-faint">
+                            Mover a
+                          </div>
+                          {boardColumns.map((col) => {
+                            const isCurrent = col.id === client.stage;
+                            return (
+                              <button
+                                key={col.id}
+                                disabled={isCurrent}
+                                onClick={() => {
+                                  setMenuOpen(false);
+                                  moverA(col.id);
+                                }}
+                                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs ${
+                                  isCurrent
+                                    ? 'cursor-default text-ink-faint'
+                                    : 'text-ink hover:bg-white/5'
+                                }`}
+                              >
+                                <span
+                                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                                    isCurrent ? 'bg-gold' : 'bg-white/25'
+                                  }`}
+                                />
+                                <span className="flex-1">{col.label}</span>
+                              </button>
+                            );
+                          })}
+                          <div className="border-t border-white/5" />
+                        </>
+                      )}
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          openCancelClient(client);
+                        }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-state-warning hover:bg-white/5"
+                      >
+                        <Ban size={14} /> Cancelar cliente
+                      </button>
+                      {/* Undo an accidental hand-off: land on the last real
+                          Prospectos stage (not "Proceso comenzado", which would
+                          auto-transition the client straight back to Procesos). */}
+                      {inProcesos && (
+                        <button
+                          onClick={() => {
+                            setMenuOpen(false);
+                            if (
+                              confirm(
+                                `¿Regresar a ${fullName(client)} de Procesos a Prospectos (Envío de docs / Cita agendada)?`,
+                              )
+                            )
+                              moveClient(client.id, 'prospectos', 'envio_docs_cita');
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-xs text-sky2-light hover:bg-white/5"
+                        >
+                          <Undo2 size={14} /> Regresar a Prospectos
+                        </button>
+                      )}
+                    </>
+                  )}
+                  {deletable && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        if (confirm(mensajeEliminarCliente(client, comisionesDeCliente(client))))
+                          deleteClient(client.id).catch((err) => alert(err.message));
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-xs text-state-danger hover:bg-white/5"
+                    >
+                      <Trash2 size={14} /> Eliminar
+                    </button>
+                  )}
+                  </div>
+                </>,
+                document.body,
+              )}
+          </div>
+        )}
       </div>
 
       <div className="mt-2 space-y-1 text-xs text-ink-muted">
@@ -77,6 +262,7 @@ export function CardBody({ client, dragging = false }) {
           <div className="flex items-center gap-1.5">
             <Phone size={12} className="text-sky2" />
             <span className="text-gold">{client.phone}</span>
+            <CopyButton value={client.phone} label="Copiar teléfono" {...noDrag} />
           </div>
         )}
         {client.motorcycles && (
@@ -91,27 +277,106 @@ export function CardBody({ client, dragging = false }) {
             <span className="truncate">{client.prospectTeamSeller}</span>
           </div>
         )}
+        {client.createdBy && (
+          <div className="flex items-center gap-1.5" style={{ color: accent }}>
+            <UserRound size={12} />
+            <span className="truncate font-medium">Registró: {client.createdBy}</span>
+          </div>
+        )}
+        {/* Who follows up this proceso. Only meaningful on the Procesos board,
+            where an unassigned card is worth spotting at a glance. */}
+        {inProcesos &&
+          (client.promotorEncargado ? (
+            <div
+              className="flex items-center gap-1.5"
+              style={{ color: sellerColor(client.promotorEncargado, sellerColors) }}
+            >
+              <UserCog size={12} />
+              <span className="truncate font-medium">Promotor: {client.promotorEncargado}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-ink-faint">
+              <UserCog size={12} />
+              <span className="truncate italic">Sin promotor</span>
+            </div>
+          ))}
       </div>
 
-      {(client.saleType || client.creditScheme) && (
+      {client.notes && (
+        <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-navy-900/50 px-2 py-1.5">
+          <StickyNote size={11} className="mt-0.5 shrink-0 text-gold/70" />
+          <p className="line-clamp-2 whitespace-pre-line text-[11px] italic leading-snug text-ink-muted">
+            {client.notes}
+          </p>
+        </div>
+      )}
+
+      {(client.saleType || client.creditScheme || client.comisionId || sinFacturar) && (
         <div className="mt-2 flex flex-wrap gap-1">
           {client.saleType && (
             <span className="m-chip bg-sky2/15 text-sky2-light">{client.saleType}</span>
           )}
           {client.creditScheme && (
-            <span className="m-chip bg-white/5 text-ink-muted">{client.creditScheme}</span>
+            <span className="m-chip bg-white/5 text-ink-muted">{etiquetaEsquema(client.creditScheme)}</span>
           )}
+          {sinFacturar &&
+            (puedeFacturar ? (
+              <button
+                type="button"
+                {...noDrag}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openFacturacion(client);
+                }}
+                title="Capturar la facturación de esta venta"
+                className="m-chip bg-state-warning/15 text-state-warning transition hover:bg-state-warning/25"
+              >
+                Sin facturar
+              </button>
+            ) : (
+              <span className="m-chip bg-state-warning/15 text-state-warning">Sin facturar</span>
+            ))}
+          {client.comisionId &&
+            (puedeFacturar ? (
+              <button
+                type="button"
+                {...noDrag}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openFacturacion(client);
+                }}
+                title="Editar la facturación de esta venta"
+                className="m-chip bg-state-success/15 text-state-success transition hover:bg-state-success/25"
+              >
+                Facturada
+              </button>
+            ) : (
+              <span className="m-chip bg-state-success/15 text-state-success">Facturada</span>
+            ))}
         </div>
       )}
 
       <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2" {...noDrag}>
         <Checkbox
           checked={!!client.buroAutorizado}
-          onChange={(v) => updateClient(client.id, { buroAutorizado: v })}
+          onChange={(v) => editable && updateClient(client.id, { buroAutorizado: v })}
+          disabled={!editable}
           label="Buró autorizado"
-          className="text-[11px] text-ink-muted"
+          className={`text-[11px] text-ink-muted ${editable ? '' : 'cursor-default opacity-60'}`}
         />
       </div>
+
+      {inProcesos && (
+        <div className="mt-1.5 flex items-center justify-between" {...noDrag}>
+          <Checkbox
+            checked={!!client.engancheDejado}
+            onChange={(v) => editable && updateClient(client.id, { engancheDejado: v })}
+            disabled={!editable}
+            label="Enganche dejado"
+            className={`text-[11px] text-ink-muted ${editable ? '' : 'cursor-default opacity-60'}`}
+          />
+        </div>
+      )}
 
       <div className="mt-1.5 flex items-center gap-1 text-[10px] text-ink-faint">
         <Clock size={10} />
@@ -122,8 +387,11 @@ export function CardBody({ client, dragging = false }) {
 }
 
 export default function ClientCard({ client }) {
+  const { user, role } = useAuth();
+  const draggable = canEditClient(role, client, user?.username);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: client.id,
+    disabled: !draggable,
   });
 
   const style = {
@@ -136,7 +404,7 @@ export default function ClientCard({ client }) {
     <div
       ref={setNodeRef}
       style={style}
-      className="m-draggable cursor-grab active:cursor-grabbing"
+      className={draggable ? 'm-draggable cursor-grab active:cursor-grabbing' : ''}
       {...attributes}
       {...listeners}
     >

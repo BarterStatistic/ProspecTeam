@@ -27,7 +27,9 @@ export default {
         ink: {
           DEFAULT: '#F8FAFC',
           muted: '#94A3B8',
-          faint: '#64748B',
+          // 5.2:1 sobre las tarjetas (AA pide 4.5:1 en texto pequeño); antes
+          // #64748B daba 3.5:1 en fechas, subtítulos y contadores.
+          faint: '#8291A8',
         },
         state: {
           success: '#4ADE80',
@@ -37,6 +39,9 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'Segoe UI', 'sans-serif'],
+        // Tipografías del cotizador original (Urbanist titulares, DM Mono cifras).
+        head: ['Urbanist', 'system-ui', 'sans-serif'],
+        cifra: ['"DM Mono"', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
         card: '0 4px 24px -8px rgba(0, 0, 0, 0.5)',

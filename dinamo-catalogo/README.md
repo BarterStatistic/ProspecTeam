@@ -46,7 +46,7 @@ Pegar `paridad.sql` en el SQL Editor. Esperado: `grupos_distintos = 0` y
   esperada, reemplaza sus datos embebidos; si no, usa los embebidos como respaldo.
   Cintya, Alan y Fernanda solo actualizan los 6 esquemas que muestran (no tienen
   Motonomina Flex).
-- **Marga** (`marga-1.5/src/lib/catalogoRemoto.js`): mismo criterio, antes de montar la app.
+- **Marga** (`marga/src/lib/catalogoRemoto.js`): mismo criterio, antes de montar la app.
 
 Prueba en navegador del cargador de los cotizadores (simula Supabase, no necesita red):
 

@@ -1,13 +1,17 @@
 import { Menu, Search, Plus } from 'lucide-react';
-import { SECTIONS } from '../../lib/constants.js';
+import { VIEW_META } from '../../lib/constants.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
+import { canAddClient } from '../../lib/permissions.js';
 import Button from '../ui/Button.jsx';
+import NotificationBell from './NotificationBell.jsx';
 import BackupMenu from './BackupMenu.jsx';
 
 export default function TopBar({ section, onOpenSidebar, onOpenSearch }) {
+  const { role } = useAuth();
   const { openAddClient } = useUI();
-  const meta = SECTIONS[section];
-  const isBoard = meta.type === 'board';
+  const meta = VIEW_META[section];
+  const showAdd = meta.type === 'board' && canAddClient(role, section);
 
   return (
     <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-white/5 bg-navy-900/70 px-4 py-3 backdrop-blur-md sm:px-6">
@@ -32,9 +36,14 @@ export default function TopBar({ section, onOpenSidebar, onOpenSearch }) {
         <span className="hidden sm:inline">Buscar…</span>
       </button>
 
-      <BackupMenu />
+      <NotificationBell />
+      {/* En celular Respaldo vive en el menú lateral: con cuatro botones aquí
+          el título se cortaba ("Prospe…"). */}
+      <div className="hidden md:block">
+        <BackupMenu />
+      </div>
 
-      {isBoard && (
+      {showAdd && (
         <Button variant="gold" size="md" onClick={() => openAddClient(section)}>
           <Plus size={18} />
           <span className="hidden sm:inline">Agregar cliente</span>

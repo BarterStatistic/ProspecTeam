@@ -56,9 +56,25 @@ body {
   }
 }
 
-/* dnd-kit: prevent the browser's native scroll from hijacking touch drags */
+/* App shell height: 100dvh follows the phone's shrinking/growing browser bars,
+   so the board never hides behind them. Falls back to 100vh where dvh is
+   unsupported. Fixed (not min-) height is what makes the columns scroll
+   internally instead of stretching the whole page. */
+.m-app-height {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* dnd-kit: keep touch drags alive on phones.
+   - touch-action: manipulation → normal swipes still scroll, but no double-tap zoom.
+   - user-select / touch-callout none → the ~200 ms hold-to-drag doesn't trigger
+     iOS/Android text selection or the long-press callout, which would steal the
+     gesture and drop the card. */
 .m-draggable {
   touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Respect users who prefer reduced motion: freeze background + card animations */

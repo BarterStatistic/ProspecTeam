@@ -2,6 +2,7 @@
 // blank-form factory. No database access here so these stay easy to reason about.
 
 import { DEFAULT_STAGE } from './constants.js';
+import { formatMXN } from './format.js';
 
 /** Lowercase, trim, collapse inner whitespace and strip accents. */
 export function normalizeName(str = '') {
@@ -53,9 +54,54 @@ export function emptyClient(section = 'prospectos') {
     creditScheme: '',
     motorcycles: '',
     prospectTeamSeller: '',
+    // Username of the promotor following up this proceso. Only meaningful in
+    // the Procesos board; empty means "Sin promotor".
+    promotorEncargado: '',
     notes: '',
     buroAutorizado: false,
+    // Marca de facturación (columna "Moto Facturada") y la comisión que generó.
+    fechaFacturacion: null,
+    comisionId: null,
     section,
     stage: DEFAULT_STAGE[section] ?? '',
   };
+}
+
+/**
+ * Argumentos de `applyBoardReorder` para regresar una tarjeta a la columna de
+ * donde salió, al final de ella. Es la reversión que se usa cuando se cancela
+ * la captura de facturación tras llevar una tarjeta a "Moto Facturada", ya sea
+ * arrastrándola (KanbanBoard) o con el menú "Mover a" (ClientCard).
+ * `columna` son las tarjetas de la columna de origen, en orden.
+ */
+export function regresoAColumna(columna, movedId, fromStage) {
+  return {
+    movedId,
+    toStage: fromStage,
+    stageChanged: true,
+    orderedIds: [...columna.filter((c) => c.id !== movedId).map((c) => c.id), movedId],
+  };
+}
+
+/**
+ * Texto del confirm() para eliminar un cliente. Si tiene comisiones ligadas
+ * (ver `comisionesDeCliente` en db.js), avisa que también se borran y cuánto.
+ */
+export function mensajeEliminarCliente(client, comisiones = []) {
+  const nombre = fullName(client) || 'este cliente';
+  if (!comisiones.length) {
+    return `¿Eliminar a ${nombre}? Esta acción no se puede deshacer.`;
+  }
+  const lineas = comisiones.map(
+    (c) =>
+      `• ${c.vendedor || 'Sin vendedor'}: ${formatMXN(c.comisionVendedor)} ` +
+      `(comisión total ${formatMXN(c.comisionTotal)})`,
+  );
+  const cual = comisiones.length === 1 ? 'su comisión' : `sus ${comisiones.length} comisiones`;
+  return (
+    `¿Eliminar a ${nombre}?\n\n` +
+    `Este cliente ya está facturado: también se eliminará ${cual}.\n` +
+    `${lineas.join('\n')}\n\n` +
+    'Esta acción no se puede deshacer.'
+  );
 }
