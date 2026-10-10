@@ -20,9 +20,9 @@ function pagosPara(enganchePct, incluyeServicio) {
 const base = {
   moto,
   esquema,
-  enganchePct: 15,
+  enganchePct: 25,
   incluyeServicio: true,
-  pagos: pagosPara(15, true),
+  pagos: pagosPara(25, true),
   vendedor: 'Braulio Acosta',
   fecha: new Date(2026, 8, 17).getTime(),
 };
@@ -35,13 +35,13 @@ describe('tarjetaCotizacionHTML', () => {
     expect(html).toContain('>Motoxpress<');
     expect(html).toContain('>72<');
     expect(html).toContain('Parcialidad quincena');
-    expect(html).toContain('$3,423');
+    expect(html).toContain('$3,021');
     expect(html).toContain('+$3,814.00');
     expect(html).toContain('$80,315.00');
     expect(html).toContain('$84,129.00');
-    expect(html).toContain('>15%<');
-    expect(html).toContain('$12,619.35');
-    expect(html).toContain('$71,509.65');
+    expect(html).toContain('>25%<');
+    expect(html).toContain('$21,032.25');
+    expect(html).toContain('$63,096.75');
     expect(html).toContain('Cotizado por Braulio Acosta · 17/09/2026');
     expect(html).toContain('Cotización con vigencia de 5 días');
     expect(html).toContain('Parcialidad quincena · redondeada al entero más cercano');
@@ -53,7 +53,7 @@ describe('tarjetaCotizacionHTML', () => {
     const html = tarjetaCotizacionHTML({
       ...base,
       incluyeServicio: false,
-      pagos: pagosPara(15, false),
+      pagos: pagosPara(25, false),
       modo: 'single',
       plazos: [72],
     });

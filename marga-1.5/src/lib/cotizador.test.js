@@ -30,6 +30,13 @@ describe('nivelPara', () => {
     expect(() => nivelPara('motonomina', 3)).toThrow(RangeError);
   });
 
+  it('Motoxpress y Motoxpress Flex exigen 25% de enganche mínimo', () => {
+    for (const id of ['motoxpress', 'motoxpress_flex']) {
+      expect(() => nivelPara(id, 24.99)).toThrow(RangeError);
+      expect(() => nivelPara(id, 25)).not.toThrow();
+    }
+  });
+
   it('rechaza un enganche por encima del máximo del esquema', () => {
     expect(() => nivelPara('motonomina', 80)).toThrow(RangeError);
   });
@@ -102,11 +109,11 @@ describe('calcularFinanciamiento', () => {
       motoNombre: 'U2',
       incluyeServicio: false,
       esquemaId: 'motoxpress',
-      enganche: 3291.75, // 15% de 21945
+      enganche: 5486.25, // 25% de 21945
     });
     expect(r.plazoMax).toBe(72);
     expect(r.factor).toBe(0.047874);
-    expect(r.montoFinanciado).toBe(893 * 72); // 18653.25 × 0.047874 = 893.006 → 893
+    expect(r.montoFinanciado).toBe(788 * 72); // 16458.75 × 0.047874 = 787.946 → 788
   });
 
   it('usa el plazo de 170 semanas en los esquemas flex', () => {

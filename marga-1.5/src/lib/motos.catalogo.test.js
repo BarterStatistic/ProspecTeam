@@ -45,7 +45,7 @@ const ESQUEMAS_ESPERADOS = {
     ],
   },
   motoxpress: {
-    min: 15, max: 75, termUnit: 'quincenas',
+    min: 25, max: 75, termUnit: 'quincenas',
     terms: [12, 18, 24, 36, 48, 60, 72],
     levels: [
       { range: [0, 100], m: { 12: 0.106526, 18: 0.079696, 24: 0.06598, 36: 0.054497, 48: 0.050399, 60: 0.04932, 72: 0.047874 } },
@@ -74,7 +74,7 @@ const ESQUEMAS_ESPERADOS = {
     ],
   },
   motoxpress_flex: {
-    min: 15, max: 75, termUnit: 'semanas',
+    min: 25, max: 75, termUnit: 'semanas',
     terms: [52, 65, 96, 128, 142, 144, 154, 170],
     levels: [
       { range: [0, 100], m: { 52: 0.029955, 65: 0.026416, 96: 0.022169, 128: 0.020269, 142: 0.019777, 144: 0.019714, 154: 0.01947, 170: 0.019148 } },

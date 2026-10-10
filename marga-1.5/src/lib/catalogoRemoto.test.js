@@ -68,7 +68,7 @@ describe('cargarCatalogoRemoto', () => {
     const cat = copia();
     cat.esquemas.motoxpress.levels[0].m['72'] = 0.05;
     await remoto.cargarCatalogoRemoto({ fetchFn: respuesta(cat) });
-    expect(nivelPara('motoxpress', 20).m[72]).toBe(0.05);
+    expect(nivelPara('motoxpress', 30).m[72]).toBe(0.05);
   });
 
   it('un esquema que no viene se queda con los datos de respaldo', async () => {
