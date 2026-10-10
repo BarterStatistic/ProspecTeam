@@ -1,6 +1,6 @@
 import { DatabaseZap } from 'lucide-react';
 
-// Shown when neither Firebase env vars nor demo mode are configured. Points
+// Shown when neither Supabase/Firebase env vars nor demo mode are configured. Points
 // whoever is setting the app up to the README instructions.
 export default function SetupScreen() {
   return (
@@ -20,14 +20,13 @@ export default function SetupScreen() {
 
         <ol className="mb-5 list-decimal space-y-2 pl-5 text-sm text-ink">
           <li>
-            Crea un proyecto gratuito en{' '}
-            <span className="text-sky2">console.firebase.google.com</span> y habilita{' '}
-            <span className="text-gold">Cloud Firestore</span>.
+            Copia el archivo <code className="text-sky2">.env.example</code> como{' '}
+            <code className="text-sky2">.env.local</code>.
           </li>
           <li>
-            Copia el archivo <code className="text-sky2">.env.example</code> como{' '}
-            <code className="text-sky2">.env.local</code> y pega la configuración web de tu
-            proyecto.
+            Llena <code className="text-sky2">VITE_SUPABASE_URL</code> y{' '}
+            <code className="text-sky2">VITE_SUPABASE_KEY</code> con la URL y la llave
+            publicable del proyecto de <span className="text-gold">Supabase</span>.
           </li>
           <li>Reinicia la aplicación.</li>
         </ol>

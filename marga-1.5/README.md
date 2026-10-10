@@ -201,8 +201,8 @@ hay pruebas de componentes React.
 
 ## Novedades frente a Marga 1.0
 
-- **Base de datos compartida (Firebase Firestore)**: los cambios se sincronizan al instante
-  entre dispositivos y sesiones. Funciona offline y sincroniza al reconectar.
+- **Base de datos compartida** (Firebase Firestore hasta oct 2026, hoy Supabase — ver
+  abajo): los cambios se sincronizan al instante entre dispositivos y sesiones.
 - **Multiusuario con roles**:
   - **Administrador** — ve todas las secciones, edita/elimina/inserta todo y gestiona usuarios.
   - **Vendedor** — ve Prospectos, Procesos (solo lectura), Ventas concretadas (solo lectura)
@@ -244,7 +244,37 @@ Las contraseñas iniciales están definidas en `src/lib/constants.js` (`SEED_USE
 guardan **hasheadas** en la base. Cámbialas desde el Gestor de usuarios después del primer
 inicio de sesión, especialmente si el repositorio es público.
 
-## Configuración de Firebase (una sola vez)
+## Base de datos: Supabase (desde octubre 2026)
+
+Los datos viven en el proyecto de Supabase de Dinamo (`ehyqexzaauvjoioafqdz`, el mismo
+del catálogo y de Alex), en tablas con prefijo `marga_`: `marga_clients`, `marga_users`,
+`marga_citas`, `marga_buro_autorizaciones`, `marga_comisiones`, `marga_cotizaciones`,
+`marga_notificaciones` y `marga_config` (documentos `comisiones` y `disponibilidad`).
+Cada tabla guarda documentos (`id`, `data` jsonb) igual que las colecciones de Firestore,
+así que la app no cambió: solo cambió el store (`src/lib/store/supabaseStore.js`).
+
+- Esquema, RLS y funciones: `supabase/marga_tablas.sql` (aplicado como migración
+  `marga_tablas`).
+- Configuración: `VITE_SUPABASE_URL` y `VITE_SUPABASE_KEY` (llave publicable) en
+  `.env.local`. Si están, ganan sobre Firebase.
+- Tiempo real con Supabase Realtime; las escrituras se ven al instante (optimistas) y se
+  deshacen si el servidor las rechaza. **A diferencia de Firestore, no hay modo offline**:
+  sin conexión las escrituras fallan con un aviso en vez de quedar en cola.
+- ⚠️ Igual que las reglas abiertas de Firestore, la llave publicable (que va dentro del
+  JavaScript) puede leer y escribir las tablas `marga_*`. Cerrar eso requiere Supabase
+  Auth + políticas por rol; queda pendiente.
+
+### Migrar de Firestore a Supabase
+
+`node scripts/migrar-firestore-a-supabase.mjs` cuenta lo que hay en cada lado;
+con `--escribir` deja Supabase como copia exacta de Firestore (Firestore no se toca).
+Solo se corre **antes del corte**: después, Supabase es la base viva y el script la
+regresaría al estado de Firestore.
+
+## Configuración de Firebase (base anterior, queda como respaldo)
+
+Sin las variables de Supabase, la app vuelve a usar Firestore. Así se configuraba:
+
 
 1. Entra a [console.firebase.google.com](https://console.firebase.google.com) y crea un
    proyecto gratuito (plan Spark).
