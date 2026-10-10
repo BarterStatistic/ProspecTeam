@@ -6,3 +6,8 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Firebase CLI artifacts (config snippets and logs must never reach the public repo)
+firebase-debug.log
+firebase-config.js
+.firebase/

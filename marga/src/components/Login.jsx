@@ -5,16 +5,23 @@ import Button from './ui/Button.jsx';
 import Checkbox from './ui/Checkbox.jsx';
 
 export default function Login() {
-  const { login, rememberedUser } = useAuth();
+  const { login, rememberedUser, aviso } = useAuth();
   const [username, setUsername] = useState(rememberedUser);
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(!!rememberedUser);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    const res = login({ username, password, remember });
-    if (!res.ok) setError(res.error);
+    setBusy(true);
+    setError('');
+    try {
+      const res = await login({ username, password, remember });
+      if (!res.ok) setError(res.error);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -25,7 +32,7 @@ export default function Login() {
       >
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-extrabold tracking-tight">
-            <span className="text-gold">Marga</span>
+            <span className="text-gold">Marga 2.5</span>
           </h1>
           <p className="mt-1 text-sm text-ink-muted">Organizador de clientes · Dinamo Saltillo</p>
         </div>
@@ -66,14 +73,18 @@ export default function Login() {
           <Checkbox checked={remember} onChange={setRemember} label="Recordarme" />
         </div>
 
+        {aviso && !error && (
+          <p className="mb-4 rounded-lg bg-gold/10 px-3 py-2 text-sm text-gold">{aviso}</p>
+        )}
+
         {error && (
           <p className="mb-4 rounded-lg bg-state-danger/10 px-3 py-2 text-sm text-state-danger">
             {error}
           </p>
         )}
 
-        <Button type="submit" variant="gold" size="lg" className="w-full">
-          <LogIn size={18} /> Iniciar sesión
+        <Button type="submit" variant="gold" size="lg" className="w-full" disabled={busy}>
+          <LogIn size={18} /> {busy ? 'Verificando…' : 'Iniciar sesión'}
         </Button>
       </form>
     </div>

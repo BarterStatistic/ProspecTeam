@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../../context/DataContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { canAssignPromotor } from '../../lib/permissions.js';
 import { emptyClient, findDuplicate } from '../../lib/clients.js';
+import { normalizarEsquema } from '../../lib/motos.js';
 import { SALE_TYPES, CREDIT_SCHEMES } from '../../lib/constants.js';
 import Modal from '../ui/Modal.jsx';
 import Button from '../ui/Button.jsx';
 import Input, { Textarea } from '../ui/Input.jsx';
 import Select from '../ui/Select.jsx';
 import Checkbox from '../ui/Checkbox.jsx';
+import MotoPicker from '../ui/MotoPicker.jsx';
 import DuplicateWarningModal from './DuplicateWarningModal.jsx';
 
 // Only these fields are user-editable; section/stage/order/timestamps are managed
@@ -19,6 +23,7 @@ const EDITABLE = [
   'creditScheme',
   'motorcycles',
   'prospectTeamSeller',
+  'promotorEncargado',
   'notes',
   'buroAutorizado',
 ];
@@ -28,16 +33,38 @@ function pickEditable(values) {
 }
 
 export default function ClientFormModal({ open, initial, onClose }) {
-  const { clients, createClient, updateClient } = useData();
+  const { clients, createClient, updateClient, promotorUsernames } = useData();
+  const { role } = useAuth();
   const [values, setValues] = useState(emptyClient());
   const [error, setError] = useState('');
   const [dupMatch, setDupMatch] = useState(null);
 
   const isEdit = !!initial?.id;
 
+  // "Promotor encargado" only applies to the Procesos board.
+  const showPromotor = values.section === 'procesos' && canAssignPromotor(role);
+
+  // Keep a stored name that no longer matches a promotor account (renamed or
+  // deleted user) in the list, so opening the form doesn't silently clear it.
+  const promotorOptions = useMemo(() => {
+    const current = values.promotorEncargado;
+    if (current && !promotorUsernames.includes(current)) {
+      return [...promotorUsernames, current];
+    }
+    return promotorUsernames;
+  }, [promotorUsernames, values.promotorEncargado]);
+
   useEffect(() => {
     if (open) {
-      setValues(initial ?? emptyClient());
+      // Merge over emptyClient() (not just `initial ?? emptyClient()`): un
+      // cliente guardado antes de que existiera un campo nuevo (p. ej.
+      // promotorEncargado, agregado sin migración) no lo trae en su registro,
+      // así que `initial.promotorEncargado` es `undefined`. Firestore's
+      // updateDoc() rechaza cualquier valor `undefined` en el patch, así que
+      // guardar esa edición fallaba en silencio: el botón "Guardar cambios"
+      // parecía roto sin ningún mensaje de error.
+      const base = { ...emptyClient(), ...initial };
+      setValues({ ...base, creditScheme: normalizarEsquema(base.creditScheme ?? '') });
       setError('');
       setDupMatch(null);
     }
@@ -70,12 +97,19 @@ export default function ClientFormModal({ open, initial, onClose }) {
   }
 
   async function save() {
-    if (isEdit) {
-      await updateClient(initial.id, pickEditable(values));
-    } else {
-      await createClient(values);
+    try {
+      if (isEdit) {
+        await updateClient(initial.id, pickEditable(values));
+      } else {
+        await createClient(values);
+      }
+      onClose();
+    } catch (e) {
+      // Sin esto, un error del store (p. ej. Firestore rechazando el patch)
+      // se perdía en silencio y el botón "Guardar cambios" parecía no hacer
+      // nada: el modal se quedaba abierto sin ninguna pista de qué pasó.
+      setError(e.message || 'No se pudo guardar el cliente.');
     }
-    onClose();
   }
 
   return (
@@ -139,12 +173,7 @@ export default function ClientFormModal({ open, initial, onClose }) {
             />
           </div>
 
-          <Input
-            label="Moto(s)"
-            value={values.motorcycles}
-            onChange={setInput('motorcycles')}
-            placeholder="Super sport, SPF 250, B-52…"
-          />
+          <MotoPicker value={values.motorcycles ?? ''} onChange={set('motorcycles')} />
 
           <Input
             label="Vendedor Prospect Team"
@@ -152,6 +181,23 @@ export default function ClientFormModal({ open, initial, onClose }) {
             onChange={setInput('prospectTeamSeller')}
             placeholder="Opcional"
           />
+
+          {showPromotor && (
+            <div>
+              <Select
+                label="Promotor encargado"
+                options={promotorOptions}
+                value={values.promotorEncargado ?? ''}
+                onChange={setInput('promotorEncargado')}
+                placeholder="Sin asignar"
+              />
+              {promotorOptions.length === 0 && (
+                <p className="mt-1 text-[11px] text-ink-faint">
+                  Aún no hay usuarios con rol Promotor. Créalos en el Gestor de usuarios.
+                </p>
+              )}
+            </div>
+          )}
 
           <Textarea
             label="Notas"

@@ -1,5 +1,7 @@
-// Domain constants for Marga: sections, board columns, select options and the
-// auto-transition rules that move a client to the next section automatically.
+// Domain constants for Marga 1.5: sections, board columns, select options,
+// auto-transition rules, roles and the seed accounts for the shared database.
+
+import { SCHEMES, SCHEME_IDS } from './motos.js';
 
 export const SECTIONS = {
   prospectos: { id: 'prospectos', label: 'Prospectos', type: 'board' },
@@ -8,8 +10,51 @@ export const SECTIONS = {
   cancelados: { id: 'cancelados', label: 'Clientes cancelados', type: 'list' },
 };
 
-// Ordered list used to render the sidebar navigation.
+// Ordered list used to render the sidebar navigation (client sections only;
+// the admin-only "usuarios" view is rendered separately).
 export const SECTION_ORDER = ['prospectos', 'procesos', 'ventas', 'cancelados'];
+
+// Tools live in their own collapsible group in the sidebar and are visible to
+// every role. They are standalone utilities, not client sections: they don't
+// touch the clients collection and carry no badge count. Adding one is a single
+// entry here plus its component in AppShell's VIEWS map.
+export const TOOLS = [
+  {
+    id: 'buro',
+    label: 'Buró Automático',
+    // Reads an INE with Gemini, computes the RFC and hands the 18 fields to the
+    // local service that fills the Refácil form (see src/lib/buro/).
+    description: 'Captura asistida de INE hacia Refácil',
+  },
+  {
+    id: 'cotizador',
+    label: 'Cotizador PT',
+    // Port a React del cotizador estático de cotizador-pt/. Cada cotización
+    // generada se registra para poder contarlas por vendedor en el Panel ADMIN.
+    description: 'Cotizaciones de financiamiento de motos',
+  },
+  {
+    id: 'disponibilidad',
+    label: 'Disponibilidad de motos',
+    // Estado de cada modelo del catálogo (Disponible / Bajo pedido / No
+    // disponible). Todos lo consultan; solo el admin lo cambia.
+    description: 'Qué motos hay, cuáles son bajo pedido y cuáles no',
+  },
+];
+
+export const TOOL_IDS = TOOLS.map((t) => t.id);
+
+// Metadata for every navigable view, including non-client views.
+export const VIEW_META = {
+  ...SECTIONS,
+  citas: { id: 'citas', label: 'Citas', type: 'citas' },
+  usuarios: { id: 'usuarios', label: 'Gestor de usuarios', type: 'users' },
+  admin: { id: 'admin', label: 'Panel ADMIN', type: 'admin' },
+  comisiones: { id: 'comisiones', label: 'Comisiones', type: 'comisiones' },
+  ...Object.fromEntries(
+    TOOLS.map((t) => [t.id, { id: t.id, label: t.label, type: 'tool' }]),
+  ),
+};
 
 // Columns for each Kanban board section, in display order.
 export const BOARD_COLUMNS = {
@@ -25,6 +70,7 @@ export const BOARD_COLUMNS = {
     { id: 'bnc', label: 'BNC' },
     { id: 'vfs_call_center', label: 'VFS / Call center' },
     { id: 'ec', label: 'EC' },
+    { id: 'moto_facturada', label: 'Moto Facturada' },
     { id: 'entrega_agendada', label: 'Entrega agendada' },
     { id: 'moto_entregada', label: 'Moto entregada' },
   ],
@@ -43,8 +89,122 @@ export const AUTO_TRANSITIONS = {
   'procesos:moto_entregada': { section: 'ventas', stage: '' },
 };
 
+// Quién recibe a los clientes con cita en la agencia. Sale en grande en el
+// "Vale de cita" que el vendedor le manda al cliente (src/lib/valeCita.js).
+export const ATIENDE_CITAS = 'Braulio Acosta';
+
 export const SALE_TYPES = ['Crédito', 'Contado', 'MSI'];
-export const CREDIT_SCHEMES = ['Motonómina', 'Credinamo', 'Motoxpress'];
+
+// Los siete esquemas del cotizador, como { value, label } para <Select>.
+// Marga 1.5 guardaba la etiqueta en texto; normalizarEsquema() en motos.js
+// mapea esos valores viejos a su id al leerlos.
+export const CREDIT_SCHEMES = SCHEME_IDS.map((id) => ({
+  value: id,
+  label: SCHEMES[id].label,
+}));
+
+// ---------------------------------------------------------------------------
+// Roles & seed accounts
+// ---------------------------------------------------------------------------
+
+export const ROLES = { ADMIN: 'admin', VENDEDOR: 'vendedor', PROMOTOR: 'promotor' };
+
+export const ROLE_LABELS = {
+  admin: 'Administrador',
+  vendedor: 'Vendedor',
+  promotor: 'Promotor',
+};
+
+// Tailwind classes for the role chip (sidebar + user manager), so the three
+// roles stay visually distinct: oro para admin, cian para vendedor, morado
+// para promotor.
+export const ROLE_CHIP_CLASSES = {
+  admin: 'bg-gold/15 text-gold',
+  vendedor: 'bg-sky2/15 text-sky2-light',
+  promotor: 'bg-purple-500/15 text-purple-300',
+};
+
+// Accounts created automatically the first time the app runs against an empty
+// database. Passwords are hashed before being stored; they can be changed
+// later from the "Gestor de usuarios" view.
+export const SEED_USERS = [
+  { id: 'braulio-acosta', username: 'Braulio Acosta', role: ROLES.ADMIN, password: 'xbox2015', color: '#22C55E' },
+  { id: 'alejandro-acosta', username: 'Alejandro Acosta', role: ROLES.VENDEDOR, password: 'prospect2007', color: '#14B8A6' },
+  { id: 'emmanuel-bernal', username: 'Emmanuel Bernal', role: ROLES.VENDEDOR, password: 'brisasponiente394', color: '#3B82F6' },
+];
+
+// ---------------------------------------------------------------------------
+// Seller colours — a per-vendedor accent based on who captured the client
+// (the `createdBy` field). Used to tint cards, drive the board filter and
+// colour the Panel ADMIN charts.
+//
+// The colour lives in the user's document (field `color`), editable from the
+// "Gestor de usuarios" view. The maps below are only the fallback for users
+// created before that field existed.
+// ---------------------------------------------------------------------------
+
+export const SELLER_COLORS = {
+  'Emmanuel Bernal': '#3B82F6', // azul
+  'Alejandro Acosta': '#14B8A6', // turquesa (antes rojo: ver COLORES_RETIRADOS)
+  'Braulio Acosta': '#22C55E', // verde fuerte
+};
+
+export const UNASSIGNED_COLOR = '#64748B'; // gris para clientes sin `createdBy`
+export const UNASSIGNED_LABEL = 'Sin asignar';
+
+// Swatches offered in the colour picker. All of them read clearly against the
+// dark navy background and stay distinguishable from each other.
+export const COLOR_PALETTE = [
+  '#22C55E', // verde
+  '#3B82F6', // azul
+  '#FFD11A', // dorado
+  '#A855F7', // morado
+  '#F97316', // naranja
+  '#14B8A6', // turquesa
+  '#EC4899', // rosa
+  '#84CC16', // lima
+  '#38BDF8', // cielo
+  '#F59E0B', // ámbar
+  '#94A3B8', // gris
+];
+
+// Colores que ya no se ofrecen pero pueden seguir guardados en un usuario.
+// El rojo se confundía con "error" y con las acciones de borrar/cancelar (que
+// usan el rojo de state.danger), así que se pinta con su reemplazo hasta que
+// el admin elija otro color desde el Gestor de usuarios.
+export const COLORES_RETIRADOS = {
+  '#EF4444': '#14B8A6', // rojo → turquesa
+};
+
+/** Aplica COLORES_RETIRADOS a un color guardado (sin distinguir mayúsculas). */
+function colorVigente(color) {
+  if (!color) return color;
+  return COLORES_RETIRADOS[String(color).toUpperCase()] ?? color;
+}
+
+// Fallback palette for any other (future) vendedor without a stored colour,
+// chosen deterministically from the name so each one keeps a stable, distinct
+// colour until an admin picks one.
+const EXTRA_PALETTE = ['#A855F7', '#F59E0B', '#EC4899', '#84CC16', '#F97316'];
+
+/**
+ * Accent colour for a client's creator (empty → grey).
+ * `colors` is the live `username → color` map from the users collection; when a
+ * name isn't in it, fall back to the seed colours and then to a hash of the name.
+ */
+export function sellerColor(name, colors = null) {
+  if (!name) return UNASSIGNED_COLOR;
+  if (colors && colors[name]) return colorVigente(colors[name]);
+  if (SELLER_COLORS[name]) return SELLER_COLORS[name];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return EXTRA_PALETTE[h % EXTRA_PALETTE.length];
+}
+
+/** Colour assigned to a user record, falling back to the name-based default. */
+export function userColor(user) {
+  return colorVigente(user?.color) || sellerColor(user?.username);
+}
 
 // Human-readable label for a section/stage pair (used by the global search).
 export function stageLabel(section, stage) {

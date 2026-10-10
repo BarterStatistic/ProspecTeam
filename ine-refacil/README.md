@@ -9,7 +9,7 @@ presionas tú después de revisar.
 > ## Esta herramienta ahora vive dentro de Marga
 >
 > La interfaz se portó a **Marga 1.5 → Herramientas → Buró Automático**
-> (`../marga-1.5/`), donde funciona desde cualquier dispositivo y sin instalar nada.
+> (`../marga/`), donde funciona desde cualquier dispositivo y sin instalar nada.
 >
 > Lo que queda aquí es el **servicio de llenado**: Selenium abriendo Edge y escribiendo
 > en Refácil, que es lo único que un navegador no puede hacer por su cuenta. Marga lo
@@ -19,11 +19,11 @@ presionas tú después de revisar.
 > le quitó nada. Úsala si prefieres no abrir Marga.
 >
 > **Al cambiar la lógica de `rfc.py` o `datos.py`, cambia también su gemelo en
-> `../marga-1.5/src/lib/buro/`** y corre las dos suites:
+> `../marga/src/lib/buro/`** y corre las dos suites:
 >
 > ```bash
 > python -m pytest ine-refacil/tests -q
-> node marga-1.5/scripts/paridad-buro.mjs
+> node marga/scripts/paridad-buro.mjs
 > ```
 
 ## Instalarlo en la computadora de un vendedor

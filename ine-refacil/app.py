@@ -50,7 +50,7 @@ _candado = threading.Lock()
 TIPOS_ACEPTADOS = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
 
 # Orígenes de Marga que pueden hablar con este servicio: el `npm run dev` y el
-# `npm run preview` de marga-1.5, más la versión publicada en Firebase Hosting.
+# `npm run preview` de marga, más la versión publicada en Firebase Hosting.
 # Si algún día cambia el dominio, se sobreescribe con MARGA_ORIGENES (separados
 # por coma) sin tocar este archivo.
 ORIGENES_PERMITIDOS = {
