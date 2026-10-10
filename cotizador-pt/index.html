@@ -741,6 +741,53 @@ const SCHEMES={
   ]},
 };
 
+/* ─── CATÁLOGO COMPARTIDO DINAMO ───
+   Al abrir, se pide el catálogo único de Dinamo a Supabase (función catalogo()).
+   Si responde bien, reemplaza MODELS y los números (rangos, plazos y factores)
+   de los esquemas que este cotizador ya muestra; los nombres de los esquemas no cambian.
+   Si falla o tarda más de 3 s, se queda la copia de arriba como respaldo. */
+const CATALOGO_URL='https://ehyqexzaauvjoioafqdz.supabase.co/rest/v1/rpc/catalogo';
+const CATALOGO_KEY='sb_publishable_wHca_29_5WG40UG0w9TSlg_D6UnWHnP'; // clave publicable: solo lectura
+const CATALOGO_TIMEOUT_MS=3000;
+
+function catalogoValido(cat){
+  const num=v=>typeof v==='number'&&Number.isFinite(v);
+  if(!cat||!Array.isArray(cat.modelos)||!cat.modelos.length) return false;
+  if(!cat.modelos.every(m=>Array.isArray(m)&&typeof m[0]==='string'&&m[0].trim()&&num(m[1])&&m[1]>0&&num(m[2])&&m[2]>=0)) return false;
+  if(!cat.esquemas||typeof cat.esquemas!=='object') return false;
+  return Object.keys(SCHEMES).every(k=>{
+    const e=cat.esquemas[k];
+    if(e===undefined) return true;   // un esquema que no venga se queda con los datos de respaldo
+    return !!e&&num(e.min)&&num(e.max)&&e.min>=0&&e.min<=e.max&&e.max<=100
+      &&(e.termUnit==='quincenas'||e.termUnit==='semanas')
+      &&Array.isArray(e.terms)&&e.terms.length>0&&e.terms.every(t=>Number.isInteger(t)&&t>0)
+      &&Array.isArray(e.levels)&&e.levels.length>0
+      &&e.levels.every(l=>l&&Array.isArray(l.range)&&l.range.length===2&&num(l.range[0])&&num(l.range[1])
+        &&l.range[0]<=l.range[1]&&l.m&&e.terms.every(t=>num(l.m[t])&&l.m[t]>0));
+  });
+}
+/* Copia el catálogo sobre MODELS y SCHEMES. Devuelve true si algo cambió. */
+function aplicarCatalogo(cat){
+  const antes=JSON.stringify([MODELS,SCHEMES]);
+  MODELS.splice(0,MODELS.length,...cat.modelos.map(([n,p,s])=>[n,p,s]));
+  Object.keys(SCHEMES).forEach(k=>{
+    const e=cat.esquemas[k];
+    if(!e) return;
+    Object.assign(SCHEMES[k],{min:e.min,max:e.max,termUnit:e.termUnit,terms:e.terms.slice(),
+      levels:e.levels.map(l=>({range:l.range.slice(),m:Object.fromEntries(e.terms.map(t=>[t,l.m[t]]))}))});
+  });
+  return JSON.stringify([MODELS,SCHEMES])!==antes;
+}
+function cargarCatalogo(){
+  const ctl=new AbortController();
+  const timer=setTimeout(()=>ctl.abort(),CATALOGO_TIMEOUT_MS);
+  return fetch(CATALOGO_URL,{method:'POST',body:'{}',cache:'no-store',signal:ctl.signal,
+      headers:{apikey:CATALOGO_KEY,'Content-Type':'application/json'}})
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(cat=>{ if(!catalogoValido(cat)) throw new Error('forma inesperada'); return cat; })
+    .finally(()=>clearTimeout(timer));
+}
+
 /* ─── FORMATO ─── */
 const mxn =n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:2}).format(n);
 const mxn0=n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}).format(n);
@@ -765,8 +812,9 @@ function priceOf(){
 }
 
 /* ─── MODELOS ─── */
-(function buildModels(){
+function buildModels(){
   const grid=$('motoGrid');
+  grid.textContent='';
   MODELS.forEach(([name,price],i)=>{
     const b=document.createElement('button');
     b.type='button'; b.className='moto'; b.setAttribute('aria-pressed','false'); b.dataset.i=i;
@@ -777,7 +825,8 @@ function priceOf(){
     grid.appendChild(b);
   });
   updateCount();
-})();
+}
+buildModels();
 
 function updateCount(){
   const n=[...document.querySelectorAll('.moto:not(.hidden)')].length;
@@ -813,8 +862,9 @@ function clearModel(){
 }
 
 /* ─── ESQUEMAS ─── */
-(function buildSchemes(){
+function buildSchemes(){
   const grid=$('scGrid');
+  grid.textContent='';
   Object.entries(SCHEMES).forEach(([key,sc])=>{
     const b=document.createElement('button');
     b.type='button'; b.className='sc'; b.setAttribute('aria-pressed','false'); b.dataset.k=key;
@@ -823,7 +873,8 @@ function clearModel(){
     b.onclick=()=>pickScheme(key);
     grid.appendChild(b);
   });
-})();
+}
+buildSchemes();
 
 function pickScheme(key){
   selScheme=key;
@@ -1207,6 +1258,18 @@ async function download(){
   updateSvcSub();
   render();
 })();
+
+/* Cuando llega el catálogo en línea y trae cambios, se redibuja todo
+   conservando la moto (por nombre) y el esquema ya elegidos. */
+cargarCatalogo().then(cat=>{
+  const nombre=selModel!==null?MODELS[selModel][0]:null;
+  if(!aplicarCatalogo(cat)) return;
+  buildModels(); buildSchemes();
+  filterModels($('search').value);
+  const i=nombre===null?-1:MODELS.findIndex(m=>m[0]===nombre);
+  if(i>=0) pickModel(i); else if(nombre!==null) clearModel();
+  if(selScheme&&SCHEMES[selScheme]) pickScheme(selScheme); else render();
+},e=>console.warn('Catálogo en línea no disponible; se usan los datos de respaldo.',e));
 </script>
 </body>
 </html>

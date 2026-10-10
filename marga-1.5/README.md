@@ -144,11 +144,14 @@ Motoxpress Flex. Se copió de `Cotizadores/cotizador-pt/index.html` (en la raíz
 repositorio, fuera de esta carpeta) el 5 de septiembre de 2026, calibrado contra las
 tablas oficiales con vigencia **25/08/2026**.
 
-> ⚠️ **El `cotizador-pt/` que vive en este repositorio (trackeado en git) está
-> desfasado** — es la versión de junio. La fuente de verdad vigente es
-> `Cotizadores/cotizador-pt/index.html` en la raíz del repo. Si cambian precios o
-> factores oficiales, ese es el archivo que hay que actualizar, y luego portar el
-> cambio a `src/lib/motos.js`.
+Al arrancar, Marga pide el **catálogo compartido de Dinamo** a Supabase (función
+`catalogo()`, la misma que leen Alex y los 5 cotizadores) con la clave publicable de
+solo lectura (`src/lib/catalogoRemoto.js`). Si responde en menos de 3 s con la forma
+esperada, reemplaza modelos, precios y factores antes del primer render; los nombres de
+los esquemas (con acento) no cambian. Si falla, Marga arranca con los datos de
+`src/lib/motos.js`, que quedan como **respaldo**. Los precios se cambian en Supabase
+(ver `dinamo-catalogo/README.md`); conviene actualizar también el respaldo y su
+snapshot (`motos.catalogo.test.js`).
 
 ### Panel ADMIN
 
@@ -188,8 +191,8 @@ sustituye a Firebase Auth.
 npm test
 ```
 
-Corre **196 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
-snapshot del catálogo completo, y `src/lib/cotizador.js`), comisiones
+Corre **213 pruebas** con Vitest: catálogo y cotizador (`src/lib/motos.js`, con un
+snapshot del catálogo completo, `src/lib/catalogoRemoto.js` y `src/lib/cotizador.js`), comisiones
 (`src/lib/comisiones.js`), textos de notificaciones (`src/lib/notificaciones.js`),
 analítica del Panel ADMIN (`src/lib/analytics.js`) y la capa de dominio
 (`src/lib/db.js`: facturación, comisiones y renumeración), esta última contra el store

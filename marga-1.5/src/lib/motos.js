@@ -1,10 +1,10 @@
 // Catálogo de motos y esquemas de crédito — fuente única, compartida por el
 // cotizador, el selector de motos del formulario y el cálculo de comisiones.
 //
-// Copiado de Cotizadores/cotizador-pt/index.html (5 de septiembre de 2026),
-// calibrado contra las tablas oficiales con vigencia 25/08/2026. Cuando cambien
-// precios o factores allá, este archivo es el que hay que actualizar.
-// NO tomar los datos de cotizador-pt/ (el trackeado en git): está desfasado.
+// Al arrancar, catalogoRemoto.js trae el catálogo compartido de Dinamo
+// (Supabase, función catalogo()) y lo copia aquí con aplicarCatalogo(). Los
+// datos de abajo son el respaldo si Supabase no responde: copiados del
+// cotizador PT, calibrados contra las tablas oficiales con vigencia 25/08/2026.
 
 /** [nombre, precio de lista, servicio preventivo] */
 const RAW_MODELS = [
@@ -98,7 +98,35 @@ export const SCHEME_IDS = [
   'motonomina_flex', 'credinamo_flex', 'motoxpress_flex',
 ];
 
-const byName = new Map(MODELS.map((m) => [m.nombre, m]));
+let byName = new Map(MODELS.map((m) => [m.nombre, m]));
+
+/**
+ * Copia un catálogo con la forma de catalogo() (ya validado) sobre MODELS y
+ * SCHEMES, en el mismo objeto, para que los módulos que ya los importaron vean
+ * los datos nuevos. De los esquemas solo cambian los números (rango, plazos y
+ * factores); id y etiqueta se quedan. Un esquema que no venga conserva los
+ * datos de respaldo. Devuelve true si algo cambió.
+ */
+export function aplicarCatalogo(cat) {
+  const antes = JSON.stringify([MODELS, SCHEMES]);
+  MODELS.splice(0, MODELS.length, ...cat.modelos.map(([nombre, precio, servicio]) => ({ nombre, precio, servicio })));
+  for (const id of SCHEME_IDS) {
+    const e = cat.esquemas[id];
+    if (!e) continue;
+    Object.assign(SCHEMES[id], {
+      min: e.min,
+      max: e.max,
+      termUnit: e.termUnit,
+      terms: [...e.terms],
+      levels: e.levels.map((l) => ({
+        range: [...l.range],
+        m: Object.fromEntries(e.terms.map((t) => [t, l.m[t]])),
+      })),
+    });
+  }
+  byName = new Map(MODELS.map((m) => [m.nombre, m]));
+  return JSON.stringify([MODELS, SCHEMES]) !== antes;
+}
 
 /** Modelo del catálogo por nombre exacto, o null. */
 export function motoPorNombre(nombre) {

@@ -15,7 +15,11 @@ import Input from '../ui/Input.jsx';
 import Select from '../ui/Select.jsx';
 import Checkbox from '../ui/Checkbox.jsx';
 
-const MOTO_OPTIONS = MODELS.map((m) => ({ value: m.nombre, label: m.nombre }));
+/** Opciones del selector de moto. Se arman al renderizar, no al importar el
+ * módulo, porque el catálogo en línea puede reemplazar MODELS al arrancar. */
+function opcionesMoto() {
+  return MODELS.map((m) => ({ value: m.nombre, label: m.nombre }));
+}
 const ESQUEMA_OPTIONS = SCHEME_IDS.map((id) => ({ value: id, label: SCHEMES[id].label }));
 
 /** "HH:MM" de un timestamp, para <input type="time">. */
@@ -233,7 +237,7 @@ export default function FacturacionModal({ cliente, onClose }) {
           <Select
             label="Moto vendida"
             required
-            options={MOTO_OPTIONS}
+            options={opcionesMoto()}
             value={motoNombre}
             onChange={(e) => setMotoNombre(e.target.value)}
             placeholder="Selecciona el modelo"
