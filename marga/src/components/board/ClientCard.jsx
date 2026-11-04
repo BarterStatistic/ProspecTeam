@@ -15,6 +15,10 @@ import {
   UserRound,
   UserCog,
   StickyNote,
+  Bot,
+  BotOff,
+  Flame,
+  Snowflake,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -29,6 +33,14 @@ import {
 import { BOARD_COLUMNS, sellerColor } from '../../lib/constants.js';
 import { fullName, regresoAColumna, mensajeEliminarCliente } from '../../lib/clients.js';
 import { formatDateTime } from '../../lib/format.js';
+import {
+  fotoDeTarjeta,
+  atributosDe,
+  caracteristicasDe,
+  esDeAlex,
+  indicadoresDe,
+  vendedorAsignado,
+} from '../../lib/alex.js';
 import Checkbox from '../ui/Checkbox.jsx';
 import CopyButton from '../ui/CopyButton.jsx';
 import Avatar from '../ui/Avatar.jsx';
@@ -37,6 +49,24 @@ import Avatar from '../ui/Avatar.jsx';
 // (checkbox, menu) keep working without starting a drag. MouseSensor listens to
 // mousedown and TouchSensor to touchstart, so all three streams must be stopped.
 const stopPress = (e) => e.stopPropagation();
+// Ícono y color de los indicadores pequeños de la cabecera (ver indicadoresDe):
+// temperatura del lead y si el chat de Alex está activado.
+export const INDICADOR = {
+  caliente: { Icon: Flame, clase: 'text-orange-400' },
+  tibio: { Icon: Flame, clase: 'text-amber-300' },
+  frio: { Icon: Snowflake, clase: 'text-sky-300' },
+  activado: { Icon: Bot, clase: 'text-state-success' },
+  desactivado: { Icon: BotOff, clase: 'text-ink-faint' },
+};
+
+// Color del chip de característica según su tono (ver caracteristicasDe).
+export const TONO_CHIP = {
+  info: 'bg-sky2/15 text-sky2-light',
+  ok: 'bg-state-success/15 text-state-success',
+  alerta: 'bg-state-warning/15 text-state-warning',
+  neutro: 'bg-white/5 text-ink-muted',
+};
+
 const noDrag = { onPointerDown: stopPress, onMouseDown: stopPress, onTouchStart: stopPress };
 
 export function CardBody({ client, dragging = false }) {
@@ -108,6 +138,11 @@ export function CardBody({ client, dragging = false }) {
   // En "Moto Facturada" sin comisión: movida antes de esta corrección, fallo
   // parcial offline o comisión eliminada. El chip "Sin facturar" la recupera.
   const sinFacturar = client.stage === 'moto_facturada' && !client.comisionId;
+  // Tarjetas que sube Alex: foto del bot, vendedor asignado y características.
+  const deAlex = esDeAlex(client);
+  const caracteristicas = caracteristicasDe(client);
+  const indicadores = indicadoresDe(client);
+  const atributos = atributosDe(client);
 
   // "Mover a" no debe saltarse la facturación: llevar la tarjeta a "Moto
   // Facturada" abre la captura, y cancelarla la regresa a su columna de
@@ -133,7 +168,7 @@ export function CardBody({ client, dragging = false }) {
       <div className="flex items-start justify-between gap-2">
         {/* Profile picture of whoever registered the client, when they set one */}
         <Avatar
-          photo={sellerAvatars[client.createdBy]}
+          photo={fotoDeTarjeta(client, sellerAvatars)}
           name={client.createdBy}
           color={accent}
           size={22}
@@ -142,6 +177,18 @@ export function CardBody({ client, dragging = false }) {
         <h4 className="min-w-0 flex-1 break-words pr-1 text-sm font-semibold text-ink">
           {fullName(client) || 'Sin nombre'}
         </h4>
+        {indicadores.length > 0 && (
+          <div className="mt-0.5 flex shrink-0 items-center gap-1">
+            {indicadores.map((i) => {
+              const { Icon, clase } = INDICADOR[i.tono];
+              return (
+                <span key={i.clave} title={i.etiqueta} role="img" aria-label={i.etiqueta}>
+                  <Icon size={14} className={clase} />
+                </span>
+              );
+            })}
+          </div>
+        )}
         {hasMenu && (
           <div className="relative shrink-0" {...noDrag}>
             <button
@@ -280,7 +327,9 @@ export function CardBody({ client, dragging = false }) {
         {client.createdBy && (
           <div className="flex items-center gap-1.5" style={{ color: accent }}>
             <UserRound size={12} />
-            <span className="truncate font-medium">Registró: {client.createdBy}</span>
+            <span className="truncate font-medium">
+              {deAlex && client.section === 'prospectos' ? vendedorAsignado(client) : `Registró: ${client.createdBy}`}
+            </span>
           </div>
         )}
         {/* Who follows up this proceso. Only meaningful on the Procesos board,
@@ -308,6 +357,40 @@ export function CardBody({ client, dragging = false }) {
           <p className="line-clamp-2 whitespace-pre-line text-[11px] italic leading-snug text-ink-muted">
             {client.notes}
           </p>
+        </div>
+      )}
+
+      {deAlex && client.resumenAlex && (
+        <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-navy-900/50 px-2 py-1.5">
+          <Bot size={11} className="mt-0.5 shrink-0 text-sky2" />
+          <p className="line-clamp-3 whitespace-pre-line text-[11px] leading-snug text-ink-muted">
+            <span className="font-semibold text-sky2-light">Alex: </span>
+            {client.resumenAlex}
+          </p>
+        </div>
+      )}
+
+      {atributos.length > 0 && (
+        <dl
+          className="mt-2 space-y-0.5 rounded-lg bg-navy-900/50 px-2 py-1.5 text-[11px] leading-snug"
+          title="Datos del cliente que Alex juntó en la conversación"
+        >
+          {atributos.map((a) => (
+            <div key={a.clave} className="flex gap-1.5">
+              <dt className="shrink-0 text-ink-faint">{a.etiqueta}:</dt>
+              <dd className="min-w-0 break-words text-ink-muted">{a.valor}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {caracteristicas.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1" title="Etiquetas de Alex (solo lectura)">
+          {caracteristicas.map((c) => (
+            <span key={c.clave} className={`m-chip ${TONO_CHIP[c.tono]}`}>
+              {c.etiqueta}
+            </span>
+          ))}
         </div>
       )}
 

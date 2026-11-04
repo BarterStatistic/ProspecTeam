@@ -26,6 +26,7 @@ import { regresoAColumna } from '../../lib/clients.js';
 import { ChevronDown, SlidersHorizontal } from 'lucide-react';
 import Column, { COLUMN_PREFIX } from './Column.jsx';
 import { CardBody } from './ClientCard.jsx';
+import LeyendaProspectos from './LeyendaProspectos.jsx';
 
 // Sentinel filter values that aren't a real username.
 const ALL = '__all__';
@@ -284,6 +285,8 @@ export default function KanbanBoard({ section }) {
             </div>
           </div>
         )}
+
+        {section === 'prospectos' && <LeyendaProspectos />}
 
         <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-4 py-4 sm:px-6">
           <div className="flex h-full gap-4 md:gap-3">

@@ -125,6 +125,59 @@ Cada movimiento de una tarjeta (cambio de columna, entrega, facturación) notifi
 tarjeta, no se notifica a sí mismo (`src/lib/db.js`, función `notificar`, líneas 42-63,
 que descarta el aviso cuando `actor === destinatario`).
 
+### Clientes de Alex en Prospectos
+
+Alex (el asistente de WhatsApp, flujo "ALEX 3.2" en n8n) sube **cada cliente que le
+escribe** como tarjeta a *Prospectos*, y la mueve de columna conforme avanza la
+conversación. Chatwoot, sus etiquetas y el prompt de Alex no cambian: Marga solo
+refleja lo que Alex ya registra.
+
+- **Cómo se reconocen.** Foto de perfil del perro con lentes (`public/alex-avatar.jpg`),
+  la línea "Le toca: Alejandro" en lugar de "Registró", un bloque "Alex:" con su
+  resumen y chips de características (`src/lib/alex.js`). En el registro llevan
+  `origen: 'alex'`.
+- **Etapa de Alex → columna.** `prospecto` → Primer contacto · `catalogo` → Preguntas ·
+  `cotizado` y `calificado` → Interesado en proceso · `documentacion` y `cita` → Envío de
+  docs / Cita agendada. Alex solo avanza de columna, nunca retrocede, y **nunca** mueve
+  una tarjeta a *Proceso comenzado*: eso lo hace un vendedor después de revisar lo que la
+  IA le dijo al cliente. Una tarjeta que ya salió de Prospectos no se toca.
+- **Vendedor asignado** (hora de Saltillo; queda como `createdBy`, así que ese vendedor
+  la ve y la edita con los permisos de siempre): lunes a viernes Alejandro 9:00–16:00 y
+  Emmanuel 16:00–22:00; sábado todo el día Emmanuel; domingo todo el día Alejandro. Fuera
+  de horario (22:00–9:00) se reparte 50/50 según si el número de conversación es par
+  (Alejandro) o impar (Emmanuel), sin asignar al que descansa ese día. El cálculo vive en
+  `n8n/asignar-asesor.mjs` (con pruebas) y se pega en el nodo "Asignar Asesor" de n8n.
+- **Características.** Son las etiquetas de Chatwoot (compra, perfil, Flex, alertas) vistas
+  como chips de solo lectura, **solo en Prospectos**. "Catálogo enviado" aparece únicamente
+  mientras la tarjeta está en la columna Preguntas. La **temperatura del lead** (llama
+  naranja = caliente, amarilla = tibio, copo = frío) y si el **chat de Alex** está activado
+  (robot verde) o desactivado (robot tachado) salen como íconos pequeños junto al nombre.
+- **Simbología.** Arriba de las columnas de Prospectos hay una tira «Simbología» (componente
+  `LeyendaProspectos`) con el significado de la foto, los íconos y las etiquetas; se despliega
+  con un clic y recuerda si la dejaste abierta.
+- **Resumen y datos del cliente.** El bloque "Alex:" muestra la descripción del contacto en
+  Chatwoot, y debajo una lista con los datos que Alex juntó (enganche, pago cotizado,
+  ingresos, antigüedad, municipio, documentos, próximo paso, notas). Se guardan en
+  `atributos` y `resumenAlex` y solo se muestran, nunca se editan desde Marga.
+- **Teléfono repetido.** Si el teléfono ya tiene tarjeta (del bot o de un vendedor, se
+  comparan los últimos 10 dígitos), Alex actualiza esa en vez de crear otra. En una tarjeta
+  de vendedor solo avanza la columna y suma características; no toca nombre, moto ni notas.
+  En una del bot, no pisa el nombre ni la moto que un vendedor ya corrigió.
+- **Caducidad de 7 días.** Una tarjeta creada por el bot que sigue en Prospectos y lleva
+  7 días sin modificarse se **elimina sola**, para que el tablero se mantenga ligero y se
+  continúe con los clientes siguientes. Cuenta como modificación cualquier cambio del folio:
+  que un vendedor la edite o la mueva, o que Alex la actualice porque el cliente siguió
+  escribiendo. Las tarjetas capturadas por vendedores no caducan, y una del bot que ya pasó
+  por Procesos tampoco (tiene `fechaInicioProceso`). La limpieza la hace
+  `alex_caducar_prospectos()` con `pg_cron` todos los días a las 09:00 UTC (03:00 en
+  Saltillo); el trabajo se llama `marga_caducar_alex` (`select * from cron.job`).
+
+**Dónde vive cada pieza.** `supabase/alex_prospectos.sql` (funciones `alex_upsert_prospecto`
+y `alex_caducar_prospectos`; solo `service_role` puede ejecutarlas) con sus pruebas en
+`supabase/verificacion/alex_prospectos.sql`; en n8n, el nodo "Subir a Marga" del flujo
+principal (crea la tarjeta al primer mensaje) y el del subflujo "CRM Chatwoot" (la
+actualiza con el cuadro final). Si la escritura en Marga falla, Alex contesta igual.
+
 ### Cotizador PT integrado
 
 Nueva herramienta en el menú **Herramientas → Cotizador**, disponible para todos los
