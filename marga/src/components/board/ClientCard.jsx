@@ -44,6 +44,7 @@ import {
 import Checkbox from '../ui/Checkbox.jsx';
 import CopyButton from '../ui/CopyButton.jsx';
 import Avatar from '../ui/Avatar.jsx';
+import EtapasDinamo from '../dinamo/EtapasDinamo.jsx';
 
 // Stops press events from bubbling to the drag sensors, so interactive controls
 // (checkbox, menu) keep working without starting a drag. MouseSensor listens to
@@ -79,6 +80,7 @@ export function CardBody({ client, dragging = false }) {
     applyBoardReorder,
     sellerColors,
     sellerAvatars,
+    dinamoPorFolio,
   } = useData();
   const { user, role } = useAuth();
   const { openEditClient, openCancelClient, openFacturacion } = useUI();
@@ -350,6 +352,15 @@ export function CardBody({ client, dragging = false }) {
             </div>
           ))}
       </div>
+
+      {/* Folio y avance en Dinamo (se mueve solo; ver bandeja-dinamo/api/_procesos.js). */}
+      {client.folioDinamo && (
+        <EtapasDinamo
+          folio={client.folioDinamo}
+          credito={dinamoPorFolio[String(client.folioDinamo)]}
+          noDrag={noDrag}
+        />
+      )}
 
       {client.notes && (
         <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-navy-900/50 px-2 py-1.5">

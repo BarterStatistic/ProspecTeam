@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Cliente de Supabase de mentira: tablas en memoria, RPCs con la misma
 // semántica que supabase/marga_tablas.sql y un canal que se suscribe solo.
-const servidor = { tablas: {}, fallar: false, canal: null };
+const servidor = { tablas: {}, fallar: false, canal: null, sesion: null };
 
 function tabla(nombre) {
   return (servidor.tablas[nombre] ??= new Map());
@@ -66,6 +66,32 @@ vi.mock('@supabase/supabase-js', () => ({
       return canal;
     },
     removeChannel() {},
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: servidor.sesion } }),
+      setSession(sesion) {
+        servidor.sesion = { ...sesion, user: { email: 'braulio-acosta@marga.local' } };
+        return Promise.resolve({ error: null });
+      },
+      signOut() {
+        servidor.sesion = null;
+        return Promise.resolve({ error: null });
+      },
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+    },
+    functions: {
+      invoke(nombre, { body }) {
+        if (nombre === 'marga-auth' && body.password === 'buena') {
+          return Promise.resolve({
+            data: { session: { access_token: 'a', refresh_token: 'r' }, user: { id: 'braulio-acosta', username: 'Braulio Acosta', role: 'admin' } },
+            error: null,
+          });
+        }
+        return Promise.resolve({
+          data: null,
+          error: { context: { json: () => Promise.resolve({ error: 'Usuario o contraseña incorrectos.' }) } },
+        });
+      },
+    },
   }),
 }));
 
@@ -102,13 +128,25 @@ describe('createSupabaseStore', () => {
   beforeEach(async () => {
     servidor.tablas = {};
     servidor.fallar = false;
+    servidor.sesion = { user: { email: 'braulio-acosta@marga.local' } };
     store = createSupabaseStore({ url: 'https://x.supabase.co', key: 'k' });
     await store.init();
   });
 
-  it('siembra los usuarios cuando la tabla está vacía', () => {
-    expect(store.getUsers().length).toBeGreaterThan(0);
-    expect(store.getUsers()[0].passwordHash).toBeTruthy();
+  it('sin sesión no carga nada; al iniciar sesión carga y sabe quién es', async () => {
+    servidor.sesion = null;
+    tabla('marga_users').set('braulio-acosta', { username: 'Braulio Acosta', role: 'admin' });
+    const s = createSupabaseStore({ url: 'https://x.supabase.co', key: 'k' });
+    await s.init();
+    expect(s.getUsers()).toEqual([]);
+    expect(await s.auth.actual()).toBeNull();
+    await expect(s.auth.iniciar('Braulio Acosta', 'mala')).rejects.toThrow('Usuario o contraseña incorrectos.');
+    const u = await s.auth.iniciar('Braulio Acosta', 'buena');
+    expect(u.role).toBe('admin');
+    expect(await s.auth.actual()).toBe('braulio-acosta');
+    expect(s.getUsers().map((x) => x.id)).toEqual(['braulio-acosta']);
+    await s.auth.cerrar();
+    expect(s.getUsers()).toEqual([]);
   });
 
   it('escribe de forma optimista y notifica antes de que responda el servidor', async () => {

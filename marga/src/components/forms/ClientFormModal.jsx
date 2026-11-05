@@ -24,6 +24,7 @@ const EDITABLE = [
   'motorcycles',
   'prospectTeamSeller',
   'promotorEncargado',
+  'folioDinamo',
   'notes',
   'buroAutorizado',
 ];
@@ -74,8 +75,15 @@ export default function ClientFormModal({ open, initial, onClose }) {
   const setInput = (key) => (e) => setValues((v) => ({ ...v, [key]: e.target.value }));
 
   function validate() {
-    if (!values.firstName?.trim() || !values.lastName?.trim() || !values.phone?.trim()) {
+    // Las tarjetas que llegan de Dinamo no traen teléfono (la bandeja no lo
+    // muestra): con folio, el teléfono es opcional.
+    const sinTelefonoOk = !!String(values.folioDinamo ?? '').trim();
+    if (!values.firstName?.trim() || !values.lastName?.trim() || (!values.phone?.trim() && !sinTelefonoOk)) {
       setError('Nombre(s), apellidos y teléfono son obligatorios.');
+      return false;
+    }
+    if (values.folioDinamo && !/^\d+$/.test(String(values.folioDinamo).trim())) {
+      setError('El folio de Dinamo lleva solo números.');
       return false;
     }
     setError('');
@@ -181,6 +189,16 @@ export default function ClientFormModal({ open, initial, onClose }) {
             onChange={setInput('prospectTeamSeller')}
             placeholder="Opcional"
           />
+
+          {values.section === 'procesos' && (
+            <Input
+              label="Folio de Dinamo"
+              inputMode="numeric"
+              value={values.folioDinamo ?? ''}
+              onChange={(e) => setValues((v) => ({ ...v, folioDinamo: e.target.value.replace(/\D/g, '') }))}
+              placeholder="Se llena solo al aparecer en la bandeja"
+            />
+          )}
 
           {showPromotor && (
             <div>

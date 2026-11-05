@@ -120,6 +120,7 @@ export async function createClient(values, actor = null) {
     motorcycles: (values.motorcycles ?? '').trim(),
     prospectTeamSeller: (values.prospectTeamSeller ?? '').trim(),
     promotorEncargado: (values.promotorEncargado ?? '').trim(),
+    folioDinamo: String(values.folioDinamo ?? '').trim(),
     notes: values.notes ?? '',
     buroAutorizado: !!values.buroAutorizado,
     engancheDejado: !!values.engancheDejado,
