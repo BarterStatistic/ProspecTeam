@@ -66,6 +66,15 @@ export function DataProvider({ children }) {
   const [disponibilidad, setDisponibilidad] = useState(() => store.getDisponibilidad());
   useEffect(() => store.onDisponibilidadChange(setDisponibilidad), []);
 
+  // Créditos de la bandeja de Dinamo (solo con Supabase), por folio. Llegan en
+  // vivo: los escribe el servidor de los agentes en cada lectura.
+  const [dinamoCreditos, setDinamoCreditos] = useState(() => store.dinamo?.getCreditos() ?? []);
+  useEffect(() => store.dinamo?.onCreditosChange(setDinamoCreditos), []);
+  const dinamoPorFolio = useMemo(
+    () => Object.fromEntries(dinamoCreditos.map((c) => [String(c.folio), c])),
+    [dinamoCreditos],
+  );
+
   // Every role subscribes to the users collection, because the per-vendedor
   // accent colour and profile picture live there and mark cards for everyone.
   // Only admins get the full records (they carry password hashes) — see `users`
@@ -190,6 +199,10 @@ export function DataProvider({ children }) {
       // Names of the promotores, for the "Promotor encargado" selector/filter.
       promotorUsernames,
 
+      // --- Dinamo (null sin Supabase) ---
+      dinamo: store.dinamo ?? null,
+      dinamoPorFolio,
+
       // --- own profile (any role edits only their own record) ---
       myProfile,
       /** Set or clear the signed-in user's profile picture ('' removes it). */
@@ -201,6 +214,8 @@ export function DataProvider({ children }) {
       // --- user management (UI restricted to admins) ---
       users: admin ? users : [],
       async addUser({ username, password, role, color }) {
+        // Con Supabase Auth la cuenta se crea en el servidor (Edge Function).
+        if (store.auth) return store.auth.usuarios('create', { username, password, role, color });
         const name = username.trim();
         const existing = await store.getUserByUsername(name);
         if (existing) throw new Error('Ya existe un usuario con ese nombre.');
@@ -215,6 +230,7 @@ export function DataProvider({ children }) {
         });
       },
       async editUser(id, { username, password, role, color }) {
+        if (store.auth) return store.auth.usuarios('update', { id, username, password, role, color });
         const name = username.trim();
         const existing = await store.getUserByUsername(name);
         if (existing && existing.id !== id) throw new Error('Ya existe un usuario con ese nombre.');
@@ -229,9 +245,10 @@ export function DataProvider({ children }) {
         }
         await store.patchUser(id, patch);
       },
-      deleteUser: (id) => store.deleteUser(id),
+      deleteUser: (id) => (store.auth ? store.auth.usuarios('delete', { id }) : store.deleteUser(id)),
     }),
     [
+      dinamoPorFolio,
       clients,
       users,
       citas,

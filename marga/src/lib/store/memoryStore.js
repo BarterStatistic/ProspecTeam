@@ -4,6 +4,7 @@
 
 import { SEED_USERS } from '../constants.js';
 import { hashPassword } from '../auth.js';
+import { crearDinamoDemo } from './dinamoDemo.js';
 
 const STORAGE_KEY = 'marga15_demo_db';
 
@@ -130,6 +131,7 @@ export function createMemoryStore() {
 
   return {
     kind: 'demo',
+    dinamo: crearDinamoDemo(),
     init,
 
     // --- clients ---

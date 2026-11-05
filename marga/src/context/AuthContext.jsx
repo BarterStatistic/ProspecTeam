@@ -29,7 +29,124 @@ function leerSesion() {
 
 const AuthContext = createContext(null);
 
+// Con Supabase la sesión es de Supabase Auth (ver store.auth en
+// supabaseStore.js); con Firestore o en demo, la de siempre.
 export function AuthProvider({ children }) {
+  return store?.auth ? <AuthSupabase>{children}</AuthSupabase> : <AuthLocal>{children}</AuthLocal>;
+}
+
+/**
+ * Sesión de Supabase Auth. Lo único que se guarda (en sessionStorage, por
+ * supabase-js) es la sesión de Auth; el id de Marga sale de su correo interno.
+ * El nombre y el rol se leen siempre del registro vivo de `users`: un cambio de
+ * rol o un borrado hecho por el admin se aplica al instante.
+ */
+function AuthSupabase({ children }) {
+  const [sesionId, setSesionId] = useState(null);
+  const [user, setUser] = useState(null);
+  const [verificando, setVerificando] = useState(true);
+  const [aviso, setAviso] = useState('');
+
+  const rememberedUser = (() => {
+    try {
+      return localStorage.getItem(REMEMBER_KEY) || '';
+    } catch {
+      return '';
+    }
+  })();
+
+  // Sesión restaurada de la pestaña (el store ya cargó los datos si existe).
+  useEffect(() => {
+    let vigente = true;
+    store.auth
+      .actual()
+      .then((id) => {
+        if (!vigente) return;
+        setSesionId(id);
+        if (!id) setVerificando(false);
+      })
+      .catch(() => vigente && setVerificando(false));
+    const dejar = store.auth.alCerrarse(() => {
+      setSesionId(null);
+      setUser(null);
+    });
+    return () => {
+      vigente = false;
+      dejar();
+    };
+  }, []);
+
+  // El registro vivo de users decide nombre y rol; si desaparece, se cierra.
+  useEffect(() => {
+    if (!sesionId) {
+      setUser(null);
+      return undefined;
+    }
+    return store.onUsersChange((list) => {
+      if (!list.length) return; // todavía cargando
+      const record = list.find((u) => u.id === sesionId);
+      if (!record) {
+        setAviso(SESION_CERRADA);
+        setSesionId(null);
+        store.auth.cerrar();
+        setVerificando(false);
+        return;
+      }
+      setUser((prev) =>
+        prev && prev.id === record.id && prev.username === record.username && prev.role === record.role
+          ? prev
+          : { id: record.id, username: record.username, role: record.role },
+      );
+      setVerificando(false);
+    });
+  }, [sesionId]);
+
+  async function login({ username, password, remember }) {
+    let u;
+    try {
+      u = await store.auth.iniciar(username, password);
+    } catch (err) {
+      return { ok: false, error: err?.message || 'No se pudo iniciar sesión.' };
+    }
+    try {
+      if (remember) localStorage.setItem(REMEMBER_KEY, u.username);
+      else localStorage.removeItem(REMEMBER_KEY);
+    } catch {
+      /* ignore storage errors */
+    }
+    setAviso('');
+    setUser({ id: u.id, username: u.username, role: u.role });
+    setSesionId(u.id);
+    return { ok: true };
+  }
+
+  function logout() {
+    setAviso('');
+    setSesionId(null);
+    setUser(null);
+    store.auth.cerrar();
+  }
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        role: user?.role ?? null,
+        verificando,
+        aviso,
+        rememberedUser,
+        login,
+        logout,
+        // Con Supabase Auth cambiar una contraseña no invalida firmas locales.
+        renovarSesionPropia: async () => {},
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+function AuthLocal({ children }) {
   // Session survives reloads within the tab (sessionStorage) but not a restart,
   // so the login screen is shown again next time the app is opened.
   const [session, setSession] = useState(leerSesion);

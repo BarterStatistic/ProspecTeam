@@ -11,8 +11,8 @@
 //     falla, se recarga la tabla para volver a la verdad y se relanza el error.
 
 import { createClient } from '@supabase/supabase-js';
-import { SEED_USERS } from '../constants.js';
-import { hashPassword } from '../auth.js';
+import { userIdFromEmail } from '../../../supabase/functions/_shared/authLogic.js';
+import { crearDinamo } from './dinamoSupabase.js';
 
 const TABLAS = {
   clients: 'marga_clients',
@@ -101,8 +101,16 @@ export function crearEspejo() {
 }
 
 export function createSupabaseStore({ url, key }) {
+  // Sesión de Supabase Auth. Vive en sessionStorage, como la de antes: dura
+  // mientras la pestaña esté abierta y al volver a abrir Marga se pide el
+  // login otra vez.
   const sb = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      storageKey: 'marga-sesion',
+      storage: typeof sessionStorage === 'undefined' ? undefined : sessionStorage,
+    },
   });
 
   const espejos = {};
@@ -287,33 +295,19 @@ export function createSupabaseStore({ url, key }) {
     return () => listeners[nombre].delete(cb);
   }
 
-  async function seedUsersIfEmpty() {
-    const res = await sb.from(TABLAS.users).select('id').limit(1);
-    revisar(res);
-    if (res.data.length) return;
-    const rows = [];
-    for (const seed of SEED_USERS) {
-      rows.push({
-        id: seed.id,
-        username: seed.username,
-        role: seed.role,
-        color: seed.color ?? '',
-        photo: '',
-        passwordHash: await hashPassword(seed.password),
-        createdAt: Date.now(),
-      });
-    }
-    revisar(await sb.rpc('marga_set_many', { t: TABLAS.users, rows }));
-  }
-
   // Un canal para todas las tablas. Si se cae (red, suspensión del celular),
   // se vuelve a abrir a los 5 s; al quedar suscrito se recarga todo, porque
   // los cambios que pasaron con el canal cerrado no llegan como eventos.
   const porTabla = Object.fromEntries(Object.entries(TABLAS).map(([k, v]) => [v, k]));
 
+  let canalActual = null;
+  let sesionAbierta = false;
+
   function abrirCanal() {
     let reintentoProgramado = false;
     const canal = sb.channel('marga');
+    canalActual = canal;
+    dinamo.escuchar(canal);
     for (const tabla of Object.values(TABLAS)) {
       canal.on('postgres_changes', { event: '*', schema: 'public', table: tabla }, (payload) => {
         const nombre = porTabla[payload.table];
@@ -332,28 +326,106 @@ export function createSupabaseStore({ url, key }) {
       });
     }
     canal.subscribe((status, err) => {
+      if (canal !== canalActual) return; // canal de una sesión ya cerrada
       if (status === 'SUBSCRIBED') {
         recargarTodo().catch((e) => console.error('[marga] recarga tras suscribir falló', e));
+        dinamo.recargar();
       } else if (
         (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') &&
-        !reintentoProgramado
+        !reintentoProgramado &&
+        sesionAbierta
       ) {
         reintentoProgramado = true;
         console.error('[marga] canal de Supabase cerrado, reintentando en 5 s…', status, err);
         sb.removeChannel(canal);
-        setTimeout(abrirCanal, 5000);
+        setTimeout(() => sesionAbierta && canal === canalActual && abrirCanal(), 5000);
       }
     });
   }
+
+  function cerrarCanal() {
+    const canal = canalActual;
+    canalActual = null;
+    if (canal) sb.removeChannel(canal);
+  }
+
+  // Con la base cerrada (RLS) no hay nada que leer sin sesión: los datos se
+  // cargan al restaurar la sesión de la pestaña o al iniciar sesión.
+  async function cargarDatos() {
+    sesionAbierta = true;
+    await recargarTodo();
+    await dinamo.recargar();
+    if (!canalActual) abrirCanal();
+  }
+
+  function vaciar() {
+    sesionAbierta = false;
+    cerrarCanal();
+    for (const nombre of Object.keys(TABLAS)) {
+      espejos[nombre].terminarCarga([]);
+      notify(nombre);
+    }
+    dinamo.vaciar();
+  }
+
+  /** Mensaje en español de una Edge Function que respondió con error. */
+  async function errorDeFuncion(error) {
+    try {
+      const cuerpo = await error.context?.json?.();
+      if (cuerpo?.error) return cuerpo.error;
+    } catch {
+      /* respuesta sin JSON */
+    }
+    return 'No se pudo conectar con el servidor. Intenta de nuevo.';
+  }
+
+  async function funcion(nombre, body) {
+    const { data, error } = await sb.functions.invoke(nombre, { body });
+    if (error) throw new Error(await errorDeFuncion(error));
+    return data;
+  }
+
+  const dinamo = crearDinamo(sb);
+
+  // Login por la Edge Function marga-auth (migra sola la contraseña vieja) y
+  // sesión de Supabase Auth en este cliente. El id de Marga sale del correo
+  // interno de la cuenta (`<id>@marga.local`).
+  const auth = {
+    async actual() {
+      const { data } = await sb.auth.getSession();
+      return userIdFromEmail(data.session?.user?.email);
+    },
+    async iniciar(username, password) {
+      const { session, user } = await funcion('marga-auth', { action: 'login', username, password });
+      const { error } = await sb.auth.setSession(session);
+      if (error) throw new Error('No se pudo abrir la sesión. Intenta de nuevo.');
+      iniciado = null;
+      await init();
+      return user;
+    },
+    async cerrar() {
+      vaciar();
+      iniciado = null;
+      await sb.auth.signOut({ scope: 'local' }).catch(() => {});
+    },
+    /** Avisa si la sesión se pierde (token vencido sin poder renovarse). */
+    alCerrarse(cb) {
+      const { data } = sb.auth.onAuthStateChange((evento) => {
+        if (evento === 'SIGNED_OUT') cb();
+      });
+      return () => data.subscription.unsubscribe();
+    },
+    /** Gestor de usuarios (solo admin): create | update | delete. */
+    usuarios: (action, body) => funcion('marga-usuarios', { action, ...body }),
+  };
 
   // Una sola vez aunque se llame varias (StrictMode monta App dos veces): un
   // segundo canal con el mismo nombre es el mismo canal, ya suscrito.
   let iniciado = null;
   function init() {
     iniciado ??= (async () => {
-      await seedUsersIfEmpty();
-      await recargarTodo();
-      abrirCanal();
+      const { data } = await sb.auth.getSession();
+      if (data.session) await cargarDatos();
     })().catch((err) => {
       iniciado = null; // que un reintento vuelva a probar
       throw err;
@@ -364,6 +436,8 @@ export function createSupabaseStore({ url, key }) {
   return {
     kind: 'supabase',
     init,
+    auth,
+    dinamo: dinamo.api,
 
     // --- clients ---
     getClients: () => espejos.clients.docs(),

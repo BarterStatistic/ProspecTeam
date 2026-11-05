@@ -57,6 +57,9 @@ export function emptyClient(section = 'prospectos') {
     // Username of the promotor following up this proceso. Only meaningful in
     // the Procesos board; empty means "Sin promotor".
     promotorEncargado: '',
+    // Folio del crédito en Dinamo: une la tarjeta con la bandeja, que la mueve
+    // sola entre las columnas de Procesos.
+    folioDinamo: '',
     notes: '',
     buroAutorizado: false,
     // Marca de facturación (columna "Moto Facturada") y la comisión que generó.
