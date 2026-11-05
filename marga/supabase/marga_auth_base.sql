@@ -92,5 +92,6 @@ as $$
 $$;
 
 revoke all on function public.marga_users_sync_legacy() from public, anon, authenticated;
+revoke all on function public.marga_usuario_id(), public.marga_rol(), public.marga_es_miembro() from public, anon;
 grant execute on function public.marga_usuario_id(), public.marga_rol(), public.marga_es_miembro()
   to authenticated;
