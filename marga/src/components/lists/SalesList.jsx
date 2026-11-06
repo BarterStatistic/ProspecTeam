@@ -12,6 +12,7 @@ import Card from '../ui/Card.jsx';
 import Button from '../ui/Button.jsx';
 import Input, { Textarea } from '../ui/Input.jsx';
 import CopyButton from '../ui/CopyButton.jsx';
+import SelectorMes, { useMesVenta } from '../ui/SelectorMes.jsx';
 import Avatar from '../ui/Avatar.jsx';
 
 function Field({ label, children }) {
@@ -162,32 +163,42 @@ function SaleRow({ client }) {
   );
 }
 
+/** Fecha que decide el mes de una venta: la entrega de la moto. */
+const fechaDeVenta = (c) => c.fechaEntrega ?? c.updatedAt ?? null;
+
 export default function SalesList() {
   const { clients } = useData();
   // Date-range filter over the delivery date ("fecha de entrega"), inclusive
   // on both ends. Empty inputs mean no bound on that side.
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
+  const todas = useMemo(() => clients.filter((c) => c.section === 'ventas'), [clients]);
+  // Mes de venta (Panel ADMIN) por fecha de entrega; arranca en el mes en curso.
+  const selector = useMesVenta(todas, fechaDeVenta);
+  const { enMes } = selector;
 
   const ventas = useMemo(() => {
     const min = fromDateInput(desde);
     const max = fromDateInput(hasta);
     const maxEnd = max != null ? max + 86_399_999 : null; // include the whole "hasta" day
-    return clients
-      .filter((c) => c.section === 'ventas')
+    return todas
       .filter((c) => {
-        if (min == null && maxEnd == null) return true;
+        // Un lapso Desde/Hasta manda sobre el mes elegido.
+        if (min == null && maxEnd == null) return enMes(c);
         const t = c.fechaEntrega ?? c.updatedAt ?? 0;
         return (min == null || t >= min) && (maxEnd == null || t <= maxEnd);
       })
       .sort((a, b) => (b.fechaEntrega ?? b.updatedAt ?? 0) - (a.fechaEntrega ?? a.updatedAt ?? 0));
-  }, [clients, desde, hasta]);
+  }, [todas, desde, hasta, enMes]);
 
-  const totalVentas = clients.filter((c) => c.section === 'ventas').length;
+  const totalVentas = todas.length;
   const filterActive = !!(desde || hasta);
 
   return (
     <div>
+      <div className={filterActive ? 'mb-3 opacity-50' : 'mb-3'}>
+        <SelectorMes id="mes-ventas" {...selector} onChange={selector.setMes} total={ventas.length} />
+      </div>
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-white/5 bg-navy-900/40 px-4 py-3">
         <span className="mb-2 flex w-full items-center gap-1.5 text-xs font-medium text-ink-muted sm:w-auto">
           <CalendarRange size={14} className="text-sky2" /> Filtrar por fecha de entrega
@@ -220,7 +231,7 @@ export default function SalesList() {
           </Button>
         )}
         <span className="mb-2 w-full text-right text-xs text-ink-faint sm:ml-auto sm:w-auto">
-          {ventas.length} de {totalVentas} venta(s)
+          {filterActive ? `${ventas.length} de ${totalVentas} venta(s) en el lapso` : `${totalVentas} en el histórico`}
         </span>
       </div>
 
@@ -228,6 +239,8 @@ export default function SalesList() {
         <p className="px-2 py-16 text-center text-sm text-ink-faint">
           {filterActive ? (
             'No hay ventas concretadas en el lapso seleccionado.'
+          ) : totalVentas > 0 ? (
+            'No hay ventas concretadas en este mes de venta.'
           ) : (
             <>
               Aún no hay ventas concretadas. Los clientes aparecen aquí al llegar a{' '}

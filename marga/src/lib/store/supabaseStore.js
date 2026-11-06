@@ -419,6 +419,19 @@ export function createSupabaseStore({ url, key }) {
     usuarios: (action, body) => funcion('marga-usuarios', { action, ...body }),
   };
 
+  // Suscripciones de notificaciones push de este dispositivo (funciones de
+  // supabase/marga_avisos.sql; la tabla no se toca directo).
+  const llamar = async (fn, args) => {
+    const { data, error } = await sb.rpc(fn, args);
+    if (error) throw new Error(error.message || 'No se pudo guardar la suscripción.');
+    return data;
+  };
+  const push = {
+    suscribir: (sub, ua) => llamar('marga_push_suscribir', { sub, ua: ua ?? '' }),
+    baja: (endpoint) => llamar('marga_push_baja', { p_endpoint: endpoint }),
+    activo: (endpoint) => llamar('marga_push_activo', { p_endpoint: endpoint }),
+  };
+
   // Una sola vez aunque se llame varias (StrictMode monta App dos veces): un
   // segundo canal con el mismo nombre es el mismo canal, ya suscrito.
   let iniciado = null;
@@ -437,6 +450,7 @@ export function createSupabaseStore({ url, key }) {
     kind: 'supabase',
     init,
     auth,
+    push,
     dinamo: dinamo.api,
 
     // --- clients ---
