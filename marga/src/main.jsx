@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import { cargarCatalogoRemoto } from './lib/catalogoRemoto.js';
+import { registrarServiceWorker } from './lib/push.js';
 import './index.css';
 
 // El catálogo en línea se aplica antes del primer render; si falla o tarda más
@@ -12,4 +13,6 @@ cargarCatalogoRemoto().then(() => {
       <App />
     </React.StrictMode>,
   );
+  // Service worker de las notificaciones push (no cachea nada).
+  registrarServiceWorker();
 });

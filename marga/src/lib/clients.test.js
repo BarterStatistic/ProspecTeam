@@ -40,3 +40,21 @@ describe('mensajeEliminarCliente', () => {
     expect(msg).toContain('$9,243.67');
   });
 });
+
+describe('ordenPila', () => {
+  it('pone arriba la que llegó más recientemente a la columna', async () => {
+    const { ordenPila } = await import('./clients.js');
+    const lista = [
+      { id: 'vieja', createdAt: 1, llegoAColumna: 10 },
+      { id: 'nueva', createdAt: 5, llegoAColumna: 30 },
+      { id: 'media', createdAt: 9, llegoAColumna: 20 },
+    ];
+    expect(lista.sort(ordenPila).map((c) => c.id)).toEqual(['nueva', 'media', 'vieja']);
+  });
+
+  it('sin llegoAColumna usa la fecha de alta', async () => {
+    const { ordenPila } = await import('./clients.js');
+    const lista = [{ id: 'a', createdAt: 1 }, { id: 'b', createdAt: 3 }, { id: 'c', createdAt: 2, llegoAColumna: 2.5 }];
+    expect(lista.sort(ordenPila).map((c) => c.id)).toEqual(['b', 'c', 'a']);
+  });
+});

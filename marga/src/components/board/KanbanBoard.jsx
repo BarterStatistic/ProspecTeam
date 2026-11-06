@@ -22,7 +22,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
 import { canDropTo, canEditClient, canRegistrarFacturacion } from '../../lib/permissions.js';
 import { resolveTransition } from '../../lib/db.js';
-import { regresoAColumna } from '../../lib/clients.js';
+import { regresoAColumna, ordenPila } from '../../lib/clients.js';
 import { ChevronDown, SlidersHorizontal } from 'lucide-react';
 import Column, { COLUMN_PREFIX } from './Column.jsx';
 import { CardBody } from './ClientCard.jsx';
@@ -75,6 +75,7 @@ function FilterRow({ label, items, value, onChange, colorOf }) {
 
 export default function KanbanBoard({ section }) {
   const { clients, moveClient, applyBoardReorder, sellerColors } = useData();
+  const esPila = section === 'prospectos';
   const { user, role } = useAuth();
   const { openFacturacion } = useUI();
   const [activeId, setActiveId] = useState(null);
@@ -151,9 +152,12 @@ export default function KanbanBoard({ section }) {
     for (const c of clients) {
       if (c.section === section && map[c.stage] && matchesFilter(c)) map[c.stage].push(c);
     }
-    for (const col of columns) map[col.id].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    // Prospectos es una pila (lo más reciente arriba); Procesos conserva el
+    // orden que le dan a mano.
+    const orden = esPila ? ordenPila : (a, b) => (a.order ?? 0) - (b.order ?? 0);
+    for (const col of columns) map[col.id].sort(orden);
     return map;
-  }, [clients, section, columns, matchesFilter]);
+  }, [clients, section, columns, matchesFilter, esPila]);
 
   const activeClient = activeId ? clients.find((c) => c.id === activeId) : null;
 
@@ -200,6 +204,8 @@ export default function KanbanBoard({ section }) {
     const targetIds = grouped[toStage].map((c) => c.id);
 
     if (fromStage === toStage) {
+      // En la pila el orden lo da la llegada: no se reacomoda a mano.
+      if (esPila) return;
       // Reorder within the same column.
       const oldIndex = targetIds.indexOf(draggedId);
       const newIndex = isColumnId(over.id) ? targetIds.length - 1 : targetIds.indexOf(over.id);
@@ -211,6 +217,7 @@ export default function KanbanBoard({ section }) {
       const withoutActive = targetIds.filter((id) => id !== draggedId);
       let insertIndex = isColumnId(over.id) ? withoutActive.length : withoutActive.indexOf(over.id);
       if (insertIndex === -1) insertIndex = withoutActive.length;
+      if (esPila) insertIndex = 0; // llega arriba de la pila
       const orderedIds = [
         ...withoutActive.slice(0, insertIndex),
         draggedId,

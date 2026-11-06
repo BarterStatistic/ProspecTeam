@@ -396,3 +396,27 @@ describe('agruparPorPago', () => {
     expect(grupos[0].filas.map((c) => c.id)).toEqual(['a', 'b']);
   });
 });
+
+describe('mesesDisponibles', () => {
+  it('incluye el mes en curso y ordena del más reciente al más viejo', async () => {
+    const { mesesDisponibles } = await import('./comisiones.js');
+    expect(mesesDisponibles(['2026-08', '2026-10', '2026-08', 'basura'], '2026-11')).toEqual([
+      '2026-11',
+      '2026-10',
+      '2026-08',
+    ]);
+  });
+});
+
+describe('totalPromotor', () => {
+  it('suma solo lo del promotor indicado', async () => {
+    const { totalPromotor } = await import('./comisiones.js');
+    const lista = [
+      { promotor: 'Cintya Cardona', comisionPromotor: 100 },
+      { promotor: 'Cintya Cardona', comisionPromotor: 50 },
+      { promotor: '', comisionPromotor: 0 },
+    ];
+    expect(totalPromotor(lista, 'Cintya Cardona')).toBe(150);
+    expect(totalPromotor(lista, '')).toBe(0);
+  });
+});
