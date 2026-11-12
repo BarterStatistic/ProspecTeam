@@ -213,9 +213,14 @@ export function DataProvider({ children }) {
 
       // --- user management (UI restricted to admins) ---
       users: admin ? users : [],
-      async addUser({ username, password, role, color }) {
-        // Con Supabase Auth la cuenta se crea en el servidor (Edge Function).
-        if (store.auth) return store.auth.usuarios('create', { username, password, role, color });
+      async addUser({ username, password, role, color, telegramChatId = '' }) {
+        // Con Supabase Auth la cuenta se crea en el servidor (Edge Function);
+        // el chat de Telegram se escribe aparte (el admin puede editar usuarios).
+        if (store.auth) {
+          const res = await store.auth.usuarios('create', { username, password, role, color });
+          if (telegramChatId && res?.id) await store.patchUser(res.id, { telegramChatId });
+          return res;
+        }
         const name = username.trim();
         const existing = await store.getUserByUsername(name);
         if (existing) throw new Error('Ya existe un usuario con ese nombre.');
@@ -226,17 +231,22 @@ export function DataProvider({ children }) {
           color: color || '',
           photo: '',
           passwordHash: await hashPassword(password),
+          telegramChatId,
           createdAt: Date.now(),
         });
       },
-      async editUser(id, { username, password, role, color }) {
-        if (store.auth) return store.auth.usuarios('update', { id, username, password, role, color });
+      async editUser(id, { username, password, role, color, telegramChatId = '' }) {
+        if (store.auth) {
+          const res = await store.auth.usuarios('update', { id, username, password, role, color });
+          await store.patchUser(id, { telegramChatId });
+          return res;
+        }
         const name = username.trim();
         const existing = await store.getUserByUsername(name);
         if (existing && existing.id !== id) throw new Error('Ya existe un usuario con ese nombre.');
         // `photo` is deliberately absent: an admin editing a role or colour must
         // not wipe the picture the user set for themselves.
-        const patch = { username: name, role, color: color || '' };
+        const patch = { username: name, role, color: color || '', telegramChatId };
         if (password) {
           patch.passwordHash = await hashPassword(password);
           // Cambiar la contraseña invalida las sesiones de esa cuenta; si es la

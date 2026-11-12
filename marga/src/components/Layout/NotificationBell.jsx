@@ -1,6 +1,87 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, BellRing, BellOff } from 'lucide-react';
 import { useData } from '../../context/DataContext.jsx';
+import { store } from '../../lib/store/index.js';
+import { estadoPush, activarPush, desactivarPush } from '../../lib/push.js';
+
+const TEXTO_ESTADO = {
+  instalar:
+    'En iPhone primero instala Marga: Compartir → Agregar a inicio, y ábrela desde el ícono.',
+  'no-soportado': 'Este navegador no admite notificaciones push.',
+  bloqueado:
+    'Las notificaciones están bloqueadas para Marga. Actívalas en los ajustes del navegador.',
+};
+
+/**
+ * Avisos al teléfono aunque Marga esté cerrada (cita agendada, crédito que
+ * cambia de columna…). Cada dispositivo se activa por separado.
+ */
+function AvisosPush() {
+  const [estado, setEstado] = useState('cargando');
+  const [error, setError] = useState('');
+  const [ocupado, setOcupado] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    estadoPush(store).then((e) => vivo && setEstado(e));
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  async function alternar() {
+    setOcupado(true);
+    setError('');
+    try {
+      if (estado === 'activo') await desactivarPush(store);
+      else await activarPush(store);
+      setEstado(await estadoPush(store));
+    } catch (err) {
+      setError(err.message || 'No se pudo cambiar la configuración.');
+      setEstado(await estadoPush(store));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  if (estado === 'cargando') return null;
+  const puede = estado === 'activo' || estado === 'inactivo';
+  return (
+    <div className="mt-1 border-t border-white/5 px-3 py-2">
+      <div className="flex items-center gap-2">
+        {estado === 'activo' ? (
+          <BellRing size={14} className="shrink-0 text-state-success" />
+        ) : (
+          <BellOff size={14} className="shrink-0 text-ink-faint" />
+        )}
+        <p className="min-w-0 flex-1 text-xs text-ink">
+          Avisos en este teléfono
+          <span className="block text-[10px] text-ink-faint">
+            {estado === 'activo'
+              ? 'Activos: llegan aunque Marga esté cerrada'
+              : 'Citas, documentos y movimientos de crédito'}
+          </span>
+        </p>
+        {puede && (
+          <button
+            type="button"
+            onClick={alternar}
+            disabled={ocupado}
+            className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold transition disabled:opacity-50 ${
+              estado === 'activo'
+                ? 'bg-white/5 text-ink-muted hover:bg-white/10'
+                : 'bg-gold/20 text-gold hover:bg-gold/30'
+            }`}
+          >
+            {ocupado ? '…' : estado === 'activo' ? 'Desactivar' : 'Activar'}
+          </button>
+        )}
+      </div>
+      {!puede && <p className="mt-1 text-[10px] text-ink-faint">{TEXTO_ESTADO[estado]}</p>}
+      {error && <p className="mt-1 text-[10px] text-state-danger">{error}</p>}
+    </div>
+  );
+}
 
 const horaFmt = new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit' });
 const diaFmt = new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short' });
@@ -82,6 +163,7 @@ export default function NotificationBell() {
               ))
             )}
           </div>
+          <AvisosPush />
         </div>
       )}
     </div>

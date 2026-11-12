@@ -10,6 +10,7 @@ import Card from '../ui/Card.jsx';
 import Button from '../ui/Button.jsx';
 import { Textarea } from '../ui/Input.jsx';
 import CopyButton from '../ui/CopyButton.jsx';
+import SelectorMes, { useMesVenta } from '../ui/SelectorMes.jsx';
 import Avatar from '../ui/Avatar.jsx';
 
 function CancelledRow({ client }) {
@@ -112,33 +113,54 @@ function CancelledRow({ client }) {
   );
 }
 
+/** Fecha que decide el mes de un cancelado: cuándo se canceló. */
+const fechaDeCancelacion = (c) => c.fechaCancelacion ?? c.updatedAt ?? null;
+
 export default function CancelledList() {
   const { user, role } = useAuth();
   const { clients } = useData();
   // El vendedor solo ve los cancelados que registró o que tiene asignados.
-  const cancelados = useMemo(
-    () =>
-      clients
-        .filter((c) => c.section === 'cancelados' && canSeeClient(role, c, user?.username))
-        .sort((a, b) => (b.fechaCancelacion ?? b.updatedAt ?? 0) - (a.fechaCancelacion ?? a.updatedAt ?? 0)),
+  const todos = useMemo(
+    () => clients.filter((c) => c.section === 'cancelados' && canSeeClient(role, c, user?.username)),
     [clients, role, user],
   );
-
-  if (cancelados.length === 0) {
-    return (
-      <p className="px-2 py-16 text-center text-sm text-ink-faint">
-        {isAdmin(role)
-          ? 'No hay clientes cancelados.'
-          : 'No tienes clientes cancelados.'}
-      </p>
-    );
-  }
+  // Por defecto, solo los cancelados del mes de venta en curso.
+  const selector = useMesVenta(todos, fechaDeCancelacion);
+  const { enMes } = selector;
+  const cancelados = useMemo(
+    () =>
+      todos
+        .filter(enMes)
+        .sort((a, b) => (fechaDeCancelacion(b) ?? 0) - (fechaDeCancelacion(a) ?? 0)),
+    [todos, enMes],
+  );
 
   return (
-    <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-      {cancelados.map((c) => (
-        <CancelledRow key={c.id} client={c} />
-      ))}
+    <div>
+      <div className="mb-3">
+        <SelectorMes
+          id="mes-cancelados"
+          {...selector}
+          onChange={selector.setMes}
+          total={cancelados.length}
+          unidad={['cancelado', 'cancelados']}
+        />
+      </div>
+      {cancelados.length === 0 ? (
+        <p className="px-2 py-16 text-center text-sm text-ink-faint">
+          {todos.length > 0
+            ? 'No hay clientes cancelados en este mes de venta.'
+            : isAdmin(role)
+              ? 'No hay clientes cancelados.'
+              : 'No tienes clientes cancelados.'}
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+          {cancelados.map((c) => (
+            <CancelledRow key={c.id} client={c} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

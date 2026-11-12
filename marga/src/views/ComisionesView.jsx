@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Wallet, TrendingUp, Banknote, Flame, Trash2, Pencil, StickyNote } from 'lucide-react';
+import { Wallet, TrendingUp, Banknote, Flame, Trash2, Pencil, StickyNote, UserCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useData } from '../context/DataContext.jsx';
 import { useUI } from '../context/UIContext.jsx';
@@ -14,13 +14,19 @@ import {
   agruparPorPago,
   PROMOTOR_DEFAULT,
   NIVELES_RACHA,
+  TASA_PROMOTOR,
+  TODO_EL_HISTORICO,
+  mesesDisponibles,
 } from '../lib/comisiones.js';
 import { formatMXN, formatDate, formatDateShort } from '../lib/format.js';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
+import SelectorMes from '../components/ui/SelectorMes.jsx';
+
+const SIN_PROMOTOR = '__sin_promotor__';
 
 function StatCard({ icon: Icon, label, value, hint, tone = 'sky' }) {
-  const TONES = { sky: 'text-sky2', gold: 'text-gold', success: 'text-state-success' };
+  const TONES = { sky: 'text-sky2', gold: 'text-gold', success: 'text-state-success', purple: 'text-purple-300' };
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2 text-xs text-ink-muted">
@@ -67,10 +73,31 @@ export default function ComisionesView() {
     marcarPagoComision,
     sellerColors,
     teamUsernames,
+    promotorUsernames,
   } = useData();
   const { openFacturacion } = useUI();
   const [filtroVendedor, setFiltroVendedor] = useState('');
+  // '' = todos; SIN_PROMOTOR = las que no tienen promotor; o el nombre.
+  const [filtroPromotor, setFiltroPromotor] = useState('');
   const admin = isAdmin(role);
+
+  // Mes de venta en curso (los que registra el admin en el Panel ADMIN): su
+  // rango es lo que dura la racha y es lo que se ve al entrar.
+  const claveHoy = mesVenta(Date.now(), configComisiones);
+  const periodoHoy = periodoPorClave(claveHoy, configComisiones);
+  const [mes, setMes] = useState(claveHoy);
+  const periodoMes = mes === TODO_EL_HISTORICO ? null : periodoPorClave(mes, configComisiones);
+  const meses = useMemo(
+    () => mesesDisponibles(comisiones.map((c) => c.mesVenta), claveHoy),
+    [comisiones, claveHoy],
+  );
+  // Promotores que se pueden filtrar: los usuarios con ese rol y cualquiera
+  // que aparezca en una comisión (p. ej. uno que ya se dio de baja).
+  const promotores = useMemo(() => {
+    const set = new Set(promotorUsernames);
+    for (const c of comisiones) if (c.promotor) set.add(c.promotor);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [promotorUsernames, comisiones]);
 
   // Cada comisión con su fecha de pago derivada de la configuración vigente.
   const conPago = useMemo(
@@ -81,9 +108,17 @@ export default function ComisionesView() {
 
   const visibles = useMemo(() => {
     let lista = admin ? conPago : conPago.filter((c) => c.vendedor === user?.username);
+    if (mes !== TODO_EL_HISTORICO) lista = lista.filter((c) => c.mesVenta === mes);
     if (admin && filtroVendedor) lista = lista.filter((c) => c.vendedor === filtroVendedor);
+    if (admin && filtroPromotor) {
+      const buscado = filtroPromotor === SIN_PROMOTOR ? '' : filtroPromotor;
+      lista = lista.filter((c) => (c.promotor ?? '') === buscado);
+    }
     return lista.sort((a, b) => b.fechaPagoTs - a.fechaPagoTs || b.fechaFacturacion - a.fechaFacturacion);
-  }, [conPago, admin, user, filtroVendedor]);
+  }, [conPago, admin, user, filtroVendedor, filtroPromotor, mes]);
+
+  // Con un promotor elegido, los montos por grupo son lo que se le paga a él.
+  const verPromotor = admin && filtroPromotor && filtroPromotor !== SIN_PROMOTOR;
 
   const totales = useMemo(
     () =>
@@ -93,8 +128,10 @@ export default function ComisionesView() {
           neto: acc.neto + c.netoAdmin,
           financiado: acc.financiado + c.montoFinanciado,
           vendedor: acc.vendedor + c.comisionVendedor,
+          promotor: acc.promotor + (c.comisionPromotor ?? 0),
+          conPromotor: acc.conPromotor + (c.promotor ? 1 : 0),
         }),
-        { ingreso: 0, neto: 0, financiado: 0, vendedor: 0 },
+        { ingreso: 0, neto: 0, financiado: 0, vendedor: 0, promotor: 0, conPromotor: 0 },
       ),
     [visibles],
   );
@@ -113,9 +150,6 @@ export default function ComisionesView() {
     }
   }
 
-  // Mes de venta en curso: su rango (si el admin lo registró) es lo que dura la racha.
-  const claveHoy = mesVenta(Date.now(), configComisiones);
-  const periodoHoy = periodoPorClave(claveHoy, configComisiones);
 
   // Racha del mes en curso, solo para la vista del vendedor.
   const rachaActual = useMemo(() => {
@@ -147,6 +181,15 @@ export default function ComisionesView() {
   return (
     <div className="h-full overflow-y-auto px-4 py-5 sm:px-6">
       <div className="mx-auto max-w-6xl space-y-4">
+        <SelectorMes
+          id="mes-comisiones"
+          mes={mes}
+          meses={meses}
+          claveHoy={claveHoy}
+          periodo={periodoMes}
+          onChange={setMes}
+          total={visibles.length}
+        />
         {!admin && configComisiones.notaVendedores && (
           <Card className="flex items-start gap-3 border-gold/20 p-4">
             <StickyNote size={16} className="mt-0.5 shrink-0 text-gold" />
@@ -188,10 +231,10 @@ export default function ComisionesView() {
 
         {admin && (
           <>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
                 icon={Wallet}
-                label="Ingreso total global"
+                label={mes === TODO_EL_HISTORICO ? 'Ingreso total global' : `Ingreso de ${etiquetaMes(mes)}`}
                 value={formatMXN(totales.ingreso)}
                 hint="Suma de comisiones totales"
               />
@@ -208,6 +251,15 @@ export default function ComisionesView() {
                 value={formatMXN(totales.financiado)}
                 hint={`${visibles.length} venta${visibles.length === 1 ? '' : 's'}`}
                 tone="success"
+              />
+              <StatCard
+                icon={UserCheck}
+                label={verPromotor ? `Para ${filtroPromotor}` : 'Para promotores'}
+                value={formatMXN(totales.promotor)}
+                hint={`${(TASA_PROMOTOR * 100).toFixed(0)} % de la comisión total · ${totales.conPromotor} venta${
+                  totales.conPromotor === 1 ? '' : 's'
+                } con promotor`}
+                tone="purple"
               />
             </div>
 
@@ -245,6 +297,26 @@ export default function ComisionesView() {
                   );
                 })}
               </div>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 text-xs font-medium text-ink-faint">Promotor:</span>
+                {[
+                  { id: '', label: 'Todos' },
+                  ...promotores.map((p) => ({ id: p, label: p })),
+                  { id: SIN_PROMOTOR, label: 'Sin promotor' },
+                ].map(({ id, label }) => (
+                  <button
+                    key={id || 'todos'}
+                    onClick={() => setFiltroPromotor(filtroPromotor === id ? '' : id)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                      filtroPromotor === id
+                        ? 'bg-purple-500/20 text-purple-200'
+                        : 'bg-white/5 text-ink-muted hover:bg-white/10 hover:text-ink'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </Card>
           </>
         )}
@@ -253,8 +325,12 @@ export default function ComisionesView() {
           <Card className="p-8">
             <p className="text-center text-xs text-ink-faint">
               {admin
-                ? 'Todavía no hay ventas facturadas.'
-                : 'Todavía no tienes comisiones registradas.'}
+                ? mes === TODO_EL_HISTORICO
+                  ? 'Todavía no hay ventas facturadas.'
+                  : `No hay ventas facturadas en ${etiquetaMes(mes)} con estos filtros.`
+                : mes === TODO_EL_HISTORICO
+                  ? 'Todavía no tienes comisiones registradas.'
+                  : `No tienes comisiones en ${etiquetaMes(mes)}.`}
             </p>
           </Card>
         ) : (
@@ -270,7 +346,13 @@ export default function ComisionesView() {
                 <span className="text-xs text-gold">
                   {formatMXN(
                     filas.reduce(
-                      (a, c) => a + (admin ? c.comisionTotal : c.comisionVendedor),
+                      (a, c) =>
+                        a +
+                        (verPromotor
+                          ? c.comisionPromotor ?? 0
+                          : admin
+                            ? c.comisionTotal
+                            : c.comisionVendedor),
                       0,
                     ),
                   )}
@@ -312,8 +394,13 @@ export default function ComisionesView() {
                             >
                               {c.vendedor || 'Sin asignar'}
                             </span>
-                            <span className="m-chip bg-white/5 text-ink-muted">
+                            <span
+                              className={`m-chip ${
+                                c.promotor ? 'bg-purple-500/15 text-purple-200' : 'bg-white/5 text-ink-muted'
+                              }`}
+                            >
                               Promotor: {c.promotor || PROMOTOR_DEFAULT}
+                              {c.promotor && ` · ${formatMXN(c.comisionPromotor ?? 0)}`}
                             </span>
                           </>
                         )}
@@ -361,7 +448,7 @@ export default function ComisionesView() {
                     con anchos automáticos, las columnas quedaban desalineadas
                     de un grupo a otro. Cliente toma el espacio que sobra. La
                     fecha de pago no tiene columna: es la del encabezado. */}
-                <table className="w-full min-w-[960px] table-fixed text-left text-xs">
+                <table className="w-full min-w-[1120px] table-fixed text-left text-xs">
                   <colgroup>
                     {admin && <col className="w-[136px]" />}
                     <col className="w-[32px]" />
@@ -379,7 +466,7 @@ export default function ComisionesView() {
                       {admin && <th className="py-2 pr-3 font-medium">Vendedor</th>}
                       <th className="py-2 pr-3 text-right font-medium">#</th>
                       <th className="py-2 pr-3 font-medium">Cliente</th>
-                      {admin && <th className="py-2 pr-3 font-medium">Promotor</th>}
+                      {admin && <th className="py-2 pr-3 font-medium">Promotor (10 %)</th>}
                       <th className="py-2 pr-3 font-medium">Moto</th>
                       {admin && (
                         <th className="py-2 pr-3 text-right font-medium">Monto financiado</th>
@@ -413,6 +500,11 @@ export default function ComisionesView() {
                         {admin && (
                           <td className="break-words py-2 pr-3 text-ink-muted">
                             {c.promotor || PROMOTOR_DEFAULT}
+                            {c.promotor && (
+                              <span className="block font-semibold text-purple-200">
+                                {formatMXN(c.comisionPromotor ?? 0)}
+                              </span>
+                            )}
                           </td>
                         )}
                         <td className="break-words py-2 pr-3 text-ink-muted">{c.moto}</td>

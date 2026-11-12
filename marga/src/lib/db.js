@@ -127,6 +127,7 @@ export async function createClient(values, actor = null) {
     section: target.section,
     stage: target.stage,
     order: nextOrder(target.section, target.stage),
+    llegoAColumna: ts,
     createdAt: ts,
     updatedAt: ts,
     createdBy: actor?.username ?? '',
@@ -246,6 +247,10 @@ export async function moveClient(id, toSection, toStage, actor = null) {
     order: nextOrder(target.section, target.stage),
     updatedAt: now(),
   };
+  // Prospectos se acomoda como pila: lo que acaba de llegar va arriba.
+  if (target.section !== current.section || target.stage !== current.stage) {
+    patch.llegoAColumna = patch.updatedAt;
+  }
   if (target.section === 'ventas') {
     if (!current.fechaInicioProceso) patch.fechaInicioProceso = current.createdAt ?? now();
     if (!current.fechaEntrega) patch.fechaEntrega = now();
@@ -302,7 +307,7 @@ export async function applyBoardReorder(
       id,
       patch:
         id === movedId && stageChanged
-          ? { order: i, stage: toStage, updatedAt: ts }
+          ? { order: i, stage: toStage, updatedAt: ts, llegoAColumna: ts }
           : { order: i },
     })),
   );

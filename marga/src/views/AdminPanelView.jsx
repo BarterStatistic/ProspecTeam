@@ -20,7 +20,7 @@ import { useData } from '../context/DataContext.jsx';
 import { canViewAdminPanel } from '../lib/permissions.js';
 import { sellerColor, UNASSIGNED_COLOR } from '../lib/constants.js';
 import { fromDateInput, toDateInput, formatDate, formatDateTime, formatMXN } from '../lib/format.js';
-import { fechaPago } from '../lib/comisiones.js';
+import { fechaPago, mesVenta, periodoPorClave, etiquetaMes } from '../lib/comisiones.js';
 import {
   UNASSIGNED_KEY,
   sellerLabel,
@@ -53,7 +53,7 @@ import MesesVentaCard from '../components/admin/MesesVentaCard.jsx';
 const DAY = 86_400_000;
 
 /** Quick ranges, as [desde, hasta] values for the date inputs. */
-function quickRange(id) {
+function quickRange(id, config) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   if (id === 'hoy') return [today, today];
@@ -61,7 +61,13 @@ function quickRange(id) {
   // dejaba los KPIs de dinero en $0 de lunes a jueves.
   if (id === 'semana_actual') return [startOfThisWeek(), endOfThisWeek()];
   if (id === 'semana') return [today - 6 * DAY, today];
-  if (id === 'mes') return [new Date(now.getFullYear(), now.getMonth(), 1).getTime(), today];
+  if (id === 'mes') {
+    // "Este mes" = el mes de venta en curso que registró el admin (abajo, en
+    // Meses de venta); si no hay uno que cubra hoy, el mes de calendario.
+    const periodo = periodoPorClave(mesVenta(now.getTime(), config), config);
+    if (periodo && periodo.inicio <= today && today <= periodo.fin) return [periodo.inicio, periodo.fin];
+    return [new Date(now.getFullYear(), now.getMonth(), 1).getTime(), today];
+  }
   if (id === 'trimestre') return [new Date(now.getFullYear(), now.getMonth() - 2, 1).getTime(), today];
   return [null, null]; // 'todo'
 }
@@ -262,7 +268,7 @@ export default function AdminPanelView() {
   }
 
   function applyQuick(id) {
-    const [d, h] = quickRange(id);
+    const [d, h] = quickRange(id, configComisiones);
     setDesde(d ? toDateInput(d) : '');
     setHasta(h ? toDateInput(h) : '');
   }
@@ -399,7 +405,7 @@ export default function AdminPanelView() {
                   onClick={() => applyQuick(q.id)}
                   className="rounded-full bg-white/5 px-3 py-1 text-xs font-medium text-ink-muted transition hover:bg-white/10 hover:text-ink"
                 >
-                  {q.label}
+                  {q.id === 'mes' ? etiquetaMes(mesVenta(Date.now(), configComisiones)) : q.label}
                 </button>
               ))}
               {rangeActive && (

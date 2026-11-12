@@ -296,3 +296,26 @@ export function agruparPorPago(comisiones, ahora) {
     proximo: i === 0 && ts >= hoy,
   }));
 }
+
+/** Valor del selector de mes que muestra todo, sin filtrar por mes de venta. */
+export const TODO_EL_HISTORICO = 'todo';
+
+/**
+ * Meses de venta que ofrece el selector: los que tienen al menos un registro,
+ * más el mes en curso aunque todavía esté vacío, del más reciente al más viejo.
+ */
+export function mesesDisponibles(claves, claveHoy) {
+  const set = new Set((claves ?? []).filter(esClaveMes));
+  if (esClaveMes(claveHoy)) set.add(claveHoy);
+  return [...set].sort((a, b) => b.localeCompare(a));
+}
+
+/**
+ * Lo que se le paga a un promotor en las comisiones dadas (su 10 % de cada
+ * comisión total, ya con el 4.25 %). `promotor` vacío = sin promotor asignado.
+ */
+export function totalPromotor(comisiones, promotor) {
+  return (comisiones ?? [])
+    .filter((c) => (c.promotor ?? '') === (promotor ?? ''))
+    .reduce((a, c) => a + (c.comisionPromotor ?? 0), 0);
+}
