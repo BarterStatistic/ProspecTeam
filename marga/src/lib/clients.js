@@ -108,3 +108,25 @@ export function mensajeEliminarCliente(client, comisiones = []) {
     'Esta acción no se puede deshacer.'
   );
 }
+
+/**
+ * Momento en que una tarjeta llegó a su columna actual: `llegoAColumna` (lo
+ * sellan la app al mover y el trigger `marga_llegada` de Supabase cuando Alex
+ * o Dinamo la mueven) y, en tarjetas viejas sin ese campo, su alta.
+ */
+export function llegadaAColumna(client) {
+  return client?.llegoAColumna ?? client?.createdAt ?? 0;
+}
+
+/**
+ * Orden de pila para Prospectos: la que llegó más recientemente a la columna
+ * va arriba y la más vieja abajo. Desempata por alta y luego por id para que
+ * el orden no brinque entre renders.
+ */
+export function ordenPila(a, b) {
+  return (
+    llegadaAColumna(b) - llegadaAColumna(a) ||
+    (b?.createdAt ?? 0) - (a?.createdAt ?? 0) ||
+    String(a?.id).localeCompare(String(b?.id))
+  );
+}

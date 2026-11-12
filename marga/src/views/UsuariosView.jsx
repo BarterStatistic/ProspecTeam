@@ -61,6 +61,8 @@ function UserFormModal({ open, initial, onClose, onSave }) {
   // form doesn't silently reset an existing accent.
   const [color, setColor] = useState(initial ? userColor(initial) : COLOR_PALETTE[0]);
   const [password, setPassword] = useState('');
+  // Chat de Telegram al que llegan sus avisos (Envío de docs / citas).
+  const [telegramChatId, setTelegramChatId] = useState(initial?.telegramChatId ?? '');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -72,10 +74,13 @@ function UserFormModal({ open, initial, onClose, onSave }) {
       return setError('La contraseña debe tener al menos 6 caracteres.');
     if (isEdit && password && password.length < 6)
       return setError('La nueva contraseña debe tener al menos 6 caracteres.');
+    const chat = telegramChatId.trim();
+    if (chat && !/^-?\d{5,15}$/.test(chat))
+      return setError('El chat de Telegram es solo un número (p. ej. 2002931003).');
     setBusy(true);
     setError('');
     try {
-      await onSave({ username: name, role, password, color });
+      await onSave({ username: name, role, password, color, telegramChatId: chat });
       onClose();
     } catch (err) {
       setError(err.message || 'No se pudo guardar el usuario.');
@@ -133,6 +138,20 @@ function UserFormModal({ open, initial, onClose, onSave }) {
         </div>
 
         <ColorPicker value={color} onChange={setColor} />
+
+        <div>
+          <Input
+            label="Chat de Telegram (avisos)"
+            inputMode="numeric"
+            value={telegramChatId}
+            onChange={(e) => setTelegramChatId(e.target.value)}
+            placeholder="Ej. 2002931003"
+          />
+          <p className="mt-1 text-[11px] text-ink-faint">
+            Le llegan por el bot de Alex los clientes que pasan a Envío de docs / Cita agendada y
+            las citas. Antes, la persona debe escribirle /start al bot. Vacío = sin Telegram.
+          </p>
+        </div>
 
         <Input
           label={isEdit ? 'Nueva contraseña' : 'Contraseña'}

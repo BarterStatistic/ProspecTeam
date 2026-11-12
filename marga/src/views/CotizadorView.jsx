@@ -197,7 +197,8 @@ export default function CotizadorView() {
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-gold/35 bg-gold/10 px-3 py-2.5">
                   <div>
                     <div className="font-head text-base font-bold text-gold-light">{moto.nombre}</div>
-                    <div className="font-cifra text-sm text-ink-muted">{formatMXN0(moto.precio)}</div>
+                    <div className="font-cifra text-sm text-ink-muted">{moto.precioLista ? <s className="mr-1 opacity-60">{formatMXN0(moto.precioLista)}</s> : null}{formatMXN0(moto.precio)}</div>
+                    <PromoTag moto={moto} />
                   </div>
                   <button
                     type="button"
@@ -243,6 +244,7 @@ export default function CotizadorView() {
                             {m.nombre}
                           </span>
                           <span className="block font-cifra text-xs text-gold">{formatMXN0(m.precio)}</span>
+                          <PromoTag moto={m} />
                         </button>
                       ))}
                     </div>
@@ -450,5 +452,16 @@ function Seccion({ n, titulo, listo, estado, children }) {
       </div>
       {children}
     </section>
+  );
+}
+
+/** Etiqueta de promoción vigente de una moto (vacía si no tiene). */
+function PromoTag({ moto }) {
+  if (!moto?.promo) return null;
+  const { etiqueta, pct, soloContado } = moto.promo;
+  return (
+    <span className="mt-1 inline-block rounded-full bg-[#FFC000] px-2 py-0.5 text-[10px] font-extrabold leading-tight text-[#1A1300]">
+      {etiqueta} aplicada −{pct}%{soloContado ? ' (solo contado)' : ''}
+    </span>
   );
 }

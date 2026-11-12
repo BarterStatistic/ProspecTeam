@@ -504,3 +504,36 @@ src/
 scripts/
   paridad-buro.mjs    # verifica que el port JS del buró coincide con el Python
 ```
+
+## Avisos fuera de la app (Telegram + notificaciones push)
+
+Un trigger de Supabase (`marga_avisar`, en `supabase/marga_avisos.sql`) manda
+cada cambio de columna y cada cita nueva o reagendada a la Edge Function
+`marga-avisos`, que decide a quién avisar (`supabase/functions/_shared/avisosLogic.js`):
+
+| Evento | A quién | Canal |
+|---|---|---|
+| Cliente llega a *Envío de docs / Cita agendada* (app, Alex o a mano) | vendedor de la tarjeta | Telegram + push |
+| Cita agendada o reagendada | quien la agendó + admins | Telegram + push |
+| Crédito cambia de columna en Procesos (app o bandeja de Dinamo) | vendedor + promotor | push |
+| Entra a Procesos | admins | push |
+| Moto entregada / cliente cancelado | vendedor (+ promotor y admins en entregas) | push |
+
+- Telegram sale por el flujo de n8n **"Marga - Avisos a vendedores (Telegram)"**
+  (`iN0TKJHBTWHrojLE`, bot "Alex V3 asistente ventas"). El chat de cada usuario se
+  captura en el Gestor de usuarios (campo *Chat de Telegram*).
+- Push (Web Push con VAPID): cada quien lo activa en su teléfono desde la campana →
+  *Avisos en este teléfono*. En iPhone hay que instalar Marga en la pantalla de
+  inicio primero (iOS 16.4+). El service worker es `public/sw.js` (no cachea nada).
+- Prospectos se ordena como pila con `llegoAColumna` (lo sellan la app y el trigger
+  `marga_llegada` cuando Alex o Dinamo mueven la tarjeta).
+
+Puesta en marcha (una vez):
+
+1. Aplicar `supabase/marga_avisos.sql` (SQL Editor o `supabase db push`).
+2. Desplegar la función: `supabase functions deploy marga-avisos --no-verify-jwt --project-ref ehyqexzaauvjoioafqdz`
+   (desde `marga/`).
+3. Correr `supabase/avisos-secretos.sql.local` (no está en git: llaves VAPID,
+   secreto del trigger y URL del webhook de n8n; carga también los chats de
+   Alejandro y Emmanuel).
+4. Publicar la app (`npm run build` + `firebase deploy --only hosting`).
