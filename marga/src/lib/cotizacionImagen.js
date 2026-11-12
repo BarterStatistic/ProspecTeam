@@ -95,7 +95,7 @@ export function tarjetaCotizacionHTML({
     // Un solo plazo: la parcialidad manda y el resto de las cifras se reparte
     // en exactamente dos filas, en lugar de una tabla de un renglón.
     const t = plazos[0];
-    const datos = [['Precio de Lista', mxn(listPrice), '']];
+    const datos = filasPrecio(moto, mxn);
     if (incluyeServicio && svcPrice > 0) {
       datos.push(['Servicio preventivo', '+' + mxn(svcPrice), '#3DD68C'], ['Precio Paquete', mxn(price), '']);
     }
@@ -132,7 +132,7 @@ export function tarjetaCotizacionHTML({
       ${pie('Parcialidad ' + unidadSing + ' · redondeada al entero más cercano')}`;
   }
 
-  const datos = [['Precio de Lista', mxn(listPrice), '']];
+  const datos = filasPrecio(moto, mxn);
   if (incluyeServicio && svcPrice > 0) datos.push(['Precio Paquete', mxn(price), '']);
   datos.push(
     ['Enganche', pct(enganchePct), '#40D4FF'],
@@ -230,4 +230,12 @@ export async function descargarCotizacionJPG(opciones) {
     document.body.removeChild(card);
     arreglo.remove();
   }
+}
+
+/** Filas de precio del PDF/imagen: con promoción muestra lista y precio con descuento. */
+function filasPrecio(moto, mxn) {
+  const p = moto.promo;
+  if (p && moto.precioLista) return [['Precio de Lista', mxn(moto.precioLista), ''], [`${p.etiqueta} −${p.pct}%`, mxn(moto.precio), '#F0A800']];
+  if (p && p.soloContado) return [['Precio de Lista', mxn(moto.precio), ''], [`${p.etiqueta} −${p.pct}% solo contado`, mxn(Math.round(moto.precio * (1 - p.pct / 100))), '#F0A800']];
+  return [['Precio de Lista', mxn(moto.precio), '']];
 }

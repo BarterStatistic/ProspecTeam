@@ -109,7 +109,17 @@ let byName = new Map(MODELS.map((m) => [m.nombre, m]));
  */
 export function aplicarCatalogo(cat) {
   const antes = JSON.stringify([MODELS, SCHEMES]);
-  MODELS.splice(0, MODELS.length, ...cat.modelos.map(([nombre, precio, servicio]) => ({ nombre, precio, servicio })));
+  // Promociones vigentes (p. ej. Buen Fin): vienen en cat.promos y desaparecen
+  // solas al desactivar la promoción. El descuento baja el precio de lista;
+  // las de "solo contado" solo se indican, el crédito se cotiza a lista.
+  const promos = cat.promos && typeof cat.promos === 'object' ? cat.promos : {};
+  MODELS.splice(0, MODELS.length, ...cat.modelos.map(([nombre, precio, servicio]) => {
+    const p = promos[nombre];
+    if (!p || !(p.pct > 0)) return { nombre, precio, servicio };
+    const promo = { pct: p.pct, etiqueta: p.etiqueta || 'Promoción', soloContado: !!p.solo_contado };
+    if (promo.soloContado) return { nombre, precio, servicio, promo };
+    return { nombre, precio: Math.round(precio * (1 - p.pct / 100)), precioLista: precio, servicio, promo };
+  }));
   for (const id of SCHEME_IDS) {
     const e = cat.esquemas[id];
     if (!e) continue;

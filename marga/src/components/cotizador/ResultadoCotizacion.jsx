@@ -72,7 +72,12 @@ export default function ResultadoCotizacion({
   });
 
   const chips = [
-    { l: 'Precio de Lista', v: formatMXN(moto.precio) },
+    ...(moto.precioLista
+      ? [{ l: 'Precio de Lista', v: formatMXN(moto.precioLista) }, { l: `${moto.promo.etiqueta} −${moto.promo.pct}%`, v: formatMXN(moto.precio), cls: 'text-gold-light' }]
+      : [{ l: 'Precio de Lista', v: formatMXN(moto.precio) }]),
+    ...(moto.promo?.soloContado
+      ? [{ l: `${moto.promo.etiqueta} −${moto.promo.pct}% solo contado`, v: formatMXN(Math.round(moto.precio * (1 - moto.promo.pct / 100))), cls: 'text-gold-light' }]
+      : []),
     ...(conServicio ? [{ l: 'Precio Paquete', v: formatMXN(precio), svc: moto.servicio }] : []),
     { l: 'Enganche', v: pct(dp), cls: 'text-sky2-light' },
     { l: 'Monto Enganche', v: formatMXN(enganche), cls: 'text-gold-light' },
