@@ -61,7 +61,25 @@ export function canSeeClient(role, client, username) {
   return !!asignado && asignado === normalizeName(username);
 }
 
+/**
+ * "Mi día": la cola de prospectos de Alex por atender. La usan quienes
+ * trabajan Prospectos (admin y vendedor); el promotor solo ve Procesos.
+ */
+export function canViewMiDia(role) {
+  return isAdmin(role) || role === ROLES.VENDEDOR;
+}
+
+/**
+ * Vista en la que cae cada rol al entrar. El vendedor empieza en "Mi día";
+ * los demás, en su primer tablero.
+ */
+export function vistaInicial(role) {
+  if (role === ROLES.VENDEDOR) return 'midia';
+  return visibleSections(role)[0] ?? 'citas';
+}
+
 export function canViewSection(role, section) {
+  if (section === 'midia') return canViewMiDia(role);
   if (section === 'usuarios' || section === 'admin') return isAdmin(role);
   if (section === 'citas') return true; // shared agenda: every role manages citas fully
   if (TOOL_IDS.includes(section)) return true; // tools: available to every role

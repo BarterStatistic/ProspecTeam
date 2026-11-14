@@ -18,6 +18,7 @@ import {
 import { motoPorNombre } from './motos.js';
 import { isAdmin } from './permissions.js';
 import { esEstadoValido } from './disponibilidad.js';
+import { parcheContacto } from './seguimiento.js';
 import {
   TIPOS,
   mensajeColumna,
@@ -160,6 +161,18 @@ export async function createClient(values, actor = null) {
  * `montoFinanciado`, `esquemaId` y `numeroVenta` ya congelados de la
  * comisión — ningún otro importe se toca.
  */
+/**
+ * Registra que el vendedor contactó al cliente (ver lib/seguimiento.js). El
+ * contacto ocurre en el WhatsApp del vendedor, fuera de Marga: este registro
+ * es lo único que lo deja a la vista del equipo.
+ */
+export async function registrarContacto(id, tipo, actor = null) {
+  const current = store.getClients().find((c) => c.id === id);
+  if (!current) return;
+  const ts = now();
+  await store.patchClient(id, { ...parcheContacto(current, tipo, actor?.username, ts), updatedAt: ts });
+}
+
 export async function updateClient(id, patch, actor = null) {
   const current = store.getClients().find((c) => c.id === id);
   await store.patchClient(id, { ...patch, updatedAt: now() });

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { UIProvider } from '../../context/UIContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { canViewSection, visibleSections } from '../../lib/permissions.js';
+import { canViewSection, vistaInicial } from '../../lib/permissions.js';
 import { emptyClient } from '../../lib/clients.js';
 import Sidebar from './Sidebar.jsx';
 import TopBar from './TopBar.jsx';
+import MiDiaView from '../../views/MiDiaView.jsx';
 import ProspectosView from '../../views/ProspectosView.jsx';
 import ProcesosView from '../../views/ProcesosView.jsx';
 import VentasView from '../../views/VentasView.jsx';
@@ -23,6 +24,7 @@ import FacturacionModal from '../forms/FacturacionModal.jsx';
 import GlobalSearch from '../Search/GlobalSearch.jsx';
 
 const VIEWS = {
+  midia: MiDiaView,
   prospectos: ProspectosView,
   procesos: ProcesosView,
   ventas: VentasView,
@@ -41,7 +43,7 @@ export default function AppShell() {
   const { role } = useAuth();
   // Land on the first section this role can actually open: a promotor has no
   // access to Prospectos, so hardcoding it would leave them on a blank shell.
-  const [active, setActive] = useState(() => visibleSections(role)[0] ?? 'citas');
+  const [active, setActive] = useState(() => vistaInicial(role));
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [form, setForm] = useState({ open: false, initial: null });
@@ -54,7 +56,7 @@ export default function AppShell() {
   // If the role loses access to the current view (e.g. after a role change),
   // fall back to the first board this role can open.
   useEffect(() => {
-    if (!canViewSection(role, active)) setActive(visibleSections(role)[0] ?? 'citas');
+    if (!canViewSection(role, active)) setActive(vistaInicial(role));
   }, [role, active]);
 
   const goToSection = useCallback(
