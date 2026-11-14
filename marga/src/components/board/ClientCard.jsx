@@ -19,6 +19,8 @@ import {
   BotOff,
   Flame,
   Snowflake,
+  ChevronDown,
+  ArrowRight,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -30,7 +32,7 @@ import {
   canEditClient,
   canRegistrarFacturacion,
 } from '../../lib/permissions.js';
-import { BOARD_COLUMNS, sellerColor } from '../../lib/constants.js';
+import { AUTO_TRANSITIONS, BOARD_COLUMNS, sellerColor } from '../../lib/constants.js';
 import { fullName, regresoAColumna, mensajeEliminarCliente } from '../../lib/clients.js';
 import { formatDateTime } from '../../lib/format.js';
 import {
@@ -84,8 +86,11 @@ export function CardBody({ client, dragging = false }) {
     dinamoPorFolio,
   } = useData();
   const { user, role } = useAuth();
-  const { openEditClient, openCancelClient, openFacturacion } = useUI();
+  const { openEditClient, openCancelClient, openFacturacion, avisar } = useUI();
   const [menuOpen, setMenuOpen] = useState(false);
+  // La tarjeta muestra lo esencial; el resto (notas, resumen de Alex,
+  // casillas) se abre al tocar la flecha.
+  const [abierta, setAbierta] = useState(false);
   // Posición del menú en coordenadas de viewport: se calcula al abrir y el
   // menú se porta al <body>, para que no lo recorte el `overflow-y-auto` de
   // la columna cuando la tarjeta queda cerca del borde de la pantalla.
@@ -162,10 +167,35 @@ export function CardBody({ client, dragging = false }) {
     });
   }
 
+  // Avanzar con un toque: la etapa que sigue en este tablero. Pasa por
+  // moverA, así que conserva la captura de facturación y los saltos de sección.
+  const indiceEtapa = boardColumns.findIndex((c) => c.id === client.stage);
+  const siguiente = canMove && indiceEtapa >= 0 ? boardColumns[indiceEtapa + 1] : null;
+  const salto = siguiente ? AUTO_TRANSITIONS[`${client.section}:${siguiente.id}`] : null;
+  const etiquetaSiguiente =
+    salto?.section === 'procesos' ? 'Pasar a Procesos' : siguiente?.label;
+
+  async function avanzar() {
+    const origen = { section: client.section, stage: client.stage };
+    const nombre = (fullName(client) || 'Cliente').split(' ')[0];
+    try {
+      await moverA(siguiente.id);
+    } catch (err) {
+      avisar(err?.message || 'No se pudo mover al cliente.');
+      return;
+    }
+    // Facturar o entregar no se deshacen desde aquí: tienen su propio flujo.
+    const reversible = siguiente.id !== 'moto_facturada' && siguiente.id !== 'moto_entregada';
+    avisar(
+      `${nombre} → ${etiquetaSiguiente}`,
+      reversible ? () => moveClient(client.id, origen.section, origen.stage) : null,
+    );
+  }
+
   return (
     <div
-      style={{ borderLeftColor: accent, borderLeftWidth: '4px' }}
-      className={`group relative rounded-xl border border-white/10 bg-navy-700/80 p-3 shadow-card transition
+      style={{ borderLeftColor: accent, borderLeftWidth: '3px' }}
+      className={`group relative rounded-xl border border-white/[0.08] bg-navy-800 p-3 transition md:bg-navy-700
         ${dragging ? 'ring-2 ring-sky2/60' : 'hover:border-white/20'}`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -192,6 +222,16 @@ export function CardBody({ client, dragging = false }) {
             })}
           </div>
         )}
+        <button
+          type="button"
+          {...noDrag}
+          onClick={() => setAbierta((v) => !v)}
+          aria-expanded={abierta}
+          aria-label={abierta ? 'Ocultar detalles' : 'Ver detalles'}
+          className="shrink-0 rounded-md p-1 text-ink-faint transition hover:bg-white/5 hover:text-ink"
+        >
+          <ChevronDown size={16} className={`transition ${abierta ? 'rotate-180' : ''}`} />
+        </button>
         {hasMenu && (
           <div className="relative shrink-0" {...noDrag}>
             <button
@@ -321,6 +361,8 @@ export function CardBody({ client, dragging = false }) {
             <span className="truncate">{client.motorcycles}</span>
           </div>
         )}
+        {abierta && (
+          <>
         {client.prospectTeamSeller && (
           <div className="flex items-center gap-1.5">
             <UserCheck size={12} className="text-sky2" />
@@ -352,6 +394,8 @@ export function CardBody({ client, dragging = false }) {
               <span className="truncate italic">Sin promotor</span>
             </div>
           ))}
+          </>
+        )}
       </div>
 
       {/* Reloj de espera, WhatsApp y registro del contacto (solo en los tableros). */}
@@ -368,6 +412,8 @@ export function CardBody({ client, dragging = false }) {
         />
       )}
 
+      {abierta && (
+        <>
       {client.notes && (
         <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-navy-900/50 px-2 py-1.5">
           <StickyNote size={11} className="mt-0.5 shrink-0 text-gold/70" />
@@ -409,6 +455,9 @@ export function CardBody({ client, dragging = false }) {
             </span>
           ))}
         </div>
+      )}
+
+        </>
       )}
 
       {(client.saleType || client.creditScheme || client.comisionId || sinFacturar) && (
@@ -456,6 +505,8 @@ export function CardBody({ client, dragging = false }) {
         </div>
       )}
 
+      {abierta && (
+        <>
       <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2" {...noDrag}>
         <Checkbox
           checked={!!client.buroAutorizado}
@@ -482,6 +533,34 @@ export function CardBody({ client, dragging = false }) {
         <Clock size={10} />
         <span>{formatDateTime(client.updatedAt)}</span>
       </div>
+        </>
+      )}
+
+      {(client.phone || siguiente) && (
+        <div className="mt-2.5 flex gap-1.5" {...noDrag}>
+          {client.phone && (
+            <a
+              href={`tel:${String(client.phone).replace(/[^\d+]/g, '')}`}
+              aria-label="Llamar"
+              title="Llamar"
+              className="grid h-10 w-11 shrink-0 place-items-center rounded-[10px] border border-white/[0.08] bg-navy-700 text-ink-muted transition hover:text-ink md:h-8 md:w-9 md:bg-navy-800"
+            >
+              <Phone size={16} />
+            </a>
+          )}
+          {siguiente && (
+            <button
+              type="button"
+              onClick={avanzar}
+              title={`Mover a ${etiquetaSiguiente}`}
+              className="flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[10px] border border-white/[0.08] bg-navy-700 px-2.5 text-[13px] font-semibold text-ink transition hover:border-white/20 md:h-8 md:bg-navy-800 md:text-xs"
+            >
+              <span className="truncate">{etiquetaSiguiente}</span>
+              <ArrowRight size={15} className="shrink-0 text-gold" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

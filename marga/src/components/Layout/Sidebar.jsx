@@ -1,272 +1,120 @@
-import { useState } from 'react';
-import {
-  UserPlus,
-  Workflow,
-  CheckCircle2,
-  XCircle,
-  CalendarDays,
-  Users,
-  BarChart3,
-  LogOut,
-  X,
-  Wrench,
-  ScanLine,
-  ChevronDown,
-  Wallet,
-  Calculator,
-  Bike,
-  Sun,
-} from 'lucide-react';
+import { Keyboard, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useData } from '../../context/DataContext.jsx';
-import {
-  SECTIONS,
-  TOOLS,
-  ROLE_LABELS,
-  ROLE_CHIP_CLASSES,
-  userColor,
-} from '../../lib/constants.js';
-import {
-  visibleSections,
-  canManageUsers,
-  canViewAdminPanel,
-  canViewComisiones,
-  canViewMiDia,
-  canSeeClient,
-} from '../../lib/permissions.js';
-import { contarCitasDeHoy } from '../../lib/citas.js';
-import { colaDelDia, pendientesDelDia } from '../../lib/seguimiento.js';
-import { isAdmin } from '../../lib/permissions.js';
+import { ROLE_LABELS, userColor } from '../../lib/constants.js';
 import Avatar from '../ui/Avatar.jsx';
-import BackupMenu from './BackupMenu.jsx';
+import { GRUPOS, destinosDe } from './navegacion.js';
+import { useBadges } from './useBadges.js';
 
-const ICONS = {
-  prospectos: UserPlus,
-  procesos: Workflow,
-  ventas: CheckCircle2,
-  cancelados: XCircle,
-};
-
-// Per-tool icon, keyed by the tool id in constants.js.
-const TOOL_ICONS = {
-  buro: ScanLine,
-  cotizador: Calculator,
-  disponibilidad: Bike,
-};
-
-function NavButton({ icon: Icon, label, badge, isActive, onClick, nested = false }) {
+function NavButton({ icon: Icon, label, badge, destacado, isActive, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-xl py-2.5 pr-3 text-sm font-medium transition
-        ${nested ? 'pl-8' : 'pl-3'}
-        ${isActive ? 'bg-gold/15 text-gold' : 'text-ink-muted hover:bg-white/5 hover:text-ink'}`}
+      aria-current={isActive ? 'page' : undefined}
+      className={`relative flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-sm transition
+        ${isActive ? 'bg-navy-700 font-semibold text-ink' : 'font-medium text-ink-muted hover:bg-navy-700 hover:text-ink'}`}
     >
-      <Icon size={18} className="shrink-0" />
-      <span className="flex-1 text-left">{label}</span>
-      {badge !== undefined && (
-        <span className={`m-chip ${isActive ? 'bg-gold/20 text-gold' : 'bg-white/5 text-ink-faint'}`}>
-          {badge}
-        </span>
+      {isActive && (
+        <span className="absolute -left-3 bottom-2 top-2 w-[3px] rounded-r bg-gold" aria-hidden="true" />
       )}
+      <Icon size={18} className={`shrink-0 ${isActive ? 'text-gold' : ''}`} />
+      <span className="flex-1 truncate text-left">{label}</span>
+      {badge !== undefined &&
+        (destacado ? (
+          <span className="rounded-full bg-gold px-1.5 text-[11px] font-bold tabular-nums text-navy-900">
+            {badge}
+          </span>
+        ) : (
+          <span className="text-[11.5px] font-semibold tabular-nums text-ink-faint">{badge}</span>
+        ))}
     </button>
   );
 }
 
 /**
- * Collapsible group of nav entries. Same visual language as NavButton so the
- * group header doesn't read as a different kind of control; the chevron is the
- * only thing that marks it as expandable.
+ * Menú lateral, solo en computadora. En celular la navegación vive en la
+ * barra inferior y en la hoja "Más" (BottomBar.jsx).
  */
-function NavGroup({ icon: Icon, label, defaultOpen, children }) {
-  const [open, setOpen] = useState(defaultOpen);
+export default function Sidebar({ active, onNavigate, onOpenProfile, onOpenShortcuts }) {
+  const { user, role, logout } = useAuth();
+  const { myProfile } = useData();
+  const { badges, destacado } = useBadges();
+  const destinos = destinosDe(role);
 
   return (
-    <div>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition
-          ${open ? 'text-ink' : 'text-ink-muted'} hover:bg-white/5 hover:text-ink`}
-      >
-        <Icon size={18} className="shrink-0" />
-        <span className="flex-1 text-left">{label}</span>
-        <ChevronDown
-          size={16}
-          className={`shrink-0 text-ink-faint transition ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
-
-      {open && <div className="mt-1 space-y-1 animate-fadeIn">{children}</div>}
-    </div>
-  );
-}
-
-export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClose }) {
-  const { user, role, logout } = useAuth();
-  const { clients, citas, myProfile } = useData();
-
-  // Solo cuenta lo que este usuario puede ver: un vendedor ve únicamente sus
-  // propios clientes cancelados.
-  const counts = clients.reduce((acc, c) => {
-    if (!canSeeClient(role, c, user?.username)) return acc;
-    acc[c.section] = (acc[c.section] ?? 0) + 1;
-    return acc;
-  }, {});
-  const citasHoy = contarCitasDeHoy(citas);
-  const pendientesHoy = canViewMiDia(role)
-    ? pendientesDelDia(colaDelDia(clients, citas, { username: user?.username, esAdmin: isAdmin(role) }))
-    : 0;
-
-  const sections = visibleSections(role);
-  const enHerramientas = TOOLS.some((t) => t.id === active);
-
-  const content = (
-    <div className="flex h-full w-64 flex-col border-r border-white/5 bg-navy-800/80 backdrop-blur-md">
-      <div className="flex items-center justify-between px-5 py-5">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-gold">Marga 2.5</h1>
-          <p className="text-[11px] text-ink-faint">Dinamo Saltillo</p>
-        </div>
-        <button
-          onClick={onClose}
-          className="rounded-lg p-1.5 text-ink-muted hover:bg-white/5 md:hidden"
-          aria-label="Cerrar menú"
-        >
-          <X size={20} />
-        </button>
+    <aside className="hidden h-full w-[232px] shrink-0 flex-col border-r border-white/[0.08] bg-navy-800 px-3 pb-3 pt-5 md:flex">
+      {/* Solo el nombre: Marga no lleva logo ni número de versión. */}
+      <div className="px-2 pb-4">
+        <h1 className="font-head text-[27px] font-extrabold leading-none tracking-tight text-ink">
+          Marga
+        </h1>
+        <p className="mt-1 text-[11px] text-ink-faint">Dinamo Saltillo</p>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3">
-        {canViewMiDia(role) && (
-          <NavButton
-            icon={Sun}
-            label="Mi día"
-            badge={pendientesHoy}
-            isActive={active === 'midia'}
-            onClick={() => onNavigate('midia')}
-          />
-        )}
-        {sections.map((id) => (
-          <NavButton
-            key={id}
-            icon={ICONS[id]}
-            label={SECTIONS[id].label}
-            badge={counts[id] ?? 0}
-            isActive={active === id}
-            onClick={() => onNavigate(id)}
-          />
-        ))}
-
-        {/* Shared agenda — visible to every role */}
-        <NavButton
-          icon={CalendarDays}
-          label="Citas"
-          badge={citasHoy}
-          isActive={active === 'citas'}
-          onClick={() => onNavigate('citas')}
-        />
-
-        {canViewComisiones(role) && (
-          <NavButton
-            icon={Wallet}
-            label="Comisiones"
-            isActive={active === 'comisiones'}
-            onClick={() => onNavigate('comisiones')}
-          />
-        )}
-
-        {canManageUsers(role) && (
-          <>
-            <div className="mx-3 my-2 border-t border-white/5" />
-            <NavButton
-              icon={Users}
-              label="Gestor de usuarios"
-              isActive={active === 'usuarios'}
-              onClick={() => onNavigate('usuarios')}
-            />
-          </>
-        )}
-
-        {canViewAdminPanel(role) && (
-          <NavButton
-            icon={BarChart3}
-            label="Panel ADMIN"
-            isActive={active === 'admin'}
-            onClick={() => onNavigate('admin')}
-          />
-        )}
-
-        {/* Tools — standalone utilities, visible to every role. Go last, after
-            the admin block, so the client sections stay together up top. Opens
-            by default when one of them is the active view. */}
-        <div className="mx-3 my-2 border-t border-white/5" />
-        <NavGroup icon={Wrench} label="Herramientas" defaultOpen={enHerramientas}>
-          {TOOLS.map((tool) => (
-            <NavButton
-              key={tool.id}
-              nested
-              icon={TOOL_ICONS[tool.id] ?? Wrench}
-              label={tool.label}
-              isActive={active === tool.id}
-              onClick={() => onNavigate(tool.id)}
-            />
-          ))}
-        </NavGroup>
+      <nav className="-ml-3 min-h-0 flex-1 overflow-y-auto pl-3">
+        {GRUPOS.map((grupo) => {
+          const items = destinos.filter((d) => d.grupo === grupo.id);
+          if (items.length === 0) return null;
+          return (
+            <div key={grupo.id}>
+              <p className="px-2.5 pb-1.5 pt-3.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+                {grupo.label}
+              </p>
+              <div className="space-y-0.5">
+                {items.map((d) => (
+                  <NavButton
+                    key={d.id}
+                    icon={d.icon}
+                    label={d.label}
+                    badge={badges[d.id]}
+                    destacado={destacado[d.id]}
+                    isActive={active === d.id}
+                    onClick={() => onNavigate(d.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </nav>
 
-      <div className="border-t border-white/5 p-3">
-        {/* Pressing the session block opens the profile sheet, where each user
-            sets their own picture. */}
+      {/* Glosario de atajos: discreto, en gris, justo arriba del usuario. */}
+      <button
+        onClick={onOpenShortcuts}
+        className="mt-2 flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-ink-faint transition hover:bg-navy-700 hover:text-ink-muted"
+      >
+        <Keyboard size={14} />
+        Atajos de teclado
+        <kbd className="m-kbd ml-auto">?</kbd>
+      </button>
+
+      <div className="mt-1.5 flex items-center gap-1 border-t border-white/[0.08] pt-2.5">
         <button
           onClick={onOpenProfile}
           aria-label={`Abrir mi perfil (${user?.username ?? ''})`}
-          className="mb-2 flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-xs text-ink-faint transition hover:bg-white/5"
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left transition hover:bg-navy-700"
         >
           <Avatar
             photo={myProfile?.photo}
             name={user?.username}
             color={userColor(myProfile ?? user)}
-            size={26}
+            size={30}
             fallback="icon"
           />
-          <span className="min-w-0 flex-1 truncate text-left">
-            Sesión: <span className="text-ink-muted">{user?.username}</span>
-          </span>
-          <span
-            className={`m-chip shrink-0 ${
-              ROLE_CHIP_CLASSES[role] ?? ROLE_CHIP_CLASSES.vendedor
-            }`}
-          >
-            {ROLE_LABELS[role] ?? role}
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold text-ink">{user?.username}</span>
+            <span className="block text-[11px] text-ink-faint">{ROLE_LABELS[role] ?? role}</span>
           </span>
         </button>
-        {/* Solo en celular: en escritorio Respaldo está en la barra superior. */}
-        <div className="md:hidden">
-          <BackupMenu variant="sidebar" />
-        </div>
         <button
           onClick={logout}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-state-danger/10 hover:text-state-danger"
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+          className="rounded-lg p-2 text-ink-faint transition hover:bg-state-danger/10 hover:text-state-danger"
         >
-          <LogOut size={18} /> Cerrar sesión
+          <LogOut size={17} />
         </button>
       </div>
-    </div>
-  );
-
-  return (
-    <>
-      {/* Desktop: static column */}
-      <aside className="hidden md:block">{content}</aside>
-
-      {/* Mobile: slide-over drawer */}
-      {open && (
-        <div className="fixed inset-0 z-40 md:hidden">
-          <div className="absolute inset-0 bg-navy-900/70 backdrop-blur-sm" onClick={onClose} />
-          <div className="absolute inset-y-0 left-0 animate-fadeIn">{content}</div>
-        </div>
-      )}
-    </>
+    </aside>
   );
 }

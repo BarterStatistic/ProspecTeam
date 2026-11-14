@@ -14,9 +14,9 @@ body,
 
 body {
   margin: 0;
-  background-color: #0a1428;
+  background-color: #070e1d;
   color: #f8fafc;
-  font-family: 'Inter', system-ui, 'Segoe UI', sans-serif;
+  font-family: 'Figtree', 'Inter', system-ui, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -41,7 +41,7 @@ body {
 /* Reusable component classes (prefixed to avoid collisions) */
 @layer components {
   .m-glass {
-    @apply bg-navy-800/70 backdrop-blur-md border border-white/5 shadow-card;
+    @apply bg-navy-800 border border-white/[0.08] shadow-card;
   }
   .m-input {
     @apply w-full rounded-lg bg-navy-900/60 border border-white/10 px-3 py-2 text-sm text-ink
@@ -86,4 +86,78 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* Entrada: el nombre se enfoca letra por letra, pasa una línea dorada y la
+   app aparece detrás. Solo el nombre: Marga no lleva logo. */
+.m-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: #070e1d;
+  animation: m-splash-out 0.55s 1.4s cubic-bezier(0.6, 0, 0.2, 1) forwards;
+}
+.m-splash::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(148, 170, 210, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 170, 210, 0.14) 1px, transparent 1px);
+  background-size: 44px 44px;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0, transparent 60%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 0, transparent 60%);
+  animation: m-splash-fade 1s both;
+}
+.m-splash-word {
+  display: flex;
+  justify-content: center;
+  font: 800 clamp(46px, 10vw, 78px) / 1 'Urbanist', system-ui, sans-serif;
+  letter-spacing: -0.03em;
+}
+.m-splash-word span {
+  opacity: 0;
+  animation: m-splash-letter 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation-delay: calc(var(--i) * 70ms + 0.15s);
+}
+.m-splash-line {
+  display: block;
+  height: 2px;
+  margin-top: 14px;
+  background: linear-gradient(90deg, transparent, #ffd11a, transparent);
+  transform: scaleX(0);
+  animation: m-splash-line 0.8s 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.m-splash-sub {
+  display: block;
+  margin-top: 12px;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: #8291a8;
+  opacity: 0;
+  animation: m-splash-fade 0.5s 0.85s forwards;
+}
+@keyframes m-splash-letter {
+  from { opacity: 0; transform: translateY(18px); filter: blur(10px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes m-splash-line { to { transform: scaleX(1); } }
+@keyframes m-splash-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes m-splash-out { to { opacity: 0; visibility: hidden; transform: scale(1.04); } }
+
+/* Hoja inferior del celular ("Más", "Mover a…"). */
+@keyframes m-sheet-up { from { transform: translateY(100%); } }
+.m-sheet-up { animation: m-sheet-up 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes m-panel-in { from { transform: translateX(100%); } }
+.m-panel-in { animation: m-panel-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* Fila de pestañas que se desliza con el dedo, sin barra visible. */
+.m-noscrollbar { scrollbar-width: none; }
+.m-noscrollbar::-webkit-scrollbar { display: none; }
+
+/* Teclas del glosario de atajos. */
+.m-kbd {
+  @apply rounded-md border border-b-2 border-white/10 bg-navy-900 px-1.5 py-px text-[11px] font-semibold text-ink-muted;
 }

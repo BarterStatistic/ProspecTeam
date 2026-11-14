@@ -1,0 +1,88 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "marga-bartersito",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1200, 620],
+      "id": "a3f1c2d4-0001-4a10-9c01-marga0000001",
+      "name": "Mensaje desde Marga",
+      "webhookId": "marga-bartersito"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a3f1c2d4-0002-4a10-9c01-marga0000002",
+              "name": "message",
+              "value": "={{ { text: String(($json.body && $json.body.texto) || ''), from: { id: 7074665506 }, chat: { type: 'private' } } }}",
+              "type": "object"
+            },
+            {
+              "id": "a3f1c2d4-0003-4a10-9c01-marga0000003",
+              "name": "origen",
+              "value": "marga",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-980, 620],
+      "id": "a3f1c2d4-0004-4a10-9c01-marga0000004",
+      "name": "Datos de Marga"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose", "version": 1 },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "a3f1c2d4-0005-4a10-9c01-marga0000005",
+              "leftValue": "={{ $('Es Braulio').first().json.origen }}",
+              "operator": { "type": "string", "operation": "equals" },
+              "rightValue": "marga"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [600, 620],
+      "id": "a3f1c2d4-0006-4a10-9c01-marga0000006",
+      "name": "¿Vino de Marga?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { output: String($json.output || ('Tuve un problema procesando tu mensaje: ' + (($json.error && $json.error.message) || $json.message || 'error desconocido'))) } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [840, 540],
+      "id": "a3f1c2d4-0007-4a10-9c01-marga0000007",
+      "name": "Contestar a Marga"
+    }
+  ],
+  "connections": {
+    "Mensaje desde Marga": {
+      "main": [[{ "node": "Datos de Marga", "type": "main", "index": 0 }]]
+    },
+    "¿Vino de Marga?": {
+      "main": [[{ "node": "Contestar a Marga", "type": "main", "index": 0 }], []]
+    }
+  }
+}

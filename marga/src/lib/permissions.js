@@ -176,3 +176,20 @@ export function canConfigurarComisiones(role) {
 export function canRegistrarFacturacion(role) {
   return isAdmin(role) || isPromotor(role);
 }
+
+/**
+ * Publicidad y agencia (gasto en anuncios, costo de la agencia, embudo de
+ * anuncio a venta): información del negocio, solo del administrador.
+ */
+export function canViewPublicidad(role) {
+  return isAdmin(role);
+}
+
+/**
+ * Chat con Bartersito: es el asistente personal del administrador (ve ventas,
+ * gasto y puede proponer cambios en la publicidad). Ni vendedores ni
+ * promotores lo ven; ellos tendrán después su propio chatbot de consulta.
+ */
+export function canUsarBartersito(role) {
+  return isAdmin(role);
+}
