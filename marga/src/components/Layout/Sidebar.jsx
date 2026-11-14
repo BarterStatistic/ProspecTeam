@@ -15,6 +15,7 @@ import {
   Wallet,
   Calculator,
   Bike,
+  Sun,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useData } from '../../context/DataContext.jsx';
@@ -30,9 +31,12 @@ import {
   canManageUsers,
   canViewAdminPanel,
   canViewComisiones,
+  canViewMiDia,
   canSeeClient,
 } from '../../lib/permissions.js';
 import { contarCitasDeHoy } from '../../lib/citas.js';
+import { colaDelDia, pendientesDelDia } from '../../lib/seguimiento.js';
+import { isAdmin } from '../../lib/permissions.js';
 import Avatar from '../ui/Avatar.jsx';
 import BackupMenu from './BackupMenu.jsx';
 
@@ -110,6 +114,9 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
     return acc;
   }, {});
   const citasHoy = contarCitasDeHoy(citas);
+  const pendientesHoy = canViewMiDia(role)
+    ? pendientesDelDia(colaDelDia(clients, citas, { username: user?.username, esAdmin: isAdmin(role) }))
+    : 0;
 
   const sections = visibleSections(role);
   const enHerramientas = TOOLS.some((t) => t.id === active);
@@ -131,6 +138,15 @@ export default function Sidebar({ active, onNavigate, onOpenProfile, open, onClo
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
+        {canViewMiDia(role) && (
+          <NavButton
+            icon={Sun}
+            label="Mi día"
+            badge={pendientesHoy}
+            isActive={active === 'midia'}
+            onClick={() => onNavigate('midia')}
+          />
+        )}
         {sections.map((id) => (
           <NavButton
             key={id}

@@ -7,6 +7,7 @@ import { hashPassword } from '../lib/auth.js';
 import {
   createClient as dbCreateClient,
   updateClient,
+  registrarContacto,
   deleteClient,
   moveClient,
   applyBoardReorder,
@@ -145,6 +146,7 @@ export function DataProvider({ children }) {
       loading: false,
       createClient: (values) => dbCreateClient(values, user),
       updateClient: (id, patch) => updateClient(id, patch, user),
+      registrarContacto: (id, tipo) => registrarContacto(id, tipo, user),
       deleteClient: (id) => deleteClient(id, user),
       moveClient: (id, toSection, toStage) => moveClient(id, toSection, toStage, user),
       applyBoardReorder: (args) => applyBoardReorder(args, user),

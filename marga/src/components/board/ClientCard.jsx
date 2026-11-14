@@ -45,6 +45,7 @@ import Checkbox from '../ui/Checkbox.jsx';
 import CopyButton from '../ui/CopyButton.jsx';
 import Avatar from '../ui/Avatar.jsx';
 import EtapasDinamo from '../dinamo/EtapasDinamo.jsx';
+import Seguimiento from './Seguimiento.jsx';
 
 // Stops press events from bubbling to the drag sensors, so interactive controls
 // (checkbox, menu) keep working without starting a drag. MouseSensor listens to
@@ -352,6 +353,11 @@ export function CardBody({ client, dragging = false }) {
             </div>
           ))}
       </div>
+
+      {/* Reloj de espera, WhatsApp y registro del contacto (solo en los tableros). */}
+      {(client.section === 'prospectos' || inProcesos) && (
+        <Seguimiento client={client} noDrag={noDrag} className="mt-2" />
+      )}
 
       {/* Folio y avance en Dinamo (se mueve solo; ver bandeja-dinamo/api/_procesos.js). */}
       {client.folioDinamo && (
