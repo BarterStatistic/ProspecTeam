@@ -453,6 +453,30 @@ export function createSupabaseStore({ url, key }) {
     push,
     dinamo: dinamo.api,
 
+    // --- solo administrador (el servidor lo vuelve a comprobar) ---
+    /** Resumen de publicidad y agencia: supabase/marga_publicidad.sql. */
+    async publicidad(dias = 30) {
+      const { data, error } = await sb.rpc('marga_panel_publicidad', { p_dias: dias });
+      if (error) {
+        // PGRST202 = la función no existe todavía en la base (falta aplicar el SQL).
+        const e = new Error(error.message || 'No se pudo leer la publicidad.');
+        e.sinInstalar = error.code === 'PGRST202';
+        throw e;
+      }
+      return data;
+    },
+    /** Mensaje a Bartersito por la Edge Function marga-bartersito. */
+    async bartersito(texto) {
+      const { data, error } = await sb.functions.invoke('marga-bartersito', { body: { texto } });
+      if (error) {
+        const e = new Error(await errorDeFuncion(error));
+        // 404 = la función no está desplegada todavía.
+        e.sinInstalar = error.context?.status === 404;
+        throw e;
+      }
+      return data;
+    },
+
     // --- clients ---
     getClients: () => espejos.clients.docs(),
     onClientsChange: (cb) => suscribir('clients', cb),

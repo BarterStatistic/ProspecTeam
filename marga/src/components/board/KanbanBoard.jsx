@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -11,6 +11,7 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import {
+  AUTO_TRANSITIONS,
   BOARD_COLUMNS,
   SELLER_COLORS,
   sellerColor,
@@ -23,7 +24,7 @@ import { useUI } from '../../context/UIContext.jsx';
 import { canDropTo, canEditClient, canRegistrarFacturacion } from '../../lib/permissions.js';
 import { resolveTransition } from '../../lib/db.js';
 import { regresoAColumna, ordenPila } from '../../lib/clients.js';
-import { ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { ArrowRight, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import Column, { COLUMN_PREFIX } from './Column.jsx';
 import { CardBody } from './ClientCard.jsx';
 import LeyendaProspectos from './LeyendaProspectos.jsx';
@@ -90,6 +91,34 @@ export default function KanbanBoard({ section }) {
   const filtrosActivos = (sellerFilter !== ALL ? 1 : 0) + (promotorFilter !== ALL ? 1 : 0);
   const columns = BOARD_COLUMNS[section];
   const isProcesos = section === 'procesos';
+  // Celular: se ve una etapa a la vez, en vertical. Se cambia tocando su
+  // pestaña o deslizando el dedo hacia los lados.
+  const [etapaMovil, setEtapaMovil] = useState(columns[0].id);
+  const indiceEtapa = Math.max(0, columns.findIndex((c) => c.id === etapaMovil));
+  const tabsRef = useRef(null);
+  const toque = useRef(null);
+  useEffect(() => {
+    tabsRef.current
+      ?.querySelector('[aria-selected="true"]')
+      ?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [etapaMovil]);
+
+  function alTocar(e) {
+    const t = e.touches[0];
+    toque.current = { x: t.clientX, y: t.clientY };
+  }
+  function alSoltar(e) {
+    const inicio = toque.current;
+    toque.current = null;
+    // Con una tarjeta levantada el gesto es un arrastre, no un cambio de etapa.
+    if (!inicio || activeId || window.innerWidth >= 768) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - inicio.x;
+    const dy = t.clientY - inicio.y;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+    const destino = columns[Math.min(columns.length - 1, Math.max(0, indiceEtapa + (dx < 0 ? 1 : -1)))];
+    setEtapaMovil(destino.id);
+  }
 
   // Distinct sellers present in this section, known ones first, then extras
   // (alphabetical), then an "Sin asignar" bucket if any card lacks createdBy.
@@ -297,7 +326,53 @@ export default function KanbanBoard({ section }) {
         {section === 'prospectos' && <LeyendaProspectos />}
         {section === 'procesos' && <DinamoEnVivo />}
 
-        <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-4 py-4 sm:px-6">
+        {/* Celular: pestañas de etapa con su contador. */}
+        <div
+          ref={tabsRef}
+          role="tablist"
+          aria-label="Etapas"
+          className="m-noscrollbar flex shrink-0 gap-1.5 overflow-x-auto px-3 pt-3 md:hidden"
+        >
+          {columns.map((col) => {
+            const on = col.id === etapaMovil;
+            const salta = AUTO_TRANSITIONS[`${section}:${col.id}`];
+            return (
+              <button
+                key={col.id}
+                role="tab"
+                aria-selected={on}
+                onClick={() => setEtapaMovil(col.id)}
+                className={`flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 text-[13px] font-semibold transition ${
+                  on
+                    ? 'border-gold bg-gold text-navy-900'
+                    : 'border-white/[0.08] bg-navy-800 text-ink-muted'
+                }`}
+              >
+                {col.label}
+                {salta ? (
+                  <ArrowRight size={14} />
+                ) : (
+                  <span
+                    className={`rounded-full px-1.5 text-[11.5px] tabular-nums ${
+                      on ? 'bg-black/15' : 'bg-navy-700'
+                    }`}
+                  >
+                    {grouped[col.id].length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <p className="shrink-0 px-4 pt-2 text-xs text-ink-faint md:hidden">
+          Etapa {indiceEtapa + 1} de {columns.length} · desliza para cambiar
+        </p>
+
+        <div
+          className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-3 py-2.5 sm:px-6 md:py-4"
+          onTouchStart={alTocar}
+          onTouchEnd={alSoltar}
+        >
           <div className="flex h-full gap-4 md:gap-3">
             {columns.map((col) => (
               <Column
@@ -305,6 +380,7 @@ export default function KanbanBoard({ section }) {
                 column={col}
                 clients={grouped[col.id]}
                 locked={!canDropTo(role, section)}
+                activa={col.id === etapaMovil}
               />
             ))}
           </div>

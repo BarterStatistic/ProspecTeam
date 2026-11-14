@@ -6,9 +6,9 @@ export default {
       colors: {
         // Deep navy backgrounds
         navy: {
-          900: '#0A1428',
-          800: '#0B1E3B',
-          700: '#12213F',
+          900: '#070E1D',
+          800: '#0D1930',
+          700: '#13233F',
           600: '#1B2E52',
           500: '#25406C',
         },
@@ -20,7 +20,7 @@ export default {
         },
         // Sky / light blue — secondary accent
         sky2: {
-          DEFAULT: '#38BDF8',
+          DEFAULT: '#56C6FA',
           light: '#7DD3FC',
           dark: '#0EA5E9',
         },
@@ -38,7 +38,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'Segoe UI', 'sans-serif'],
+        sans: ['Figtree', 'Inter', 'system-ui', 'Segoe UI', 'sans-serif'],
         // Tipografías del cotizador original (Urbanist titulares, DM Mono cifras).
         head: ['Urbanist', 'system-ui', 'sans-serif'],
         cifra: ['"DM Mono"', 'ui-monospace', 'monospace'],

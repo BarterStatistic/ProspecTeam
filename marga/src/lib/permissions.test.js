@@ -56,3 +56,20 @@ describe('canDeleteClient', () => {
     expect(canDeleteClient('promotor', facturado, 'Pepe')).toBe(false);
   });
 });
+
+describe('Bartersito y Publicidad', () => {
+  it('solo el administrador puede hablar con Bartersito', async () => {
+    const { canUsarBartersito } = await import('./permissions.js');
+    expect(canUsarBartersito('admin')).toBe(true);
+    expect(canUsarBartersito('vendedor')).toBe(false);
+    expect(canUsarBartersito('promotor')).toBe(false);
+    expect(canUsarBartersito(undefined)).toBe(false);
+  });
+
+  it('solo el administrador ve Publicidad y agencia', async () => {
+    const { canViewPublicidad } = await import('./permissions.js');
+    expect(canViewPublicidad('admin')).toBe(true);
+    expect(canViewPublicidad('vendedor')).toBe(false);
+    expect(canViewPublicidad('promotor')).toBe(false);
+  });
+});

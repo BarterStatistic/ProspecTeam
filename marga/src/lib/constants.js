@@ -47,6 +47,7 @@ export const TOOL_IDS = TOOLS.map((t) => t.id);
 // Metadata for every navigable view, including non-client views.
 export const VIEW_META = {
   ...SECTIONS,
+  midia: { id: 'midia', label: 'Mi día', type: 'midia' },
   citas: { id: 'citas', label: 'Citas', type: 'citas' },
   usuarios: { id: 'usuarios', label: 'Gestor de usuarios', type: 'users' },
   admin: { id: 'admin', label: 'Panel ADMIN', type: 'admin' },

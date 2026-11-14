@@ -6,6 +6,7 @@ import AnimatedBackground from './components/AnimatedBackground.jsx';
 import Login from './components/Login.jsx';
 import AppShell from './components/Layout/AppShell.jsx';
 import SetupScreen from './components/SetupScreen.jsx';
+import Splash from './components/Splash.jsx';
 
 function Gate() {
   const { user, verificando } = useAuth();
@@ -46,6 +47,7 @@ export default function App() {
 
   return (
     <AuthProvider>
+      <Splash />
       <AnimatedBackground />
       {initError ? (
         <div className="flex min-h-screen items-center justify-center px-4">
