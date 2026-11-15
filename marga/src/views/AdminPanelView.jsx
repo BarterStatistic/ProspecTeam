@@ -51,6 +51,7 @@ import PublicidadView from './PublicidadView.jsx';
 import HBarChart from '../components/charts/HBarChart.jsx';
 import ReglasPagoCard from '../components/admin/ReglasPagoCard.jsx';
 import MesesVentaCard from '../components/admin/MesesVentaCard.jsx';
+import LeadsSinTocarCard from '../components/admin/LeadsSinTocarCard.jsx';
 
 const DAY = 86_400_000;
 
@@ -576,6 +577,9 @@ export default function AdminPanelView() {
               hint={`${comisionesEnRango.length} pago${comisionesEnRango.length === 1 ? '' : 's'} dentro del periodo`}
             />
         </KpiGroup>
+
+        {/* ---------------- Leads calientes sin tocar (Fase B) ---------------- */}
+        <LeadsSinTocarCard />
 
         {/* ---------------- Evolución y cartera ---------------- */}
         <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[1.15fr_1fr]">

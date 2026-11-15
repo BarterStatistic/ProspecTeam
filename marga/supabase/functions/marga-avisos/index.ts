@@ -10,6 +10,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3';
 import webpush from 'npm:web-push@3.6.7';
 import { decidirAvisos } from '../_shared/avisosLogic.js';
+import { avisosDeGuardia } from '../_shared/rezagadosLogic.js';
 
 const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
   auth: { persistSession: false },
@@ -106,7 +107,22 @@ Deno.serve(async (req) => {
   }));
   const porNombre = new Map(usuarios.map((u) => [u.username, u]));
 
-  const avisos = decidirAvisos(evento, usuarios);
+  // Inicio de guardia (10 am y 4 pm de Monterrey): lo dispara pg_cron con
+  // { tipo: 'guardia', guardia: 'manana' | 'tarde' } (supabase/marga_guardias.sql).
+  // `simular: true` devuelve a quién avisaría sin mandar nada.
+  let avisos;
+  if (evento?.tipo === 'guardia') {
+    const { data: leads } = await admin
+      .from('marga_clients')
+      .select('data')
+      .eq('data->>origen', 'alex')
+      .eq('data->>section', 'prospectos')
+      .limit(5000);
+    avisos = avisosDeGuardia((leads ?? []).map((l) => l.data), usuarios, evento.guardia);
+    if (evento.simular) return json({ ok: true, simulado: true, avisos });
+  } else {
+    avisos = decidirAvisos(evento, usuarios);
+  }
   const resultado = [];
   for (const aviso of avisos) {
     const u = porNombre.get(aviso.destinatario);

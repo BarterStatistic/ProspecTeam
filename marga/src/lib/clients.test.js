@@ -58,3 +58,20 @@ describe('ordenPila', () => {
     expect(lista.sort(ordenPila).map((c) => c.id)).toEqual(['b', 'c', 'a']);
   });
 });
+
+import { tarjetaDeAlexPorTelefono } from './clients.js';
+describe('tarjetaDeAlexPorTelefono', () => {
+  const lista = [
+    { id: 'a', origen: 'alex', section: 'prospectos', phone: '844-111-2233' },
+    { id: 'b', origen: 'alex', section: 'procesos', phone: '8449990000' },
+    { id: 'c', section: 'prospectos', phone: '8441110000' },
+  ];
+  it('encuentra la de Alex en Prospectos aunque el teléfono tenga otro formato', () => {
+    expect(tarjetaDeAlexPorTelefono(lista, '(844) 111 2233')?.id).toBe('a');
+  });
+  it('ignora las que ya pasaron a Procesos, las de vendedores y el teléfono vacío', () => {
+    expect(tarjetaDeAlexPorTelefono(lista, '8449990000')).toBeNull();
+    expect(tarjetaDeAlexPorTelefono(lista, '8441110000')).toBeNull();
+    expect(tarjetaDeAlexPorTelefono(lista, '')).toBeNull();
+  });
+});

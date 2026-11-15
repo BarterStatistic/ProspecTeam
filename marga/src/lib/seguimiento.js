@@ -11,6 +11,7 @@
 
 import { esDeAlex } from './alex.js';
 import { normalizePhone } from './clients.js';
+import { ALERTAS_FUERA, esRezagado, ultimoToque } from '../../supabase/functions/_shared/rezagadosLogic.js';
 
 const MIN = 60_000;
 const HORA = 60 * MIN;
@@ -111,9 +112,6 @@ export function esperaDe(client, now = Date.now()) {
   };
 }
 
-// Alertas de Alex con las que el vendedor no tiene nada que seguir.
-const ALERTAS_FUERA = ['no_califica', 'fuera_cobertura', 'refacciones', 'vacantes'];
-
 function inicioDelDia(ts) {
   const d = new Date(ts);
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -125,13 +123,17 @@ function inicioDelDia(ts) {
  * sola lista, en este orden de prioridad:
  *   urgentes    → Alex pidió que alguien del equipo actúe y nadie lo ha
  *                 contactado en las últimas 24 h
- *   calientes   → lead caliente sin ningún contacto registrado
+ *   rezagados   → lead caliente que nadie ha tocado en 24 h o más (Fase B;
+ *                 la misma regla que usa el push de inicio de guardia)
+ *   calientes   → lead caliente que llegó hace menos de 24 h y aún no tiene
+ *                 ningún contacto registrado
  *   seguimiento → ya contactado, pero hace 2 días o más (o no contestó)
  * Lo más reciente va primero: es lo que todavía se puede rescatar.
  * Las citas son la agenda compartida: las de hoy y las pasadas sin cerrar.
  */
 export function colaDelDia(clients, citas, { username, esAdmin = false, now = Date.now() } = {}) {
   const urgentes = [];
+  const rezagados = [];
   const calientes = [];
   const seguimiento = [];
 
@@ -145,6 +147,8 @@ export function colaDelDia(clients, citas, { username, esAdmin = false, now = Da
     const ultimo = c.contacto?.ultimoEn ?? null;
     if (alertas.includes('requiere_accion') && (!ultimo || now - ultimo >= DIA)) {
       urgentes.push(c);
+    } else if (esRezagado(c, now)) {
+      rezagados.push(c);
     } else if (!ultimo) {
       if (car.temperatura === 'caliente') calientes.push(c);
     } else if (
@@ -157,6 +161,7 @@ export function colaDelDia(clients, citas, { username, esAdmin = false, now = Da
 
   const recientes = (a, b) => (b.updatedAt ?? b.createdAt ?? 0) - (a.updatedAt ?? a.createdAt ?? 0);
   urgentes.sort(recientes);
+  rezagados.sort((a, b) => (ultimoToque(b) ?? 0) - (ultimoToque(a) ?? 0));
   calientes.sort(recientes);
   // En seguimiento va primero el que lleva más tiempo sin saber de nosotros.
   seguimiento.sort((a, b) => (a.contacto?.ultimoEn ?? 0) - (b.contacto?.ultimoEn ?? 0));
@@ -174,10 +179,12 @@ export function colaDelDia(clients, citas, { username, esAdmin = false, now = Da
     .filter((c) => !c.noAsistio && c.fechaCita >= desde && c.fechaCita < hoy)
     .sort((a, b) => b.fechaCita - a.fechaCita);
 
-  return { urgentes, calientes, seguimiento, citasHoy, citasSinCerrar };
+  return { urgentes, rezagados, calientes, seguimiento, citasHoy, citasSinCerrar };
 }
 
 /** Lo que cuenta el badge de "Mi día": lo que pide atención hoy. */
 export function pendientesDelDia(cola) {
-  return cola.urgentes.length + cola.calientes.length + cola.citasSinCerrar.length;
+  return (
+    cola.urgentes.length + cola.rezagados.length + cola.calientes.length + cola.citasSinCerrar.length
+  );
 }

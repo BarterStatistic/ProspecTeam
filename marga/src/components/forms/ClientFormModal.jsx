@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../../context/DataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { canAssignPromotor } from '../../lib/permissions.js';
-import { emptyClient, findDuplicate } from '../../lib/clients.js';
+import { emptyClient, findDuplicate, tarjetaDeAlexPorTelefono } from '../../lib/clients.js';
 import { normalizarEsquema } from '../../lib/motos.js';
 import { SALE_TYPES, CREDIT_SCHEMES } from '../../lib/constants.js';
 import Modal from '../ui/Modal.jsx';
@@ -34,7 +34,7 @@ function pickEditable(values) {
 }
 
 export default function ClientFormModal({ open, initial, onClose }) {
-  const { clients, createClient, updateClient, promotorUsernames } = useData();
+  const { clients, createClient, updateClient, moveClient, promotorUsernames } = useData();
   const { role } = useAuth();
   const [values, setValues] = useState(emptyClient());
   const [error, setError] = useState('');
@@ -95,6 +95,12 @@ export default function ClientFormModal({ open, initial, onClose }) {
     if (!validate()) return;
     // Duplicate check only on new clients (exclude self on edit is implicit).
     if (!isEdit) {
+      // Un cliente que Alex ya subió no se captura de nuevo: se convierte su tarjeta.
+      const deAlex = tarjetaDeAlexPorTelefono(clients, values.phone);
+      if (deAlex) {
+        setDupMatch({ client: deAlex, reason: 'teléfono', bloquea: true });
+        return;
+      }
       const match = findDuplicate(clients, values);
       if (match) {
         setDupMatch(match);
@@ -240,6 +246,17 @@ export default function ClientFormModal({ open, initial, onClose }) {
       <DuplicateWarningModal
         match={dupMatch}
         onCancel={() => setDupMatch(null)}
+        onConvertir={async () => {
+          const tarjeta = dupMatch?.client;
+          try {
+            await moveClient(tarjeta.id, 'prospectos', 'proceso_comenzado');
+            setDupMatch(null);
+            onClose();
+          } catch (e) {
+            setDupMatch(null);
+            setError(e.message || 'No se pudo pasar a Procesos.');
+          }
+        }}
         onConfirm={() => {
           setDupMatch(null);
           save();

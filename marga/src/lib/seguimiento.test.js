@@ -128,13 +128,27 @@ describe('colaDelDia', () => {
       alex({ id: 'urgente', caracteristicas: { temperatura: 'caliente', alertas: ['requiere_accion'] } }),
       alex({ id: 'caliente' }),
       alex({ id: 'tibio-nuevo', caracteristicas: { temperatura: 'tibio' } }),
-      alex({ id: 'seguir', contacto: { ultimoEn: AHORA - 3 * D, ultimoTipo: 'whatsapp' } }),
+      alex({
+        id: 'seguir',
+        caracteristicas: { temperatura: 'tibio' },
+        contacto: { ultimoEn: AHORA - 3 * D, ultimoTipo: 'whatsapp' },
+      }),
+      alex({ id: 'rezagado', createdAt: AHORA - 3 * D }),
+      alex({ id: 'rezagado-contactado', contacto: { ultimoEn: AHORA - 2 * D, ultimoTipo: 'whatsapp' } }),
       alex({ id: 'al-dia', contacto: { ultimoEn: AHORA - H, ultimoTipo: 'whatsapp' } }),
     ];
     const cola = colaDelDia(clientes, [], opciones);
     expect(cola.urgentes.map((c) => c.id)).toEqual(['urgente']);
+    // El lead caliente que lleva 24 h o más sin tocar va a "rezagados", con el
+    // más reciente primero; el de hoy sigue en "calientes".
+    expect(cola.rezagados.map((c) => c.id)).toEqual(['rezagado-contactado', 'rezagado']);
     expect(cola.calientes.map((c) => c.id)).toEqual(['caliente']);
     expect(cola.seguimiento.map((c) => c.id)).toEqual(['seguir']);
+  });
+
+  it('el badge de "Mi día" suma los rezagados', () => {
+    const cola = colaDelDia([alex({ id: 'r', createdAt: AHORA - 3 * D })], [], opciones);
+    expect(pendientesDelDia(cola)).toBe(1);
   });
 
   it('un urgente contactado hoy sale de la lista; uno contactado hace más de un día regresa', () => {
@@ -154,6 +168,8 @@ describe('colaDelDia', () => {
     const clientes = [alex({ id: 'mio' }), alex({ id: 'ajeno', createdBy: 'Emmanuel Bernal' })];
     expect(colaDelDia(clientes, [], opciones).calientes.map((c) => c.id)).toEqual(['mio']);
     expect(colaDelDia(clientes, [], { ...opciones, esAdmin: true }).calientes).toHaveLength(2);
+    const viejos = clientes.map((c) => ({ ...c, createdAt: AHORA - 4 * D }));
+    expect(colaDelDia(viejos, [], opciones).rezagados.map((c) => c.id)).toEqual(['mio']);
   });
 
   it('ignora lo que no es de Alex, lo que ya salió de Prospectos y lo que no califica', () => {
