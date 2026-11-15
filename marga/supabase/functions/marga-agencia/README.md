@@ -20,7 +20,13 @@ el mensaje de Telegram ("✅ … desde Marga"). Si la fila ya no estaba pendient
 
 Lógica pura y pruebas: `../_shared/agenciaLogic.js` y `agenciaLogic.test.js`.
 
-## Desplegar (pendiente de que Braulio lo apruebe)
+## Despliegue
+
+**Hecho el 2026-11-15** (con el visto bueno de Braulio): SQL aplicado y función desplegada (versión 1, `verify_jwt` falso).
+Probado sin sesión: 403 «Solo el administrador…», CORS de marga-6bb72.web.app, GET 405. Falta la prueba de punta a punta
+con la sesión del admin, que se hace con Marga publicada.
+
+Para volver a desplegar:
 
 1. Aplicar `supabase/marga_centro_de_mando.sql` en el panel de Supabase (bandeja `marga_por_decidir()` solo admin,
    lectura solo admin en las 5 tablas para Realtime, tablas en la publicación `supabase_realtime`).

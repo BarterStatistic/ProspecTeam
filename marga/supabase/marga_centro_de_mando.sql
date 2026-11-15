@@ -1,5 +1,5 @@
--- Centro de mando de la agencia en Marga (Fase C del plan 2026-11-14, C3 y C5). SIN APLICAR:
--- lo aplica Braulio desde el panel de Supabase (proyecto ehyqexzaauvjoioafqdz) cuando lo apruebe.
+-- Centro de mando de la agencia en Marga (Fase C del plan 2026-11-14, C3 y C5). APLICADA el 2026-11-15 con el
+-- visto bueno de Braulio (migración marga_centro_de_mando, proyecto ehyqexzaauvjoioafqdz).
 --
 -- Requiere sql/043_decidir.sql del repo de la agencia (ya aplicada el 2026-11-15): public.agencia_por_decidir
 -- y la columna decidido_desde.
