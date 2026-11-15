@@ -465,6 +465,40 @@ export function createSupabaseStore({ url, key }) {
       }
       return data;
     },
+    /** Bandeja "Por decidir hoy" de la agencia: supabase/marga_centro_de_mando.sql. */
+    async porDecidir() {
+      const { data, error } = await sb.rpc('marga_por_decidir');
+      if (error) {
+        const e = new Error(error.message || 'No se pudo leer lo que hay por decidir.');
+        e.sinInstalar = error.code === 'PGRST202';
+        throw e;
+      }
+      return data;
+    },
+    /**
+     * Decide algo de la agencia por la Edge Function marga-agencia, que llama al mismo webhook
+     * que el botón de Telegram. Errores (incluido "no cambió") llegan como excepción en español.
+     */
+    async decidirAgencia(pedido) {
+      const { data, error } = await sb.functions.invoke('marga-agencia', { body: pedido });
+      if (error) throw new Error(await errorDeFuncion(error));
+      return data;
+    },
+    /**
+     * Avisa cuando cambia algo de la agencia (por ejemplo, Braulio decidió en Telegram). Realtime
+     * respeta RLS: solo le llega al administrador (marga_centro_de_mando.sql). Devuelve cómo dejar
+     * de escuchar.
+     */
+    escucharAgencia(cb) {
+      const canal = sb.channel('marga-agencia');
+      for (const tabla of ['creativo_ideas', 'ads_propuestas', 'creativo_campanas', 'creativo_cuentas', 'fb_comentarios']) {
+        canal.on('postgres_changes', { event: '*', schema: 'public', table: tabla }, () => cb(tabla));
+      }
+      canal.subscribe();
+      return () => {
+        sb.removeChannel(canal);
+      };
+    },
     /** Mensaje a Bartersito por la Edge Function marga-bartersito. */
     async bartersito(texto) {
       const { data, error } = await sb.functions.invoke('marga-bartersito', { body: { texto } });
