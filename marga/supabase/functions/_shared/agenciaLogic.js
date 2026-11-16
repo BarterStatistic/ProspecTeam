@@ -9,8 +9,10 @@
 export const WEBHOOK_BASE = 'https://chatwoot-n8n.zlpr6t.easypanel.host/webhook';
 export const SOLO_ADMIN = 'Solo el administrador puede decidir lo de la agencia.';
 
-// n8n descarta como "bot" las peticiones sin User-Agent de navegador (ignoreBots en los webhooks).
-export const USER_AGENT = 'Mozilla/5.0 (compatible; Marga/2.5; +https://marga-6bb72.web.app) Chrome/130.0 Safari/537.36';
+// n8n descarta como "bot" (403, sin ejecución) las peticiones cuyo User-Agent no parece de navegador
+// (ignoreBots en los webhooks POST). Ojo: un User-Agent con URL ("+https://…") o "compatible;" cuenta
+// como bot, así que va uno de Chrome tal cual (2026-11-15: con el anterior, todo POST daba 403).
+export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
 const MOTIVOS = ['moto', 'gancho', 'diseno', 'ya_visto', 'no_aplica', 'otro'];
 

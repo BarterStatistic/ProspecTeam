@@ -33,4 +33,4 @@ Para volver a desplegar:
 2. `supabase functions deploy marga-agencia --no-verify-jwt --project-ref ehyqexzaauvjoioafqdz`
 3. Opcional: secreto `AGENCIA_WEBHOOK_BASE` si n8n cambia de dirección.
 
-Ojo: n8n descarta peticiones sin User-Agent de navegador (`ignoreBots`); la función manda uno.
+Ojo: n8n descarta peticiones sin User-Agent de navegador (`ignoreBots`); la función manda uno de Chrome tal cual (uno con URL o `compatible;` también cuenta como bot y da 403).
