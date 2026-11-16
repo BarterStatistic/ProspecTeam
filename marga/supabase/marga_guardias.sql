@@ -1,7 +1,7 @@
 -- Fase B — aviso push de inicio de guardia (leads calientes sin tocar 24 h o más).
--- Proyecto ehyqexzaauvjoioafqdz. SIN APLICAR: la aplica Braulio desde el panel
--- de Supabase (el modo automático bloquea apply_migration) y solo después de
--- aprobar mandar avisos reales.
+-- Proyecto ehyqexzaauvjoioafqdz. APLICADA el 2026-11-15 con el visto bueno de Braulio
+-- (marga-avisos desplegada con los turnos; ensayo con simular: true OK: domingo,
+-- solo Alejandro). Primer aviso real: lunes 16-nov, 9 am.
 --
 -- Depende de `marga_avisos.sql` (tabla `marga_avisos_config` con la URL de la
 -- Edge Function `marga-avisos` y su secreto) y de pg_net. La Edge Function
