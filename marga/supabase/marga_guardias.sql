@@ -10,8 +10,11 @@
 -- vendedor que tenga al menos uno.
 --
 -- Horario: Monterrey es UTC-6 todo el año (México ya no cambia de horario).
---   10:00 Monterrey = 16:00 UTC  → guardia 'manana'
+--    9:00 Monterrey = 15:00 UTC  → guardia 'manana' (inicia el turno de la mañana)
 --   16:00 Monterrey = 22:00 UTC  → guardia 'tarde'
+-- Los dos cron corren todos los días; la Edge Function solo avisa al vendedor que
+-- está de turno (tabla TURNOS en _shared/rezagadosLogic.js): lun–vie Alejandro
+-- por la mañana y Emmanuel por la tarde, sábado Emmanuel, domingo Alejandro.
 
 create extension if not exists pg_cron;
 create extension if not exists pg_net with schema extensions;
@@ -43,7 +46,7 @@ end $$;
 
 revoke all on function public.marga_avisar_guardia(text) from public, anon, authenticated;
 
-select cron.schedule('marga_guardia_manana', '0 16 * * *', $$select public.marga_avisar_guardia('manana')$$);
+select cron.schedule('marga_guardia_manana', '0 15 * * *', $$select public.marga_avisar_guardia('manana')$$);
 select cron.schedule('marga_guardia_tarde',  '0 22 * * *', $$select public.marga_avisar_guardia('tarde')$$);
 
 -- Para pausar los avisos sin borrar nada:

@@ -27,7 +27,7 @@ export default function LeadsSinTocarCard() {
       </div>
       <p className="-mt-1 mb-3 text-xs text-ink-faint">
         Prospectos de Alex listos para comprar a los que nadie les ha escrito, por vendedor. Cada
-        vendedor lo recibe como aviso a las 10 am y 4 pm.
+        vendedor lo recibe como aviso al empezar su guardia (9 am y 4 pm).
       </p>
       {filas.length === 0 ? (
         <p className="rounded-xl bg-navy-900/40 px-3 py-4 text-center text-xs text-ink-faint">

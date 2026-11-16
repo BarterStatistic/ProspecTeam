@@ -61,17 +61,56 @@ export const GUARDIAS = {
   tarde: 'Guardia de la tarde',
 };
 
+// Turnos vigentes (Alex 3.2, «Asignar Asesor», hora de Monterrey):
+//   lun–vie  Alejandro 9–16 h ('manana')  y  Emmanuel 16–22 h ('tarde')
+//   sábado   solo Emmanuel   ·   domingo   solo Alejandro
+// nombre de usuario de Marga → { día de la semana (0 = domingo … 6 = sábado): guardias }.
+export const TURNOS = {
+  'Alejandro Acosta': {
+    0: ['manana', 'tarde'],
+    1: ['manana'],
+    2: ['manana'],
+    3: ['manana'],
+    4: ['manana'],
+    5: ['manana'],
+  },
+  'Emmanuel Bernal': {
+    1: ['tarde'],
+    2: ['tarde'],
+    3: ['tarde'],
+    4: ['tarde'],
+    5: ['tarde'],
+    6: ['manana', 'tarde'],
+  },
+};
+
+const DIAS = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+/** Día de la semana en Monterrey (0 = domingo … 6 = sábado). */
+export function diaEnMonterrey(now = Date.now()) {
+  const corto = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Monterrey', weekday: 'short' }).format(
+    new Date(now),
+  );
+  return DIAS[corto];
+}
+
+/** ¿Este vendedor tiene guardia en ese día y turno? */
+export function estaDeTurno(vendedor, guardia, now = Date.now()) {
+  return !!TURNOS[vendedor]?.[diaEnMonterrey(now)]?.includes(guardia);
+}
+
 /**
- * Push de inicio de guardia: uno por vendedor que tenga leads rezagados.
- * usuarios = [{ username, role }]. Solo avisa a rol 'vendedor'; el admin ve el
- * resumen en el Panel. Devuelve [{ destinatario, titulo, cuerpo, tag }].
+ * Push de inicio de guardia: solo al vendedor que está de turno en esa guardia
+ * y ese día (hora de Monterrey), y únicamente por sus propios leads
+ * (`createdBy`). usuarios = [{ username, role }]; el admin ve el resumen en el
+ * Panel. Devuelve [{ destinatario, titulo, cuerpo, tag }].
  */
 export function avisosDeGuardia(clients, usuarios = [], guardia = 'manana', now = Date.now()) {
   const vendedores = new Set(
     usuarios.filter((u) => u.role === 'vendedor' && u.username).map((u) => u.username),
   );
   return resumenRezagados(clients, now)
-    .filter((r) => vendedores.has(r.vendedor))
+    .filter((r) => vendedores.has(r.vendedor) && estaDeTurno(r.vendedor, guardia, now))
     .map((r) => ({
       destinatario: r.vendedor,
       titulo: `🔥 ${r.total} ${r.total === 1 ? 'lead caliente sin tocar' : 'leads calientes sin tocar'}`,

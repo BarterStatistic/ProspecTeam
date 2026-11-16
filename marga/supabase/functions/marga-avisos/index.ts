@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
   }));
   const porNombre = new Map(usuarios.map((u) => [u.username, u]));
 
-  // Inicio de guardia (10 am y 4 pm de Monterrey): lo dispara pg_cron con
+  // Inicio de guardia (9 am y 4 pm de Monterrey; solo avisa al vendedor de turno): lo dispara pg_cron con
   // { tipo: 'guardia', guardia: 'manana' | 'tarde' } (supabase/marga_guardias.sql).
   // `simular: true` devuelve a quién avisaría sin mandar nada.
   let avisos;

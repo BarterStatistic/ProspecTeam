@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { esRezagado, resumenRezagados, avisosDeGuardia, SIN_TOCAR_MS } from './rezagadosLogic.js';
+import { esRezagado, resumenRezagados, avisosDeGuardia, estaDeTurno, TURNOS, SIN_TOCAR_MS } from './rezagadosLogic.js';
 
 const H = 3_600_000;
 const D = 24 * H;
@@ -63,14 +63,29 @@ describe('resumenRezagados', () => {
   });
 });
 
+// Fechas de noviembre de 2026 en Monterrey (UTC-6): lun 16, sáb 21, dom 22.
+const en = (dia, hora) => Date.UTC(2026, 10, dia, hora + 6, 0);
+const LUN_9 = en(16, 9);
+const LUN_16 = en(16, 16);
+const SAB_9 = en(21, 9);
+const DOM_16 = en(22, 16);
+
 describe('avisosDeGuardia', () => {
   const usuarios = [
     { username: 'Alejandro Acosta', role: 'vendedor' },
     { username: 'Emmanuel Bernal', role: 'vendedor' },
     { username: 'Braulio Acosta', role: 'admin' },
   ];
-  it('un push por vendedor con leads rezagados, con el conteo y el más viejo', () => {
-    const avisos = avisosDeGuardia([lead({ id: 'a' }), lead({ id: 'b', createdAt: AHORA - 5 * D })], usuarios, 'manana', AHORA);
+  // Leads de los dos vendedores, todos con más de 24 h sin tocar.
+  const leads = (t) => [
+    lead({ id: 'a1', createdAt: t - 3 * D }),
+    lead({ id: 'a2', createdAt: t - 5 * D }),
+    lead({ id: 'e1', createdBy: 'Emmanuel Bernal', createdAt: t - 2 * D }),
+  ];
+  const quienes = (t, guardia) => avisosDeGuardia(leads(t), usuarios, guardia, t).map((a) => a.destinatario);
+
+  it('lunes por la mañana solo avisa a Alejandro, con sus leads y el más viejo', () => {
+    const avisos = avisosDeGuardia(leads(LUN_9), usuarios, 'manana', LUN_9);
     expect(avisos).toHaveLength(1);
     expect(avisos[0].destinatario).toBe('Alejandro Acosta');
     expect(avisos[0].titulo).toContain('2 leads calientes sin tocar');
@@ -78,14 +93,48 @@ describe('avisosDeGuardia', () => {
     expect(avisos[0].cuerpo).toContain('mañana');
     expect(avisos[0].tag).toBe('guardia-manana');
   });
-  it('singular cuando es uno', () => {
-    const [a] = avisosDeGuardia([lead()], usuarios, 'tarde', AHORA);
-    expect(a.titulo).toContain('1 lead caliente sin tocar');
-    expect(a.cuerpo).toContain('tarde');
+  it('lunes por la tarde solo avisa a Emmanuel, con sus propios leads', () => {
+    const avisos = avisosDeGuardia(leads(LUN_16), usuarios, 'tarde', LUN_16);
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0].destinatario).toBe('Emmanuel Bernal');
+    expect(avisos[0].titulo).toContain('1 lead caliente sin tocar');
+    expect(avisos[0].cuerpo).toContain('tarde');
   });
-  it('no avisa al admin ni a quien no tiene pendientes', () => {
-    const avisos = avisosDeGuardia([lead({ createdBy: 'Braulio Acosta' })], usuarios, 'manana', AHORA);
-    expect(avisos).toEqual([]);
-    expect(avisosDeGuardia([], usuarios, 'manana', AHORA)).toEqual([]);
+  it('sábado las dos guardias son de Emmanuel', () => {
+    expect(quienes(SAB_9, 'manana')).toEqual(['Emmanuel Bernal']);
+    expect(quienes(SAB_9, 'tarde')).toEqual(['Emmanuel Bernal']);
+  });
+  it('domingo las dos guardias son de Alejandro', () => {
+    expect(quienes(DOM_16, 'manana')).toEqual(['Alejandro Acosta']);
+    expect(quienes(DOM_16, 'tarde')).toEqual(['Alejandro Acosta']);
+  });
+  it('un vendedor fuera de turno no recibe nada aunque tenga pendientes', () => {
+    expect(quienes(LUN_9, 'manana')).not.toContain('Emmanuel Bernal');
+    expect(quienes(LUN_16, 'tarde')).not.toContain('Alejandro Acosta');
+    const soloEmmanuel = [lead({ createdBy: 'Emmanuel Bernal' })];
+    expect(avisosDeGuardia(soloEmmanuel, usuarios, 'manana', LUN_9)).toEqual([]);
+  });
+  it('un vendedor sin turno registrado, el admin y la lista vacía no reciben nada', () => {
+    const otros = [...usuarios, { username: 'Nuevo Vendedor', role: 'vendedor' }];
+    const l = [lead({ createdBy: 'Nuevo Vendedor' }), lead({ createdBy: 'Braulio Acosta' })];
+    expect(avisosDeGuardia(l, otros, 'manana', LUN_9)).toEqual([]);
+    expect(avisosDeGuardia([], usuarios, 'manana', LUN_9)).toEqual([]);
+  });
+});
+
+describe('TURNOS y estaDeTurno', () => {
+  it('usa el día de Monterrey, no el de UTC', () => {
+    // Domingo 22 de nov 22:30 Monterrey ya es lunes 23 en UTC.
+    const domingoNoche = Date.UTC(2026, 10, 23, 4, 30);
+    expect(estaDeTurno('Alejandro Acosta', 'tarde', domingoNoche)).toBe(true);
+    expect(estaDeTurno('Emmanuel Bernal', 'tarde', domingoNoche)).toBe(false);
+  });
+  it('la tabla cubre cada guardia de cada día con exactamente un vendedor', () => {
+    for (let dia = 0; dia <= 6; dia++) {
+      for (const g of ['manana', 'tarde']) {
+        const duenos = Object.keys(TURNOS).filter((v) => TURNOS[v][dia]?.includes(g));
+        expect(duenos).toHaveLength(1);
+      }
+    }
   });
 });
