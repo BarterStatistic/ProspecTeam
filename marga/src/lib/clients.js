@@ -44,6 +44,26 @@ export function findDuplicate(clients, draft, excludeId = null) {
   return null;
 }
 
+/**
+ * La tarjeta de Alex (aún en Prospectos) con este mismo teléfono, o null.
+ * Un cliente que Alex ya subió no se captura de nuevo: se convierte esa
+ * tarjeta con "Pasar a Procesos". Si se crea otra, la venta queda sin ligar
+ * al lead ni al anuncio que lo trajo.
+ */
+export function tarjetaDeAlexPorTelefono(clients, phone, excludeId = null) {
+  const tel = normalizePhone(phone);
+  if (!tel) return null;
+  return (
+    (clients ?? []).find(
+      (c) =>
+        c.id !== excludeId &&
+        c.origen === 'alex' &&
+        c.section === 'prospectos' &&
+        normalizePhone(c.phone) === tel,
+    ) ?? null
+  );
+}
+
 /** Blank form values for a new client in a given section. */
 export function emptyClient(section = 'prospectos') {
   return {

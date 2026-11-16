@@ -4,8 +4,10 @@ import { SECTIONS, stageLabel } from '../../lib/constants.js';
 import Modal from '../ui/Modal.jsx';
 import Button from '../ui/Button.jsx';
 
-export default function DuplicateWarningModal({ match, onCancel, onConfirm }) {
+export default function DuplicateWarningModal({ match, onCancel, onConfirm, onConvertir }) {
   const client = match?.client;
+  // Tarjeta de Alex con el mismo teléfono: no se puede crear otra, solo convertirla.
+  const bloquea = !!match?.bloquea;
   return (
     <Modal
       open={!!match}
@@ -17,9 +19,15 @@ export default function DuplicateWarningModal({ match, onCancel, onConfirm }) {
           <Button variant="ghost" onClick={onCancel}>
             Revisar
           </Button>
-          <Button variant="gold" onClick={onConfirm}>
-            Agregar de todos modos
-          </Button>
+          {bloquea ? (
+            <Button variant="gold" onClick={onConvertir}>
+              Pasar a Procesos
+            </Button>
+          ) : (
+            <Button variant="gold" onClick={onConfirm}>
+              Agregar de todos modos
+            </Button>
+          )}
         </>
       }
     >
@@ -28,7 +36,16 @@ export default function DuplicateWarningModal({ match, onCancel, onConfirm }) {
           <div className="flex items-start gap-2 text-state-warning">
             <AlertTriangle size={18} className="mt-0.5 shrink-0" />
             <p>
-              Ya existe un cliente con el mismo <span className="font-semibold">{match.reason}</span>.
+              {bloquea ? (
+                <>
+                  <span className="font-semibold">Alex ya subió a este cliente.</span> Conviértelo en proceso
+                  en vez de crear otra tarjeta: así la venta queda ligada a su anuncio.
+                </>
+              ) : (
+                <>
+                  Ya existe un cliente con el mismo <span className="font-semibold">{match.reason}</span>.
+                </>
+              )}
             </p>
           </div>
           <div className="rounded-lg border border-white/10 bg-navy-900/50 p-3">

@@ -609,3 +609,24 @@ describe('cambiarDisponibilidad', () => {
     expect(store.getDisponibilidad().U2.estado).toBe('no_disponible');
   });
 });
+
+describe('createClient: tarjeta de Alex con el mismo teléfono', () => {
+  it('no deja crear otra tarjeta si Alex ya subió ese teléfono en Prospectos', async () => {
+    await store.setClient({
+      id: 'alex-1', origen: 'alex', section: 'prospectos', stage: 'primer_contacto',
+      firstName: 'Luis', lastName: 'Ramos', phone: '844 111 2233', createdBy: VENDEDOR, createdAt: 1,
+    });
+    await expect(
+      db.createClient({ section: 'prospectos', firstName: 'Luis', lastName: 'R', phone: '(844) 111-2233' }, { username: VENDEDOR }),
+    ).rejects.toThrow(/Pasar a Procesos/);
+    expect(store.getClients()).toHaveLength(1);
+  });
+  it('si la de Alex ya está en Procesos, sí se puede capturar', async () => {
+    await store.setClient({
+      id: 'alex-2', origen: 'alex', section: 'procesos', stage: 'bnc',
+      firstName: 'Ana', lastName: 'Gil', phone: '8442223344', createdBy: VENDEDOR, createdAt: 1,
+    });
+    const c = await db.createClient({ section: 'prospectos', firstName: 'Ana', lastName: 'Gil', phone: '8442223344' }, { username: VENDEDOR });
+    expect(c.phone).toBe('8442223344');
+  });
+});

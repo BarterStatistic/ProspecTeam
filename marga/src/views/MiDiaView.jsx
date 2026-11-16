@@ -169,9 +169,19 @@ export default function MiDiaView() {
 
         <Seccion
           icon={Flame}
+          tono="text-state-danger"
+          titulo="Calientes sin tocar 24 h o más"
+          ayuda="Listos para comprar y nadie les ha escrito en más de un día. Cada guardia te avisa por notificación."
+          total={cola.rezagados.length}
+        >
+          <Lista items={cola.rezagados} render={fila} vacio="No tienes calientes olvidados." />
+        </Seccion>
+
+        <Seccion
+          icon={Flame}
           tono="text-orange-400"
-          titulo="Calientes sin contactar"
-          ayuda="Listos para comprar y todavía sin un mensaje tuyo."
+          titulo="Calientes por contactar"
+          ayuda="Llegaron hace menos de 24 h y todavía sin un mensaje tuyo."
           total={cola.calientes.length}
         >
           <Lista items={cola.calientes} render={fila} vacio="Ya contactaste a todos los calientes." />

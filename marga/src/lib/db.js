@@ -16,6 +16,7 @@ import {
   cambiosDeMesVenta,
 } from './comisiones.js';
 import { motoPorNombre } from './motos.js';
+import { tarjetaDeAlexPorTelefono } from './clients.js';
 import { isAdmin } from './permissions.js';
 import { esEstadoValido } from './disponibilidad.js';
 import { parcheContacto } from './seguimiento.js';
@@ -109,6 +110,12 @@ function nextOrder(section, stage) {
  * Returns the stored record.
  */
 export async function createClient(values, actor = null) {
+  const deAlex = tarjetaDeAlexPorTelefono(store.getClients(), values.phone);
+  if (deAlex) {
+    throw new Error(
+      `Alex ya subió a ${nombreDe(deAlex)} con ese teléfono. Conviértelo con "Pasar a Procesos" en su tarjeta.`,
+    );
+  }
   const target = resolveTransition(values.section, values.stage);
   const ts = now();
   const record = {

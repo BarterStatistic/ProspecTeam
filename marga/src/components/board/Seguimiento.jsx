@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Hourglass, MessageCircle, PhoneCall, PhoneOff, CheckCheck } from 'lucide-react';
+import { Hourglass, MessageCircle, PhoneCall, PhoneOff, CheckCheck, ArrowRightCircle } from 'lucide-react';
 import { useData } from '../../context/DataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { canEditClient } from '../../lib/permissions.js';
+import { useUI } from '../../context/UIContext.jsx';
+import { esDeAlex } from '../../lib/alex.js';
+import { fullName } from '../../lib/clients.js';
+import { canDropTo, canEditClient } from '../../lib/permissions.js';
 import { enlaceWhatsApp, esperaDe, TIPOS_CONTACTO } from '../../lib/seguimiento.js';
 
 const NIVEL = {
@@ -41,8 +44,9 @@ export function RelojEspera({ client }) {
  * nada extra al vendedor. `noDrag` evita que el tablero lo tome como arrastre.
  */
 export default function Seguimiento({ client, noDrag = {}, className = '' }) {
-  const { registrarContacto } = useData();
+  const { registrarContacto, moveClient } = useData();
   const { user, role } = useAuth();
+  const { avisar } = useUI();
   const [error, setError] = useState('');
 
   const puede = canEditClient(role, client, user?.username);
@@ -56,6 +60,23 @@ export default function Seguimiento({ client, noDrag = {}, className = '' }) {
     registrarContacto(client.id, tipo).catch((err) =>
       setError(err?.message || 'No se pudo guardar el seguimiento.'),
     );
+  };
+
+  // Convertir la tarjeta de Alex en un proceso: la misma tarjeta pasa a
+  // Procesos (no se crea otra), así la venta queda ligada al lead y al anuncio.
+  const puedePasar =
+    puede && esDeAlex(client) && client.section === 'prospectos' && canDropTo(role, 'prospectos');
+  const pasarAProcesos = async () => {
+    setError('');
+    const origen = { section: client.section, stage: client.stage };
+    const nombre = (fullName(client) || 'Cliente').split(' ')[0];
+    try {
+      await moveClient(client.id, 'prospectos', 'proceso_comenzado');
+    } catch (err) {
+      setError(err?.message || 'No se pudo pasar a Procesos.');
+      return;
+    }
+    avisar(`${nombre} → Procesos`, () => moveClient(client.id, origen.section, origen.stage));
   };
 
   const boton =
@@ -94,6 +115,16 @@ export default function Seguimiento({ client, noDrag = {}, className = '' }) {
               <PhoneOff size={12} /> {TIPOS_CONTACTO.sin_respuesta.label}
             </button>
           </>
+        )}
+        {puedePasar && (
+          <button
+            type="button"
+            onClick={pasarAProcesos}
+            className={`${boton} bg-gold/15 text-gold hover:bg-gold/25`}
+            title="Convierte esta tarjeta en un proceso (no crees otra con el mismo teléfono)"
+          >
+            <ArrowRightCircle size={12} /> Pasar a Procesos
+          </button>
         )}
       </div>
       {error && <p className="mt-1 text-[11px] text-state-danger">{error}</p>}
