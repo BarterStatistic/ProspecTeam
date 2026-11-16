@@ -8,6 +8,7 @@ import { formatMXN0, formatDate } from '../lib/format.js';
 import { cargarPublicidad, resumenPublicidad, hace, AUDITORIA } from '../lib/publicidad.js';
 import Card from '../components/ui/Card.jsx';
 import MiniBars from '../components/charts/MiniBars.jsx';
+import PorDecidir from '../components/agencia/PorDecidir.jsx';
 import HBarChart from '../components/charts/HBarChart.jsx';
 
 const usd = (n) => `US$${Number(n ?? 0).toFixed(2)}`;
@@ -156,6 +157,7 @@ export default function PublicidadView() {
             </p>
           </div>
         </Card>
+        <PorDecidir modo={storeMode} store={store} />
         <Auditoria />
         {fab}
       </div>
@@ -182,6 +184,8 @@ export default function PublicidadView() {
           {formatDate(d.desde)} → {formatDate(d.hasta)}
         </span>
       </div>
+
+      <PorDecidir modo={storeMode} store={store} />
 
       <div className="grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-4">
         <Kpi
@@ -278,7 +282,6 @@ export default function PublicidadView() {
               ))}
             </ul>
           )}
-          {d.hoy.porDecidir > 0 && <Nota>Las ideas y propuestas se aprueban desde Telegram, con sus botones.</Nota>}
         </Panel>
       </div>
 
