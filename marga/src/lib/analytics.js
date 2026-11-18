@@ -13,6 +13,7 @@
 // such instead of pretending it is period data.
 
 import { BOARD_COLUMNS, UNASSIGNED_LABEL } from './constants.js';
+import { asistenciaDe, confirmacionDe, esDeAlex } from './citas.js';
 
 /** Sentinel used as the createdBy key for records with no seller. */
 export const UNASSIGNED_KEY = '__unassigned__';
@@ -125,6 +126,7 @@ export function resolveRange(desde, hasta, clients, citas) {
  * `sellers` restricts the result (and its order); when empty, every seller
  * present in the data is included.
  * Returns [{ key, label, registros, ventas, cancelados, citas, citasAtendidas,
+ *            citasAlex, citasConfirmadas, citasAsistieron, citasNoAsistieron,
  *            enProceso, conversion, cancelacion }].
  */
 export function sellerStats(clients, citas, from, to, sellers = []) {
@@ -142,6 +144,10 @@ export function sellerStats(clients, citas, from, to, sellers = []) {
         cancelados: 0,
         citas: 0,
         citasAtendidas: 0,
+        citasAlex: 0,
+        citasConfirmadas: 0,
+        citasAsistieron: 0,
+        citasNoAsistieron: 0,
         enProceso: 0,
       });
     }
@@ -168,6 +174,11 @@ export function sellerStats(clients, citas, from, to, sellers = []) {
     if (!inRange(c.fechaCita, from, to)) continue;
     row(key).citas++;
     if (c.atendida) row(key).citasAtendidas++;
+    if (esDeAlex(c)) row(key).citasAlex++;
+    if (confirmacionDe(c) === 'confirmada') row(key).citasConfirmadas++;
+    const asistencia = asistenciaDe(c);
+    if (asistencia === 'asistio') row(key).citasAsistieron++;
+    else if (asistencia === 'no_asistio') row(key).citasNoAsistieron++;
   }
 
   return [...rows.values()]
@@ -194,6 +205,10 @@ export function totals(rows) {
     enProceso: sum('enProceso'),
     citas: sum('citas'),
     citasAtendidas: sum('citasAtendidas'),
+    citasAlex: sum('citasAlex'),
+    citasConfirmadas: sum('citasConfirmadas'),
+    citasAsistieron: sum('citasAsistieron'),
+    citasNoAsistieron: sum('citasNoAsistieron'),
     conversion: registros ? (ventas / registros) * 100 : 0,
     cancelacion: registros ? (cancelados / registros) * 100 : 0,
   };

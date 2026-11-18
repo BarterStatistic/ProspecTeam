@@ -116,6 +116,19 @@ export default function LeyendaProspectos() {
             </div>
 
             <div className="space-y-1">
+              <b className="text-ink">Requisitos de crédito</b>
+              <div className="flex flex-wrap gap-1">
+                <Chip tono="ok">Cumple requisitos</Chip>
+                <Chip tono="alerta">No cumple: edad</Chip>
+                <Chip tono="info">Alternativa: persona de confianza</Chip>
+              </div>
+              <p>
+                Lo que Alex revisó con la INE y la plática (edad 20 a 68, INE vigente, municipio,
+                antigüedad, buró). Quien no cumple va a las columnas «No cumple requisitos».
+              </p>
+            </div>
+
+            <div className="space-y-1">
               <b className="text-ink">Resumen y datos</b>
               <p>
                 El bloque «Alex:» y la lista de enganche, pago, ingresos, etc. son lo que Alex juntó

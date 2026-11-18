@@ -4,6 +4,11 @@
 export const MAX_TEXTO = 2000;
 export const SOLO_ADMIN = 'Solo el administrador puede hablar con Bartersito.';
 
+// n8n descarta como "bot" (403, sin ejecución) las peticiones cuyo User-Agent no parece de navegador
+// (ignoreBots en el webhook de Bartersito). Mismo arreglo que marga-agencia (PR #23, 2026-11-15):
+// sin esto, desde el 16-nov todo mensaje desde Marga daba 403.
+export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+
 /** Limpia y valida el mensaje. Devuelve `{ texto }` o `{ error }`. */
 export function validarMensaje(valor) {
   const texto = String(valor ?? '').trim();

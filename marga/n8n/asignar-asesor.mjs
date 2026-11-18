@@ -39,3 +39,13 @@ export function asignarAsesor(tsSegundos, conversationId) {
   const username = asesor === 'alejandro' ? 'Alejandro Acosta' : 'Emmanuel Bernal';
   return { asesor, username, fueraDeHorario };
 }
+
+// Desde cuándo se cuenta el turno (2026-11-17). El vendedor se reinicia cada vez que el cliente
+// vuelve a escribir después de más de 24 h: la base (`alex_turno`, supabase/alex_turnos.sql)
+// devuelve `inicio_s`. Si esa llamada falla, se usa la creación de la conversación solo si es de
+// las últimas 24 h (plática en curso); si no, el momento actual (el cliente está volviendo).
+export function momentoDelTurno({ inicioS, creadaS, ahoraS, horas = 24 }) {
+  if (Number(inicioS) > 0) return Number(inicioS);
+  if (Number(creadaS) > 0 && ahoraS - Number(creadaS) <= horas * 3600) return Number(creadaS);
+  return ahoraS;
+}

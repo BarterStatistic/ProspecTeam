@@ -64,6 +64,10 @@ export const BOARD_COLUMNS = {
     { id: 'preguntas', label: 'Preguntas' },
     { id: 'interesado_proceso', label: 'Interesado en proceso' },
     { id: 'envio_docs_cita', label: 'Envío de docs / Cita agendada' },
+    // Clientes que no cumplen algún requisito de crédito (edad, INE vencida,
+    // municipio…). Alex los manda aquí; ver supabase/alex_prospectos.sql.
+    { id: 'envio_docs_no_cumple', label: 'Envío de docs · No cumple requisitos' },
+    { id: 'no_cumple', label: 'No cumple requisitos' },
     { id: 'proceso_comenzado', label: 'Proceso comenzado' },
   ],
   procesos: [

@@ -36,10 +36,47 @@ const ALERTA = {
   vacantes: 'Vacantes',
 };
 
+// Requisitos de crédito que Alex revisa (edad y vigencia de la INE, municipio,
+// antigüedad, buró, ingresos) y la salida que le propone al cliente.
+const MOTIVO = {
+  edad: 'edad',
+  ine_vencida: 'INE vencida',
+  fuera_cobertura: 'fuera de cobertura',
+  antiguedad: 'antigüedad',
+  buro: 'buró',
+  ingresos: 'ingresos',
+  otro: 'otro requisito',
+};
+const ALTERNATIVA = {
+  persona_confianza: 'persona de confianza',
+  mas_enganche: 'más enganche',
+  contado: 'contado',
+};
+
+/** Chips de requisitos: "No cumple: edad" / "Cumple requisitos" y la alternativa. */
+function chipsRequisitos(car) {
+  const chips = [];
+  if (car.requisitos === 'no_cumple') {
+    const motivos = (Array.isArray(car.motivos) ? car.motivos : []).map((m) => MOTIVO[m]).filter(Boolean);
+    chips.push({
+      clave: 'requisitos',
+      etiqueta: motivos.length ? `No cumple: ${motivos.join(', ')}` : 'No cumple requisitos',
+      tono: 'alerta',
+    });
+  } else if (car.requisitos === 'cumple') {
+    chips.push({ clave: 'requisitos', etiqueta: 'Cumple requisitos', tono: 'ok' });
+  }
+  if (ALTERNATIVA[car.alternativa]) {
+    chips.push({ clave: 'alternativa', etiqueta: `Alternativa: ${ALTERNATIVA[car.alternativa]}`, tono: 'info' });
+  }
+  return chips;
+}
+
 /**
  * Chips de características de una tarjeta de Prospectos, en este orden:
- * catálogo enviado (solo en la columna Preguntas), compra, perfil, Flex y
- * alertas (la temperatura y el chat van aparte, ver `indicadoresDe`).
+ * catálogo enviado (solo en la columna Preguntas), compra, perfil, Flex,
+ * requisitos (cumple / no cumple y su alternativa) y alertas (la temperatura
+ * y el chat van aparte, ver `indicadoresDe`).
  * Lo vacío, `sin_definir` o desconocido no genera chip.
  * Fuera de Prospectos devuelve [].
  */
@@ -54,6 +91,7 @@ export function caracteristicasDe(client) {
   if (COMPRA[car.compra]) chips.push({ clave: 'compra', etiqueta: COMPRA[car.compra], tono: 'neutro' });
   if (PERFIL[car.perfil]) chips.push({ clave: 'perfil', etiqueta: PERFIL[car.perfil], tono: 'neutro' });
   if (car.flex === true) chips.push({ clave: 'flex', etiqueta: 'Flex', tono: 'neutro' });
+  chips.push(...chipsRequisitos(car));
   for (const a of Array.isArray(car.alertas) ? car.alertas : []) {
     if (ALERTA[a]) chips.push({ clave: `alerta-${a}`, etiqueta: ALERTA[a], tono: 'alerta' });
   }

@@ -36,6 +36,46 @@ as $$
   end
 $$;
 
+-- Requisitos de crédito (2026-11-16). Prospectos tiene dos "carriles":
+--   normal:    primer_contacto → preguntas → interesado_proceso → envio_docs_cita
+--   no cumple:                                no_cumple          → envio_docs_no_cumple
+-- Cada columna tiene un rango de avance; las del carril "no cumple" valen lo
+-- mismo que su par normal (no_cumple = interesado_proceso, envio_docs_no_cumple
+-- = envio_docs_cita), así que cambiar de carril nunca hace retroceder.
+create or replace function public.alex_rango(stage text)
+returns int
+language sql
+immutable
+set search_path = ''
+as $$
+  select case stage
+    when 'primer_contacto'      then 1
+    when 'preguntas'            then 2
+    when 'interesado_proceso'   then 3
+    when 'no_cumple'            then 3
+    when 'envio_docs_cita'      then 4
+    when 'envio_docs_no_cumple' then 4
+    else 0
+  end
+$$;
+
+-- Columna de Prospectos para un rango y un carril.
+create or replace function public.alex_columna(rango int, no_cumple boolean)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select case
+    when no_cumple and rango >= 4 then 'envio_docs_no_cumple'
+    when no_cumple                then 'no_cumple'
+    when rango >= 4 then 'envio_docs_cita'
+    when rango = 3  then 'interesado_proceso'
+    when rango = 2  then 'preguntas'
+    else 'primer_contacto'
+  end
+$$;
+
 -- Datos del cliente que Alex junta (atributos de Chatwoot): solo claves conocidas
 -- y con valor; lo vacío no borra lo guardado.
 create or replace function public.alex_atributos(a jsonb)
@@ -53,7 +93,14 @@ $$;
 -- p: { conversation_id (obligatorio), telefono, vendedor, nombre, etapa, moto,
 --      resumen, atributos: { enganche, pago_cotizado, ingresos, antiguedad_laboral,
 --      municipio, documentos, proximo_paso, notas_cliente },
---      caracteristicas: { compra, perfil, flex, temperatura, chatbot, alertas } }
+--      caracteristicas: { compra, perfil, flex, temperatura, chatbot, alertas,
+--                         requisitos: cumple | no_cumple, motivos: [edad, ine_vencida,
+--                         fuera_cobertura, antiguedad, buro, ingresos, otro],
+--                         alternativa: persona_confianza | mas_enganche | contado } }
+-- Requisitos: un cliente con requisitos = no_cumple va al carril "no cumple"
+-- (no_cumple, o envio_docs_no_cumple si ya mandó documentos). Alex solo cambia
+-- de carril cuando el valor de requisitos cambia respecto a lo guardado; así
+-- no regresa una tarjeta que un vendedor movió a mano.
 -- Devuelve { accion: 'creada' | 'actualizada' | 'omitida', id }.
 create or replace function public.alex_upsert_prospecto(p jsonb)
 returns jsonb
@@ -69,7 +116,6 @@ declare
   v_resumen text  := btrim(coalesce(p->>'resumen', ''));
   v_stage   text  := public.alex_stage(p->>'etapa');
   v_car     jsonb := coalesce(p->'caracteristicas', '{}'::jsonb);
-  v_orden   text[] := array['primer_contacto', 'preguntas', 'interesado_proceso', 'envio_docs_cita'];
   v_ahora   bigint := (extract(epoch from clock_timestamp()) * 1000)::bigint;
   v_id      text;
   v_d       jsonb;
@@ -87,6 +133,11 @@ declare
   v_actual  text;
   v_actual_nombre text;
   v_bot     boolean;
+  v_motivos_txt text;
+  v_motivos jsonb;
+  v_req     text;
+  v_rango   int;
+  v_carril  boolean;
 begin
   if v_conv is null then
     raise exception 'alex_upsert_prospecto: falta conversation_id';
@@ -109,7 +160,28 @@ begin
        where lower(btrim(x)) in ('requiere_accion', 'no_califica', 'fuera_cobertura', 'refacciones', 'vacantes')
     ) s;
 
+  if jsonb_typeof(v_car->'motivos') = 'array' then
+    select string_agg(value, ',') into v_motivos_txt from jsonb_array_elements_text(v_car->'motivos');
+  else
+    v_motivos_txt := v_car->>'motivos';
+  end if;
+  select coalesce(jsonb_agg(m order by m), '[]'::jsonb) into v_motivos
+    from (
+      select distinct lower(btrim(x)) as m
+        from regexp_split_to_table(coalesce(v_motivos_txt, ''), ',') as x
+       where lower(btrim(x)) in ('edad', 'ine_vencida', 'fuera_cobertura', 'antiguedad', 'buro', 'ingresos', 'otro')
+    ) s;
+  v_req := case lower(btrim(coalesce(v_car->>'requisitos', '')))
+             when 'cumple' then 'cumple' when 'no_cumple' then 'no_cumple' end;
+
   v_upd := jsonb_strip_nulls(jsonb_build_object(
+    'requisitos', v_req,
+    -- Al cumplir se limpian los motivos; al no cumplir se reemplazan.
+    'motivos', case when v_req = 'cumple' then '[]'::jsonb
+                    when v_req = 'no_cumple' and jsonb_array_length(v_motivos) > 0 then v_motivos end,
+    'alternativa', case when lower(btrim(coalesce(v_car->>'alternativa', ''))) in
+                     ('persona_confianza', 'mas_enganche', 'contado')
+                   then lower(btrim(v_car->>'alternativa')) end,
     'compra', case lower(btrim(coalesce(v_car->>'compra', '')))
                 when 'credito' then 'credito' when 'contado' then 'contado' end,
     'perfil', case when lower(btrim(coalesce(v_car->>'perfil', ''))) in
@@ -154,7 +226,7 @@ begin
     v_phone := case when length(v_tel) = 10
                     then substr(v_tel, 1, 3) || ' ' || substr(v_tel, 4, 3) || ' ' || substr(v_tel, 7)
                     else '' end;
-    v_destino := coalesce(v_stage, 'primer_contacto');
+    v_destino := public.alex_columna(coalesce(public.alex_rango(v_stage), 0), v_req = 'no_cumple');
     v_cat := v_upd || jsonb_build_object('catalogoEnviado', lower(btrim(coalesce(p->>'etapa', ''))) = 'catalogo');
 
     v_id := 'alex-' || v_conv;
@@ -195,15 +267,25 @@ begin
     v_patch := v_patch || jsonb_build_object('conversationId', v_conv);
   end if;
 
-  -- Solo avanza de columna, nunca retrocede.
+  -- Columna destino. Solo avanza, nunca retrocede; cambia de carril (normal ↔
+  -- no cumple) únicamente cuando el valor de requisitos cambia.
   v_actual := v_d->>'stage';
-  if v_stage is not null
-     and coalesce(array_position(v_orden, v_stage), 0) > coalesce(array_position(v_orden, v_actual), 0) then
+  v_destino := null;
+  if v_req is not null and v_req is distinct from (v_d->'caracteristicas'->>'requisitos') then
+    v_rango := greatest(public.alex_rango(v_stage), public.alex_rango(v_actual));
+    v_destino := public.alex_columna(v_rango, v_req = 'no_cumple');
+  elsif v_stage is not null and public.alex_rango(v_stage) > public.alex_rango(v_actual) then
+    v_carril := v_actual in ('no_cumple', 'envio_docs_no_cumple');
+    v_destino := public.alex_columna(public.alex_rango(v_stage), v_carril);
+  end if;
+  -- "Proceso comenzado" o una columna desconocida: Alex no la toca.
+  if v_destino is not null and v_destino is distinct from v_actual
+     and (public.alex_rango(v_actual) > 0 or coalesce(v_actual, '') = '') then
     v_patch := v_patch || jsonb_build_object(
-      'stage', v_stage,
+      'stage', v_destino,
       'order', (select coalesce(max((c.data->>'order')::int), -1) + 1
                   from public.marga_clients c
-                 where c.data->>'section' = 'prospectos' and c.data->>'stage' = v_stage));
+                 where c.data->>'section' = 'prospectos' and c.data->>'stage' = v_destino));
   end if;
 
   -- En las tarjetas del bot, Alex mantiene nombre, moto y resumen mientras
@@ -234,9 +316,11 @@ begin
   return jsonb_build_object('accion', 'actualizada', 'id', v_id);
 end $$;
 
-revoke all on function public.alex_tel10(text), public.alex_stage(text), public.alex_upsert_prospecto(jsonb)
+revoke all on function public.alex_tel10(text), public.alex_stage(text), public.alex_upsert_prospecto(jsonb),
+  public.alex_rango(text), public.alex_columna(int, boolean)
   from public, anon, authenticated;
-grant execute on function public.alex_tel10(text), public.alex_stage(text), public.alex_upsert_prospecto(jsonb)
+grant execute on function public.alex_tel10(text), public.alex_stage(text), public.alex_upsert_prospecto(jsonb),
+  public.alex_rango(text), public.alex_columna(int, boolean)
   to service_role;
 
 -- Borra las tarjetas del bot que siguen en Prospectos, nunca pasaron por

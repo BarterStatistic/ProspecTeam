@@ -21,10 +21,11 @@ import {
 import { useData } from '../../context/DataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useUI } from '../../context/UIContext.jsx';
-import { canDropTo, canEditClient, canRegistrarFacturacion } from '../../lib/permissions.js';
+import { canDropTo, canEditClient, canRegistrarFacturacion, canSeeClient } from '../../lib/permissions.js';
 import { resolveTransition } from '../../lib/db.js';
 import { regresoAColumna, ordenPila } from '../../lib/clients.js';
-import { ArrowRight, ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { sinAtender } from '../../lib/seguimiento.js';
+import { ArrowRight, ChevronDown, SlidersHorizontal, UserX } from 'lucide-react';
 import Column, { COLUMN_PREFIX } from './Column.jsx';
 import { CardBody } from './ClientCard.jsx';
 import LeyendaProspectos from './LeyendaProspectos.jsx';
@@ -75,9 +76,14 @@ function FilterRow({ label, items, value, onChange, colorOf }) {
 }
 
 export default function KanbanBoard({ section }) {
-  const { clients, moveClient, applyBoardReorder, sellerColors } = useData();
+  const { clients: todos, moveClient, applyBoardReorder, sellerColors } = useData();
   const esPila = section === 'prospectos';
   const { user, role } = useAuth();
+  // Cada vendedor ve solo sus clientes (canSeeClient); el admin y el promotor, todo su tablero.
+  const clients = useMemo(
+    () => todos.filter((c) => canSeeClient(role, c, user?.username)),
+    [todos, role, user?.username],
+  );
   const { openFacturacion } = useUI();
   const [activeId, setActiveId] = useState(null);
   // Filter the board by who captured the client (createdBy). Local per board.
@@ -88,7 +94,10 @@ export default function KanbanBoard({ section }) {
   // renglones de chips empujaban la primera tarjeta al último tercio de la
   // pantalla). Desde md siempre están a la vista.
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
-  const filtrosActivos = (sellerFilter !== ALL ? 1 : 0) + (promotorFilter !== ALL ? 1 : 0);
+  // Prospectos: solo los que nadie atiende todavía (sin vendedor, o de Alex sin contacto registrado).
+  const [soloSinAtender, setSoloSinAtender] = useState(false);
+  const filtrosActivos =
+    (sellerFilter !== ALL ? 1 : 0) + (promotorFilter !== ALL ? 1 : 0) + (soloSinAtender ? 1 : 0);
   const columns = BOARD_COLUMNS[section];
   const isProcesos = section === 'procesos';
   // Celular: se ve una etapa a la vez, en vertical. Se cambia tocando su
@@ -155,8 +164,14 @@ export default function KanbanBoard({ section }) {
     return list;
   }, [clients, section, isProcesos]);
 
+  const sinAtenderTotal = useMemo(
+    () => (esPila ? clients.filter((c) => c.section === section && sinAtender(c)).length : 0),
+    [clients, section, esPila],
+  );
+
   const matchesFilter = useCallback(
     (c) => {
+      if (soloSinAtender && !sinAtender(c)) return false;
       if (sellerFilter !== ALL) {
         if (sellerFilter === UNASSIGNED ? !!c.createdBy : c.createdBy !== sellerFilter)
           return false;
@@ -171,7 +186,7 @@ export default function KanbanBoard({ section }) {
       }
       return true;
     },
-    [sellerFilter, promotorFilter],
+    [sellerFilter, promotorFilter, soloSinAtender],
   );
 
   // Group this section's clients by stage, each column sorted by `order`.
@@ -277,8 +292,9 @@ export default function KanbanBoard({ section }) {
       onDragEnd={handleDragEnd}
     >
       <div className="flex h-full flex-col">
-        {(sellers.length > 0 || promotores.length > 0) && (
+        {(sellers.length > 0 || promotores.length > 0 || esPila) && (
           <div className="px-4 pt-3 sm:px-6">
+            <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setFiltrosAbiertos((v) => !v)}
               aria-expanded={filtrosAbiertos}
@@ -298,8 +314,27 @@ export default function KanbanBoard({ section }) {
                 className={`transition ${filtrosAbiertos ? 'rotate-180' : ''}`}
               />
             </button>
+            {esPila && (
+              <button
+                onClick={() => setSoloSinAtender((v) => !v)}
+                aria-pressed={soloSinAtender}
+                title="Clientes sin vendedor asignado, o de Alex a los que nadie les ha escrito"
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition md:py-1.5 ${
+                  soloSinAtender
+                    ? 'border-state-danger/40 bg-state-danger/15 text-ink'
+                    : 'border-white/10 text-ink-muted hover:bg-white/5 hover:text-ink'
+                }`}
+              >
+                <UserX size={14} className={sinAtenderTotal > 0 ? 'text-state-danger' : ''} />
+                Sin atender
+                <span className={`m-chip ${sinAtenderTotal > 0 ? 'bg-state-danger/20 text-state-danger' : 'bg-white/5 text-ink-faint'}`}>
+                  {sinAtenderTotal}
+                </span>
+              </button>
+            )}
+            </div>
             <div
-              className={`space-y-1.5 md:mt-0 md:block ${filtrosAbiertos ? 'mt-2 block' : 'hidden'}`}
+              className={`space-y-1.5 md:mt-2 md:block ${filtrosAbiertos ? 'mt-2 block' : 'hidden'}`}
             >
               <FilterRow
                 label="Vendedor:"

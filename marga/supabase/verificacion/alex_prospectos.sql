@@ -252,3 +252,71 @@ begin
 
   raise exception 'PRUEBAS OK (bloque 4)';
 end $$;
+
+-- ===== Bloque 5: requisitos de crédito y carril "no cumple" (2026-11-16) =====
+do $$
+declare
+  r jsonb;
+  d jsonb;
+begin
+  assert public.alex_rango('no_cumple') = public.alex_rango('interesado_proceso'), 'rango no_cumple';
+  assert public.alex_rango('envio_docs_no_cumple') = public.alex_rango('envio_docs_cita'), 'rango envío no cumple';
+  assert public.alex_rango('proceso_comenzado') = 0, 'rango proceso comenzado';
+  assert public.alex_columna(4, true) = 'envio_docs_no_cumple', 'columna 4 no cumple';
+  assert public.alex_columna(1, true) = 'no_cumple', 'columna 1 no cumple';
+  assert public.alex_columna(2, false) = 'preguntas', 'columna 2 normal';
+
+  -- Manda INE y es menor de 20: Envío de docs · No cumple, con motivos
+  r := public.alex_upsert_prospecto(jsonb_build_object(
+    'conversation_id', 9400001, 'telefono', '8440000030', 'vendedor', 'Alejandro Acosta', 'etapa', 'cotizado'));
+  r := public.alex_upsert_prospecto(jsonb_build_object(
+    'conversation_id', 9400001, 'etapa', 'documentacion',
+    'caracteristicas', jsonb_build_object('requisitos', 'no_cumple', 'motivos', 'edad, raro,EDAD',
+      'alternativa', 'persona_confianza')));
+  select data into d from public.marga_clients where id = 'alex-9400001';
+  assert d->>'stage' = 'envio_docs_no_cumple', 'INE sin edad: ' || (d->>'stage');
+  assert d->'caracteristicas'->'motivos' = '["edad"]'::jsonb, 'motivos normalizados';
+  assert d->'caracteristicas'->>'alternativa' = 'persona_confianza', 'alternativa';
+
+  -- Llamadas siguientes con el mismo requisito no la mueven si un vendedor la regresó
+  update public.marga_clients set data = data || '{"stage": "envio_docs_cita"}'::jsonb where id = 'alex-9400001';
+  r := public.alex_upsert_prospecto(jsonb_build_object(
+    'conversation_id', 9400001, 'etapa', 'documentacion',
+    'caracteristicas', jsonb_build_object('requisitos', 'no_cumple', 'motivos', jsonb_build_array('edad'))));
+  select data into d from public.marga_clients where id = 'alex-9400001';
+  assert d->>'stage' = 'envio_docs_cita', 'respeta el movimiento manual del vendedor';
+
+  -- Ya cumple (p. ej. persona de confianza): de vuelta al carril normal, motivos limpios
+  update public.marga_clients set data = data || '{"stage": "envio_docs_no_cumple"}'::jsonb where id = 'alex-9400001';
+  r := public.alex_upsert_prospecto(jsonb_build_object(
+    'conversation_id', 9400001, 'etapa', 'documentacion',
+    'caracteristicas', jsonb_build_object('requisitos', 'cumple')));
+  select data into d from public.marga_clients where id = 'alex-9400001';
+  assert d->>'stage' = 'envio_docs_cita', 'cumple: vuelve a envío de docs';
+  assert d->'caracteristicas'->'motivos' = '[]'::jsonb, 'cumple: sin motivos';
+
+  -- Sin documentos: No cumple requisitos; luego manda INE y pasa a Envío de docs · No cumple
+  r := public.alex_upsert_prospecto(jsonb_build_object(
+    'conversation_id', 9400002, 'telefono', '8440000031', 'vendedor', 'Emmanuel Bernal', 'etapa', 'catalogo',
+    'caracteristicas', jsonb_build_object('requisitos', 'no_cumple', 'motivos', jsonb_build_array('fuera_cobertura'))));
+  select data into d from public.marga_clients where id = 'alex-9400002';
+  assert d->>'stage' = 'no_cumple', 'alta no cumple: ' || (d->>'stage');
+  r := public.alex_upsert_prospecto(jsonb_build_object(
+    'conversation_id', 9400002, 'etapa', 'calificado',
+    'caracteristicas', jsonb_build_object('requisitos', 'no_cumple')));
+  select data into d from public.marga_clients where id = 'alex-9400002';
+  assert d->>'stage' = 'no_cumple', 'calificado sigue en no cumple';
+  assert d->'caracteristicas'->'motivos' = '["fuera_cobertura"]'::jsonb, 'sin motivos nuevos conserva los guardados';
+  r := public.alex_upsert_prospecto(jsonb_build_object('conversation_id', 9400002, 'etapa', 'documentacion'));
+  select data into d from public.marga_clients where id = 'alex-9400002';
+  assert d->>'stage' = 'envio_docs_no_cumple', 'avanza dentro del carril no cumple';
+
+  -- Sin dato de requisitos: comportamiento de siempre
+  r := public.alex_upsert_prospecto(jsonb_build_object(
+    'conversation_id', 9400003, 'telefono', '8440000032', 'vendedor', 'Emmanuel Bernal', 'etapa', 'documentacion'));
+  select data into d from public.marga_clients where id = 'alex-9400003';
+  assert d->>'stage' = 'envio_docs_cita', 'sin requisitos: envío de docs normal';
+  assert not (d->'caracteristicas' ? 'requisitos'), 'sin requisitos guardados';
+
+  raise exception 'PRUEBAS OK (bloque 5)';
+end $$;

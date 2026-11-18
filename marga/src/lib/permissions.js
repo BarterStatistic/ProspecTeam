@@ -47,14 +47,20 @@ export function visibleSections(role) {
 }
 
 /**
- * Can this user see the given client at all? Every section this role opens is
- * fully visible, except Clientes cancelados for a vendedor: only the clients
- * they registered or that were assigned to them ("Vendedor Prospect Team",
- * a free-text field, compared ignoring case and accents).
+ * Can this user see the given client at all? The admin sees everything and the
+ * promotor the whole Procesos board. A vendedor only sees HIS clients in
+ * Prospectos, Procesos and Clientes cancelados (2026-11-17, Braulio: Alejandro no
+ * ve los de Emmanuel ni al revés): the ones he registered or that Alex assigned to
+ * him (createdBy), or that are assigned to him as "Vendedor Prospect Team"
+ * (prospectTeamSeller, free text, compared ignoring case and accents). Ventas
+ * stays visible to the whole team.
  */
+export const SECCIONES_PROPIAS = ['prospectos', 'procesos', 'cancelados'];
+
 export function canSeeClient(role, client, username) {
   if (!visibleSections(role).includes(client.section)) return false;
-  if (isAdmin(role) || client.section !== 'cancelados') return true;
+  if (isAdmin(role) || isPromotor(role)) return true;
+  if (!SECCIONES_PROPIAS.includes(client.section)) return true;
   if (!username) return false;
   if (client.createdBy && client.createdBy === username) return true;
   const asignado = normalizeName(client.prospectTeamSeller ?? '');
@@ -192,4 +198,21 @@ export function canViewPublicidad(role) {
  */
 export function canUsarBartersito(role) {
   return isAdmin(role);
+}
+
+/** Solo admin y promotor registran si el cliente fue a la cita. */
+export function canMarkAsistencia(role) {
+  return isAdmin(role) || isPromotor(role);
+}
+
+/**
+ * ¿Puede este usuario confirmar / reagendar la cita? El admin cualquiera; el
+ * vendedor solo las suyas (su nombre en `vendedor` o `createdBy`, sin importar
+ * acentos ni mayúsculas); el promotor no.
+ */
+export function canConfirmCita(role, cita, username) {
+  if (isAdmin(role)) return true;
+  if (isPromotor(role) || !username) return false;
+  const yo = normalizeName(username);
+  return [cita?.vendedor, cita?.createdBy].some((n) => !!n && normalizeName(n) === yo);
 }

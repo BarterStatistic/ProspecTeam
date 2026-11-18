@@ -66,6 +66,33 @@ describe('caracteristicasDe', () => {
     expect(caracteristicasDe(client)).toEqual([]);
   });
 
+  it('muestra si no cumple requisitos, con el motivo y la alternativa', () => {
+    const client = {
+      section: 'prospectos',
+      stage: 'envio_docs_no_cumple',
+      caracteristicas: {
+        compra: 'credito',
+        requisitos: 'no_cumple',
+        motivos: ['edad', 'ine_vencida', 'raro'],
+        alternativa: 'persona_confianza',
+      },
+    };
+    expect(caracteristicasDe(client)).toEqual([
+      { clave: 'compra', etiqueta: 'Crédito', tono: 'neutro' },
+      { clave: 'requisitos', etiqueta: 'No cumple: edad, INE vencida', tono: 'alerta' },
+      { clave: 'alternativa', etiqueta: 'Alternativa: persona de confianza', tono: 'info' },
+    ]);
+  });
+
+  it('no cumple sin motivo conocido y cumple requisitos', () => {
+    const base = { section: 'prospectos', stage: 'no_cumple' };
+    expect(etiquetas({ ...base, caracteristicas: { requisitos: 'no_cumple' } })).toEqual(['No cumple requisitos']);
+    expect(caracteristicasDe({ ...base, caracteristicas: { requisitos: 'cumple' } })).toEqual([
+      { clave: 'requisitos', etiqueta: 'Cumple requisitos', tono: 'ok' },
+    ]);
+    expect(etiquetas({ ...base, caracteristicas: { requisitos: 'sin_validar', alternativa: 'otra' } })).toEqual([]);
+  });
+
   it('tarjeta sin características no revienta', () => {
     expect(caracteristicasDe({ section: 'prospectos' })).toEqual([]);
   });

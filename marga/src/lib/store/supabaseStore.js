@@ -475,6 +475,32 @@ export function createSupabaseStore({ url, key }) {
       }
       return data;
     },
+    /** Panel "Alex IA" (embudo, reportes y propuestas del Supervisor, costos): supabase/alex_supervisor.sql. */
+    async panelAlex(dias = 56) {
+      const { data, error } = await sb.rpc('marga_panel_alex', { p_dias: dias });
+      if (error) {
+        const e = new Error(error.message || 'No se pudo leer el panel de Alex.');
+        e.sinInstalar = error.code === 'PGRST202';
+        throw e;
+      }
+      return data;
+    },
+    /** Resumen del día del admin (reportes, gasto, costos de IA, decisiones): supabase/marga_resumen_dia.sql. */
+    async resumenDia() {
+      const { data, error } = await sb.rpc('marga_resumen_dia');
+      if (error) {
+        const e = new Error(error.message || 'No se pudo leer el resumen del día.');
+        e.sinInstalar = error.code === 'PGRST202';
+        throw e;
+      }
+      return data;
+    },
+    /** Aprueba o rechaza una propuesta del Supervisor de Alex (la misma regla que el botón de Telegram). */
+    async decidirAlex(id, accion) {
+      const { data, error } = await sb.rpc('marga_alex_decidir', { p_id: id, p_accion: accion });
+      if (error) throw new Error(error.message || 'No se pudo decidir.');
+      return data;
+    },
     /** Bandeja "Por decidir hoy" de la agencia: supabase/marga_centro_de_mando.sql. */
     async porDecidir() {
       const { data, error } = await sb.rpc('marga_por_decidir');

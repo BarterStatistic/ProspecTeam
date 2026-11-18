@@ -15,16 +15,29 @@ import {
   CheckCircle2,
   X,
   Ticket,
+  Bot,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 import { useData } from '../context/DataContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import { sellerColor } from '../lib/constants.js';
 import { formatDate, formatDateTime, toDateInput, fromDateInput } from '../lib/format.js';
 import { compressImage } from '../lib/image.js';
 import { downloadCitaSummary } from '../lib/citaSummary.js';
+import {
+  CONFIRMACION,
+  ASISTENCIA,
+  confirmacionDe,
+  asistenciaDe,
+  esDeAlex,
+  patchConfirmacion,
+  patchAsistencia,
+} from '../lib/citas.js';
+import { canConfirmCita, canMarkAsistencia } from '../lib/permissions.js';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import Modal from '../components/ui/Modal.jsx';
-import Checkbox from '../components/ui/Checkbox.jsx';
 import Input, { Textarea } from '../components/ui/Input.jsx';
 import CopyButton from '../components/ui/CopyButton.jsx';
 import Avatar from '../components/ui/Avatar.jsx';
@@ -37,6 +50,7 @@ const FILTERS = [
   { id: 'mes', label: 'Este mes' },
   { id: 'todas', label: 'Todas' },
   { id: 'atendidas', label: 'Atendidas' },
+  { id: 'alex', label: 'De Alex' },
 ];
 
 /** [start, end] (ms, inclusive) for a filter id, or null for "todas"/"atendidas". */
@@ -67,6 +81,19 @@ function combineDateTime(dateValue, timeValue) {
   const [h, m] = timeValue.split(':').map(Number);
   return base + h * 3_600_000 + m * 60_000;
 }
+
+// Colores de los chips de estado de la cita.
+const TONO_CONFIRMACION = {
+  pendiente: 'bg-white/10 text-ink-muted',
+  confirmada: 'bg-state-success/15 text-state-success',
+  no_confirmada: 'bg-state-danger/15 text-state-danger',
+  reagendada: 'bg-sky2/15 text-sky2-light',
+};
+const TONO_ASISTENCIA = {
+  pendiente: 'bg-white/10 text-ink-muted',
+  asistio: 'bg-state-success/15 text-state-success',
+  no_asistio: 'bg-state-danger/15 text-state-danger',
+};
 
 const timeOf = (cita) =>
   cita?.hasTime && cita.fechaCita ? new Date(cita.fechaCita).toTimeString().slice(0, 5) : '';
@@ -352,8 +379,21 @@ function AttendModal({ cita, onClose, onConfirm }) {
   );
 }
 
-function CitaRow({ cita, onEdit, onDelete, onToggleAttended, onReagendar, onVale }) {
+function CitaRow({
+  cita,
+  puedeConfirmar,
+  puedeMarcarAsistencia,
+  onEdit,
+  onDelete,
+  onConfirmacion,
+  onAsistio,
+  onAsistencia,
+  onReagendar,
+  onVale,
+}) {
   const { sellerColors, sellerAvatars } = useData();
+  const confirmacion = confirmacionDe(cita);
+  const asistencia = asistenciaDe(cita);
   const [downloading, setDownloading] = useState(false);
   // A cita counts as past once its day (or exact time) has gone by.
   const cutoff = cita.hasTime ? cita.fechaCita : cita.fechaCita + 86_399_999;
@@ -371,7 +411,7 @@ function CitaRow({ cita, onEdit, onDelete, onToggleAttended, onReagendar, onVale
   }
 
   return (
-    <Card className={`p-4 ${!cita.atendida && isPast ? 'opacity-60' : ''}`}>
+    <Card className={`p-4 ${asistencia === 'pendiente' && isPast ? 'opacity-60' : ''}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
@@ -379,9 +419,18 @@ function CitaRow({ cita, onEdit, onDelete, onToggleAttended, onReagendar, onVale
               <CalendarClock size={12} />
               {cita.hasTime ? formatDateTime(cita.fechaCita) : formatDate(cita.fechaCita)}
             </span>
-            {cita.atendida && (
-              <span className="m-chip bg-state-success/15 text-state-success">
-                <CheckCircle2 size={12} /> Atendida
+            {esDeAlex(cita) && (
+              <span className="m-chip bg-gold/15 text-gold">
+                <Bot size={12} /> Alex
+              </span>
+            )}
+            <span className={`m-chip ${TONO_CONFIRMACION[confirmacion]}`}>
+              {CONFIRMACION[confirmacion].label}
+            </span>
+            {asistencia !== 'pendiente' && (
+              <span className={`m-chip ${TONO_ASISTENCIA[asistencia]}`}>
+                {asistencia === 'asistio' ? <CheckCircle2 size={12} /> : <UserX size={12} />}
+                {ASISTENCIA[asistencia].label}
               </span>
             )}
             {cita.ineImage && (
@@ -421,7 +470,7 @@ function CitaRow({ cita, onEdit, onDelete, onToggleAttended, onReagendar, onVale
               {cita.description}
             </p>
           )}
-          {cita.atendida && cita.notaAtencion && (
+          {asistencia === 'asistio' && cita.notaAtencion && (
             <p className="mt-2 rounded-lg bg-state-success/10 px-2 py-1.5 text-xs text-ink-muted">
               <span className="font-medium text-state-success">Atención:</span> {cita.notaAtencion}
             </p>
@@ -439,12 +488,45 @@ function CitaRow({ cita, onEdit, onDelete, onToggleAttended, onReagendar, onVale
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-white/5 pt-3">
-        <Checkbox
-          checked={!!cita.atendida}
-          onChange={onToggleAttended}
-          label="Cliente atendido"
-          className="text-xs text-ink-muted"
-        />
+        {puedeConfirmar && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-ink-faint">Cita:</span>
+            {['confirmada', 'no_confirmada', 'reagendada'].map((v) => (
+              <Button
+                key={v}
+                variant={confirmacion === v ? 'gold' : 'outline'}
+                size="sm"
+                onClick={() => onConfirmacion(v)}
+              >
+                {CONFIRMACION[v].label}
+              </Button>
+            ))}
+          </div>
+        )}
+        {puedeMarcarAsistencia && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-ink-faint">Cliente:</span>
+            <Button
+              variant={asistencia === 'asistio' ? 'gold' : 'outline'}
+              size="sm"
+              onClick={onAsistio}
+            >
+              <UserCheck size={14} /> Asistió
+            </Button>
+            <Button
+              variant={asistencia === 'no_asistio' ? 'gold' : 'outline'}
+              size="sm"
+              onClick={() => onAsistencia('no_asistio')}
+            >
+              <UserX size={14} /> No asistió
+            </Button>
+            {asistencia !== 'pendiente' && (
+              <Button variant="ghost" size="sm" onClick={() => onAsistencia('pendiente')}>
+                Deshacer
+              </Button>
+            )}
+          </div>
+        )}
         <div className="ml-auto flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={onReagendar}>
             <RefreshCw size={14} /> Reagendar
@@ -463,6 +545,8 @@ function CitaRow({ cita, onEdit, onDelete, onToggleAttended, onReagendar, onVale
 
 export default function CitasView() {
   const { citas, createCita, updateCita, deleteCita } = useData();
+  const { role, user } = useAuth();
+  const username = user?.username ?? '';
   const [filter, setFilter] = useState('semana');
   // Custom date range (like Ventas concretadas). When either bound is set it
   // takes over from the period chips; picking a chip clears the range.
@@ -484,12 +568,14 @@ export default function CitasView() {
       const max = fromDateInput(hasta);
       range = [min ?? -Infinity, max != null ? max + 86_399_999 : Infinity];
     }
+    if (!rangeActive && filter === 'alex') range = null;
     return citas
       .filter((c) => {
-        if (filter === 'atendidas' && !rangeActive) return c.atendida;
-        // Date periods / range / "Todas" hide attended citas from the active agenda,
-        // except "Todas" which shows everything.
-        if (filter !== 'todas' && c.atendida) return false;
+        if (!rangeActive && filter === 'atendidas') return asistenciaDe(c) === 'asistio';
+        if (!rangeActive && filter === 'alex') return esDeAlex(c);
+        // Los periodos y el rango ocultan las citas ya cerradas (asistió o no
+        // asistió) de la agenda activa; "Todas" las muestra.
+        if (filter !== 'todas' && asistenciaDe(c) !== 'pendiente') return false;
         return !range || (c.fechaCita >= range[0] && c.fechaCita <= range[1]);
       })
       .sort((a, b) => (a.fechaCita ?? 0) - (b.fechaCita ?? 0));
@@ -519,12 +605,15 @@ export default function CitasView() {
     if (confirm(`¿Eliminar la cita de ${cita.clientName}?`)) deleteCita(cita.id);
   }
 
-  function handleToggleAttended(cita, checked) {
-    if (checked) {
-      setAttendTarget(cita);
-    } else {
-      updateCita(cita.id, { atendida: false, notaAtencion: '', fechaAtencion: null });
-    }
+  // Confirmación del vendedor. "Reagendada" pide la nueva fecha (y la guarda al aceptar).
+  function handleConfirmacion(cita, valor) {
+    if (valor === 'reagendada') setReagendarTarget(cita);
+    else updateCita(cita.id, patchConfirmacion(valor));
+  }
+
+  // Asistencia (admin / promotor). "Asistió" pide un comentario opcional aparte.
+  function handleAsistencia(cita, valor) {
+    updateCita(cita.id, patchAsistencia(valor, '', Date.now()));
   }
 
   return (
@@ -594,7 +683,9 @@ export default function CitasView() {
               ? 'en este rango de fechas'
               : showingAttended
                 ? 'atendidas'
-                : filter !== 'todas'
+                : filter === 'alex'
+                  ? 'de Alex'
+                  : filter !== 'todas'
                   ? 'en este periodo'
                   : 'agendadas'}
             .
@@ -607,7 +698,11 @@ export default function CitasView() {
                 cita={cita}
                 onEdit={() => setModal({ open: true, initial: cita })}
                 onDelete={() => handleDelete(cita)}
-                onToggleAttended={(checked) => handleToggleAttended(cita, checked)}
+                puedeConfirmar={canConfirmCita(role, cita, username)}
+                puedeMarcarAsistencia={canMarkAsistencia(role)}
+                onConfirmacion={(valor) => handleConfirmacion(cita, valor)}
+                onAsistio={() => setAttendTarget(cita)}
+                onAsistencia={(valor) => handleAsistencia(cita, valor)}
                 onReagendar={() => setReagendarTarget(cita)}
                 onVale={() => setValeTarget(cita)}
               />
@@ -629,7 +724,11 @@ export default function CitasView() {
         cita={reagendarTarget}
         onClose={() => setReagendarTarget(null)}
         onSave={async (patch) => {
-          const cambios = { ...patch, atendida: false, notaAtencion: '', fechaAtencion: null };
+          const cambios = {
+            ...patch,
+            ...patchAsistencia('pendiente'),
+            ...patchConfirmacion('reagendada'),
+          };
           await updateCita(reagendarTarget.id, cambios);
           // Nueva fecha → el cliente necesita un vale nuevo.
           setValeTarget({ ...reagendarTarget, ...cambios });
@@ -642,11 +741,7 @@ export default function CitasView() {
         cita={attendTarget}
         onClose={() => setAttendTarget(null)}
         onConfirm={(nota) =>
-          updateCita(attendTarget.id, {
-            atendida: true,
-            notaAtencion: nota,
-            fechaAtencion: Date.now(),
-          })
+          updateCita(attendTarget.id, patchAsistencia('asistio', nota, Date.now()))
         }
       />
     </div>
