@@ -10,12 +10,25 @@ import Card from '../components/ui/Card.jsx';
 import MiniBars from '../components/charts/MiniBars.jsx';
 import PorDecidir from '../components/agencia/PorDecidir.jsx';
 import HBarChart from '../components/charts/HBarChart.jsx';
+import CostosAgencia from '../components/agencia/CostosAgencia.jsx';
 
 const usd = (n) => `US$${Number(n ?? 0).toFixed(2)}`;
 
-function Kpi({ icon: Icon, label, value, hint }) {
+function Kpi({ icon: Icon, label, value, hint, onClick }) {
+  // Con onClick la tarjeta es un botón (teclado incluido): abre un desglose.
+  const accion = onClick
+    ? {
+        onClick,
+        role: 'button',
+        tabIndex: 0,
+        onKeyDown: (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onClick()),
+      }
+    : {};
   return (
-    <Card className="p-4">
+    <Card
+      className={`p-4 ${onClick ? 'cursor-pointer transition hover:border-sky2/40 hover:bg-white/[0.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky2' : ''}`}
+      {...accion}
+    >
       <p className="flex items-center gap-2 text-xs text-ink-muted">
         <Icon size={14} className="text-sky2" />
         {label}
@@ -115,6 +128,7 @@ export default function PublicidadView() {
   const { openBartersito } = useUI();
   // undefined = cargando · { datos } · { sinConectar } · { error }
   const [estado, setEstado] = useState(undefined);
+  const [costosAbierto, setCostosAbierto] = useState(false);
 
   useEffect(() => {
     let vivo = true;
@@ -186,6 +200,7 @@ export default function PublicidadView() {
       </div>
 
       <PorDecidir modo={storeMode} store={store} />
+      <CostosAgencia open={costosAbierto} onClose={() => setCostosAbierto(false)} />
 
       <div className="grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-4">
         <Kpi
@@ -194,7 +209,13 @@ export default function PublicidadView() {
           value={formatMXN0(d.gastoAnuncios)}
           hint={`Cuenta propia · ${conGasto.length} ${conGasto.length === 1 ? 'anuncio' : 'anuncios'}`}
         />
-        <Kpi icon={Bot} label="Costo de la agencia" value={usd(r.costoAgenciaUsd)} hint="IA de los agentes, en dólares" />
+        <Kpi
+          icon={Bot}
+          label="Costo de la agencia"
+          value={usd(r.costoAgenciaUsd)}
+          hint="IA de los agentes, en dólares · toca para ver el desglose"
+          onClick={() => setCostosAbierto(true)}
+        />
         <Kpi
           icon={Users}
           label="Costo por lead"
