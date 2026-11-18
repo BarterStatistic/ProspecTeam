@@ -33,7 +33,12 @@ import {
   canRegistrarFacturacion,
 } from '../../lib/permissions.js';
 import { AUTO_TRANSITIONS, BOARD_COLUMNS, sellerColor } from '../../lib/constants.js';
-import { fullName, regresoAColumna, mensajeEliminarCliente } from '../../lib/clients.js';
+import {
+  fullName,
+  regresoAColumna,
+  mensajeEliminarCliente,
+  comentariosDeTarjeta,
+} from '../../lib/clients.js';
 import { formatDateTime } from '../../lib/format.js';
 import {
   fotoDeTarjeta,
@@ -151,6 +156,7 @@ export function CardBody({ client, dragging = false }) {
   const caracteristicas = caracteristicasDe(client);
   const indicadores = indicadoresDe(client);
   const atributos = atributosDe(client);
+  const comentarios = comentariosDeTarjeta(client, abierta);
 
   // "Mover a" no debe saltarse la facturación: llevar la tarjeta a "Moto
   // Facturada" abre la captura, y cancelarla la regresa a su columna de
@@ -412,16 +418,29 @@ export function CardBody({ client, dragging = false }) {
         />
       )}
 
-      {abierta && (
-        <>
-      {client.notes && (
-        <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-navy-900/50 px-2 py-1.5">
+      {/* Comentarios: en Procesos siempre visibles, esté o no abierta la tarjeta. */}
+      {comentarios.mostrar && (
+        <div
+          data-comentarios
+          className="mt-2 flex items-start gap-1.5 rounded-lg bg-navy-900/50 px-2 py-1.5"
+        >
           <StickyNote size={11} className="mt-0.5 shrink-0 text-gold/70" />
-          <p className="line-clamp-2 whitespace-pre-line text-[11px] italic leading-snug text-ink-muted">
-            {client.notes}
-          </p>
+          {comentarios.vacio ? (
+            <p className="text-[11px] italic leading-snug text-ink-faint">Sin comentarios</p>
+          ) : (
+            <p
+              className={`whitespace-pre-line text-[11px] italic leading-snug text-ink-muted ${
+                comentarios.completo ? '' : 'line-clamp-3'
+              }`}
+            >
+              {comentarios.texto}
+            </p>
+          )}
         </div>
       )}
+
+      {abierta && (
+        <>
 
       {deAlex && client.resumenAlex && (
         <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-navy-900/50 px-2 py-1.5">

@@ -150,3 +150,16 @@ export function ordenPila(a, b) {
     String(a?.id).localeCompare(String(b?.id))
   );
 }
+
+/**
+ * Comentarios (`notes`) de una tarjeta. En Procesos se ven SIEMPRE, esté abierta o no la tarjeta
+ * (con la flecha); si no hay, queda un renglón "Sin comentarios" para que el lugar no desaparezca.
+ * Fuera de Procesos siguen saliendo solo al abrir la tarjeta y solo si hay texto.
+ * `completo`: con la tarjeta abierta se muestra todo el texto; cerrada, recortado a 3 renglones.
+ */
+export function comentariosDeTarjeta(client, abierta) {
+  const texto = String(client?.notes ?? '').trim();
+  const enProcesos = client?.section === 'procesos';
+  const mostrar = enProcesos || (!!abierta && texto !== '');
+  return { mostrar, texto, vacio: texto === '', completo: !!abierta };
+}
