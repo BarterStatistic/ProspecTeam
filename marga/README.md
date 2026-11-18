@@ -141,6 +141,16 @@ refleja lo que Alex ya registra.
   docs / Cita agendada. Alex solo avanza de columna, nunca retrocede, y **nunca** mueve
   una tarjeta a *Proceso comenzado*: eso lo hace un vendedor después de revisar lo que la
   IA le dijo al cliente. Una tarjeta que ya salió de Prospectos no se toca.
+- **Requisitos de crédito (2026-11-16).** Alex revisa edad (20 a 68; MotoXpress 21 a 55)
+  y vigencia de la INE —la edad la calcula n8n, no el modelo—, municipio, antigüedad y
+  buró, y lo manda como `caracteristicas.requisitos` (`cumple` / `no_cumple`), `motivos`
+  y `alternativa` (persona de confianza, más enganche, contado). Quien no cumple va a
+  **No cumple requisitos**, o a **Envío de docs · No cumple requisitos** si ya mandó la
+  INE; si después cumple (p. ej. con la INE de una persona de confianza) regresa a su
+  columna normal. Alex solo cambia de carril cuando el valor de `requisitos` cambia, así
+  que no regresa una tarjeta que un vendedor movió a mano. En Chatwoot se ven las
+  etiquetas `no_cumple_requisitos` / `cumple_requisitos` y `persona_confianza` /
+  `mas_enganche` / `opcion_contado`, y la prioridad queda en media (no urgente).
 - **Vendedor asignado** (hora de Saltillo; queda como `createdBy`, así que ese vendedor
   la ve y la edita con los permisos de siempre): lunes a viernes Alejandro 9:00–16:00 y
   Emmanuel 16:00–22:00; sábado todo el día Emmanuel; domingo todo el día Alejandro. Fuera

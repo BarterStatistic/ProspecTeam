@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { canSeeClient, canEditClient, canDeleteClient, visibleSections } from './permissions.js';
+import {
+  canSeeClient,
+  canEditClient,
+  canDeleteClient,
+  visibleSections,
+  canConfirmCita,
+  canMarkAsistencia,
+} from './permissions.js';
 
 const cancelado = (extra = {}) => ({ section: 'cancelados', createdBy: '', ...extra });
 
@@ -22,9 +29,8 @@ describe('Clientes cancelados para el vendedor', () => {
     expect(canSeeClient('promotor', cancelado({ createdBy: 'Pro' }), 'Pro')).toBe(false);
   });
 
-  it('las demás secciones no cambian', () => {
-    const prospecto = { section: 'prospectos', createdBy: 'Beto' };
-    expect(canSeeClient('vendedor', prospecto, 'Ana')).toBe(true);
+  it('Ventas la ve todo el equipo', () => {
+    expect(canSeeClient('vendedor', { section: 'ventas', createdBy: 'Beto' }, 'Ana')).toBe(true);
   });
 
   it('el vendedor solo consulta: no edita ni borra sus cancelados', () => {
@@ -71,5 +77,51 @@ describe('Bartersito y Publicidad', () => {
     expect(canViewPublicidad('admin')).toBe(true);
     expect(canViewPublicidad('vendedor')).toBe(false);
     expect(canViewPublicidad('promotor')).toBe(false);
+  });
+});
+
+describe('citas: confirmación y asistencia', () => {
+  const cita = { vendedor: 'Emmanuel Bernal', createdBy: 'Emmanuel Bernal' };
+
+  it('solo admin y promotor marcan la asistencia', () => {
+    expect(canMarkAsistencia('admin')).toBe(true);
+    expect(canMarkAsistencia('promotor')).toBe(true);
+    expect(canMarkAsistencia('vendedor')).toBe(false);
+  });
+
+  it('el vendedor confirma sus citas, no las ajenas', () => {
+    expect(canConfirmCita('vendedor', cita, 'Emmanuel Bernal')).toBe(true);
+    expect(canConfirmCita('vendedor', cita, 'Alejandro Acosta')).toBe(false);
+    expect(canConfirmCita('vendedor', { createdBy: 'Emmanuel Bernal' }, 'Emmanuel Bernal')).toBe(true);
+  });
+
+  it('compara el nombre sin acentos ni mayúsculas', () => {
+    expect(canConfirmCita('vendedor', { vendedor: 'emmánuel bernal' }, 'Emmanuel Bernal')).toBe(true);
+  });
+
+  it('el admin confirma cualquiera; el promotor no confirma', () => {
+    expect(canConfirmCita('admin', cita, 'Braulio Acosta')).toBe(true);
+    expect(canConfirmCita('promotor', cita, 'Cintya Cardona')).toBe(false);
+  });
+
+  it('sin usuario nadie confirma como vendedor', () => {
+    expect(canConfirmCita('vendedor', cita, '')).toBe(false);
+  });
+});
+
+describe('Cada vendedor ve solo sus prospectos y procesos (2026-11-17)', () => {
+  it('Alejandro no ve los prospectos ni los procesos de Emmanuel', () => {
+    for (const section of ['prospectos', 'procesos']) {
+      expect(canSeeClient('vendedor', { section, createdBy: 'Emmanuel Bernal' }, 'Alejandro Acosta')).toBe(false);
+      expect(canSeeClient('vendedor', { section, createdBy: 'Alejandro Acosta' }, 'Alejandro Acosta')).toBe(true);
+    }
+  });
+  it('un proceso asignado como Vendedor Prospect Team también es suyo', () => {
+    expect(canSeeClient('vendedor', { section: 'procesos', createdBy: 'Braulio Acosta', prospectTeamSeller: 'alejandro acosta' }, 'Alejandro Acosta')).toBe(true);
+  });
+  it('sin vendedor no lo ve ningún vendedor; el admin y el promotor sí', () => {
+    expect(canSeeClient('vendedor', { section: 'prospectos', createdBy: '' }, 'Alejandro Acosta')).toBe(false);
+    expect(canSeeClient('admin', { section: 'prospectos', createdBy: 'Emmanuel Bernal' }, 'Braulio Acosta')).toBe(true);
+    expect(canSeeClient('promotor', { section: 'procesos', createdBy: 'Emmanuel Bernal' }, 'Cintya Cardona')).toBe(true);
   });
 });

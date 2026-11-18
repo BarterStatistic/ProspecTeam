@@ -15,6 +15,8 @@ export const COLUMNAS = {
     preguntas: 'Preguntas',
     interesado_proceso: 'Interesado en proceso',
     envio_docs_cita: 'Envío de docs / Cita agendada',
+    envio_docs_no_cumple: 'Envío de docs · No cumple requisitos',
+    no_cumple: 'No cumple requisitos',
     proceso_comenzado: 'Proceso comenzado',
   },
   procesos: {

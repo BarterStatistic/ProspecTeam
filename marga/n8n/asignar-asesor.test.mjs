@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { asignarAsesor } from './asignar-asesor.mjs';
+import { asignarAsesor, momentoDelTurno } from './asignar-asesor.mjs';
 
 // Lunes = 2026-11-02, sábado = 2026-11-07, domingo = 2026-11-08 (hora de Saltillo, UTC-6).
 const ts = (iso) => Date.parse(iso) / 1000;
@@ -55,5 +55,24 @@ describe('asignarAsesor', () => {
   test('devuelve el username de Marga', () => {
     expect(a(LUN, '10:00:00').username).toBe('Alejandro Acosta');
     expect(a(LUN, '16:00:00').username).toBe('Emmanuel Bernal');
+  });
+});
+
+describe('momentoDelTurno (el vendedor se reinicia cuando el cliente vuelve)', () => {
+  const ahora = 1_800_000_000;
+  test('cuenta desde lo que diga la base', () => {
+    expect(momentoDelTurno({ inicioS: ahora - 60, creadaS: ahora - 40 * 86400, ahoraS: ahora })).toBe(ahora - 60);
+  });
+  test('sin respuesta de la base: conversación vieja cuenta desde ahora', () => {
+    expect(momentoDelTurno({ inicioS: null, creadaS: ahora - 40 * 86400, ahoraS: ahora })).toBe(ahora);
+  });
+  test('sin respuesta de la base: conversación de hoy cuenta desde que se creó', () => {
+    expect(momentoDelTurno({ inicioS: undefined, creadaS: ahora - 3600, ahoraS: ahora })).toBe(ahora - 3600);
+  });
+  test('José: escribió el 6-oct (Emmanuel) y volvió el martes 17-nov a las 13:49 (Alejandro)', () => {
+    const creada = ts('2026-10-06T17:17:00-06:00');
+    const regreso = ts('2026-11-17T13:49:00-06:00');
+    expect(asignarAsesor(creada, 2181).asesor).toBe('emmanuel');
+    expect(asignarAsesor(momentoDelTurno({ inicioS: regreso, creadaS: creada, ahoraS: regreso }), 2181).asesor).toBe('alejandro');
   });
 });

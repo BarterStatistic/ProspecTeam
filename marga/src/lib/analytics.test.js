@@ -5,6 +5,8 @@ import {
   rangoPagos,
   cotizacionStats,
   presentSellers,
+  sellerStats,
+  totals,
 } from './analytics.js';
 
 const at = (y, m, d) => new Date(y, m - 1, d).getTime();
@@ -96,5 +98,41 @@ describe('rangoPagos', () => {
 
   it('sin fecha inicial no pone límite inferior', () => {
     expect(rangoPagos(null, null)).toEqual({ from: null, to: null });
+  });
+});
+
+describe('sellerStats: citas de Alex, confirmadas y asistencia', () => {
+  const from = at(2026, 11, 1);
+  const to = at(2026, 11, 30);
+  const citas = [
+    { createdBy: 'Ana', fechaCita: at(2026, 11, 5), origen: 'alex', confirmacion: 'confirmada', asistencia: 'asistio', atendida: true },
+    { createdBy: 'Ana', fechaCita: at(2026, 11, 6), origen: 'alex', confirmacion: 'no_confirmada', asistencia: 'no_asistio' },
+    { createdBy: 'Ana', fechaCita: at(2026, 11, 7) },
+    { createdBy: 'Ana', fechaCita: at(2026, 10, 7), origen: 'alex', confirmacion: 'confirmada' },
+    { createdBy: 'Luis', fechaCita: at(2026, 11, 8), atendida: true },
+  ];
+
+  it('cuenta por vendedor dentro del rango', () => {
+    const rows = sellerStats([], citas, from, to);
+    const ana = rows.find((r) => r.key === 'Ana');
+    expect(ana.citas).toBe(3);
+    expect(ana.citasAlex).toBe(2);
+    expect(ana.citasConfirmadas).toBe(1);
+    expect(ana.citasAsistieron).toBe(1);
+    expect(ana.citasNoAsistieron).toBe(1);
+  });
+
+  it('una cita vieja atendida cuenta como asistió', () => {
+    const luis = sellerStats([], citas, from, to).find((r) => r.key === 'Luis');
+    expect(luis.citasAsistieron).toBe(1);
+    expect(luis.citasAlex).toBe(0);
+  });
+
+  it('totals suma los campos nuevos', () => {
+    const t = totals(sellerStats([], citas, from, to));
+    expect(t.citasAlex).toBe(2);
+    expect(t.citasConfirmadas).toBe(1);
+    expect(t.citasAsistieron).toBe(2);
+    expect(t.citasNoAsistieron).toBe(1);
   });
 });

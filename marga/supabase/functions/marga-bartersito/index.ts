@@ -15,7 +15,7 @@
 //   recibe  { output | texto, grafica?: [{ label, value }] }
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3';
 import { corsHeaders } from '../_shared/authLogic.js';
-import { esAdmin, normalizarRespuesta, SOLO_ADMIN, validarMensaje } from '../_shared/bartersitoLogic.js';
+import { esAdmin, normalizarRespuesta, SOLO_ADMIN, USER_AGENT, validarMensaje } from '../_shared/bartersitoLogic.js';
 
 const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     // El agente puede tardar (consulta la base y Meta): hasta 100 segundos.
     const respuesta = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-marga-secret': secreto },
+      headers: { 'Content-Type': 'application/json', 'x-marga-secret': secreto, 'User-Agent': USER_AGENT },
       body: JSON.stringify({ texto, usuario: quien.data?.username ?? quien.id, origen: 'marga' }),
       signal: AbortSignal.timeout(100_000),
     });

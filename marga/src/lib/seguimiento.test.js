@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   telefonoWhatsApp,
+  sinAtender,
   saludoWhatsApp,
   enlaceWhatsApp,
   parcheContacto,
@@ -191,9 +192,59 @@ describe('colaDelDia', () => {
       { id: 'no-llego', fechaCita: new Date(2026, 10, 11, 10).getTime(), noAsistio: true },
       { id: 'manana', fechaCita: new Date(2026, 10, 14, 10).getTime() },
     ];
-    const cola = colaDelDia([], citas, opciones);
+    const cola = colaDelDia([], citas, { ...opciones, esAdmin: true });
     expect(cola.citasHoy.map((c) => c.id)).toEqual(['hoy']);
     expect(cola.citasSinCerrar.map((c) => c.id)).toEqual(['ayer']);
     expect(pendientesDelDia(cola)).toBe(1);
+  });
+
+  it('una cita con asistencia registrada ya no cuenta como pendiente', () => {
+    const citas = [
+      { id: 'hoy-asistio', fechaCita: new Date(2026, 10, 13, 9).getTime(), asistencia: 'asistio' },
+      { id: 'ayer-no', fechaCita: new Date(2026, 10, 12, 10).getTime(), asistencia: 'no_asistio' },
+      { id: 'ayer', fechaCita: new Date(2026, 10, 12, 11).getTime() },
+    ];
+    const cola = colaDelDia([], citas, { ...opciones, esAdmin: true });
+    expect(cola.citasHoy).toEqual([]);
+    expect(cola.citasSinCerrar.map((c) => c.id)).toEqual(['ayer']);
+  });
+
+  it('el vendedor no acumula citas por cerrar: eso lo cierran admin y promotor', () => {
+    const citas = [{ id: 'ayer', fechaCita: new Date(2026, 10, 12, 10).getTime() }];
+    const cola = colaDelDia([], citas, opciones);
+    expect(cola.citasSinCerrar).toEqual([]);
+    expect(pendientesDelDia(cola)).toBe(0);
+  });
+});
+
+describe('sinAtender (filtro "Sin atender" de Prospectos)', () => {
+  const ahora = Date.UTC(2026, 10, 17, 18);
+  it('sin vendedor asignado cuenta', () => {
+    expect(sinAtender({ section: 'prospectos', createdBy: '' }, ahora)).toBe(true);
+  });
+  it('de Alex sin contacto cuenta; con contacto no', () => {
+    const base = { section: 'prospectos', origen: 'alex', createdBy: 'Alejandro Acosta', createdAt: ahora - 3_600_000 };
+    expect(sinAtender(base, ahora)).toBe(true);
+    expect(sinAtender({ ...base, contacto: { ultimoEn: ahora - 60_000, ultimoTipo: 'whatsapp' } }, ahora)).toBe(false);
+  });
+  it('capturado por un vendedor ya nace atendido; fuera de Prospectos no cuenta', () => {
+    expect(sinAtender({ section: 'prospectos', createdBy: 'Emmanuel Bernal' }, ahora)).toBe(false);
+    expect(sinAtender({ section: 'procesos', createdBy: '' }, ahora)).toBe(false);
+  });
+});
+
+describe('sinAtender (filtro "Sin atender" de Prospectos)', () => {
+  const ahora = Date.UTC(2026, 10, 17, 18);
+  it('sin vendedor asignado cuenta', () => {
+    expect(sinAtender({ section: 'prospectos', createdBy: '' }, ahora)).toBe(true);
+  });
+  it('de Alex sin contacto cuenta; con contacto no', () => {
+    const base = { section: 'prospectos', origen: 'alex', createdBy: 'Alejandro Acosta', createdAt: ahora - 3_600_000 };
+    expect(sinAtender(base, ahora)).toBe(true);
+    expect(sinAtender({ ...base, contacto: { ultimoEn: ahora - 60_000, ultimoTipo: 'whatsapp' } }, ahora)).toBe(false);
+  });
+  it('capturado por un vendedor ya nace atendido; fuera de Prospectos no cuenta', () => {
+    expect(sinAtender({ section: 'prospectos', createdBy: 'Emmanuel Bernal' }, ahora)).toBe(false);
+    expect(sinAtender({ section: 'procesos', createdBy: '' }, ahora)).toBe(false);
   });
 });

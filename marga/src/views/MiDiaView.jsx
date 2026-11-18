@@ -3,13 +3,15 @@ import { AlertTriangle, Flame, RotateCcw, CalendarDays, CalendarClock, Bike, Bot
 import { useAuth } from '../context/AuthContext.jsx';
 import { useData } from '../context/DataContext.jsx';
 import { useUI } from '../context/UIContext.jsx';
-import { isAdmin } from '../lib/permissions.js';
+import { isAdmin, canConfirmCita, canMarkAsistencia } from '../lib/permissions.js';
 import { sellerColor, stageLabel } from '../lib/constants.js';
 import { fullName } from '../lib/clients.js';
 import { formatDateTime, formatDateShort } from '../lib/format.js';
 import { colaDelDia } from '../lib/seguimiento.js';
+import { CONFIRMACION, confirmacionDe, patchAsistencia, patchConfirmacion } from '../lib/citas.js';
 import Card from '../components/ui/Card.jsx';
 import Seguimiento from '../components/board/Seguimiento.jsx';
+import MiDiaAdmin from './MiDiaAdmin.jsx';
 
 // Cuántas filas se muestran por lista antes de "Ver todos".
 const TOPE = 8;
@@ -93,6 +95,10 @@ function FilaCliente({ client, mostrarVendedor, sellerColors }) {
 
 function FilaCita({ cita, porCerrar }) {
   const { updateCita } = useData();
+  const { user, role } = useAuth();
+  const confirmacion = confirmacionDe(cita);
+  const puedeConfirmar = !porCerrar && canConfirmCita(role, cita, user?.username);
+  const puedeCerrar = porCerrar && canMarkAsistencia(role);
   const [error, setError] = useState('');
   const cerrar = (patch) => {
     setError('');
@@ -105,23 +111,44 @@ function FilaCita({ cita, porCerrar }) {
         <span className="text-[11px] text-ink-faint">
           {cita.hasTime ? formatDateTime(cita.fechaCita) : formatDateShort(cita.fechaCita)}
         </span>
+        {confirmacion !== 'pendiente' && (
+          <span className="text-[11px] font-medium text-sky2-light">{CONFIRMACION[confirmacion].label}</span>
+        )}
       </div>
       {cita.motorcycle && (
         <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-muted">
           <Bike size={12} className="text-sky2" /> {cita.motorcycle}
         </p>
       )}
-      {porCerrar && (
+      {puedeConfirmar && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-ink-faint">¿Confirmó el cliente?</span>
+          {['confirmada', 'no_confirmada'].map((v) => (
+            <button
+              key={v}
+              onClick={() => cerrar(patchConfirmacion(v))}
+              className={`rounded-lg px-2 py-1 text-[11px] font-medium transition ${
+                confirmacion === v
+                  ? 'bg-gold/20 text-gold'
+                  : 'bg-white/5 text-ink-muted hover:bg-white/10 hover:text-ink'
+              }`}
+            >
+              {CONFIRMACION[v].label}
+            </button>
+          ))}
+        </div>
+      )}
+      {puedeCerrar && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className="text-[11px] text-ink-faint">¿Llegó el cliente?</span>
           <button
-            onClick={() => cerrar({ atendida: true, notaAtencion: '', fechaAtencion: Date.now() })}
+            onClick={() => cerrar(patchAsistencia('asistio', '', Date.now()))}
             className="inline-flex items-center gap-1 rounded-lg bg-state-success/15 px-2 py-1 text-[11px] font-medium text-state-success transition hover:bg-state-success/25"
           >
             <Check size={12} /> Sí llegó
           </button>
           <button
-            onClick={() => cerrar({ noAsistio: true })}
+            onClick={() => cerrar(patchAsistencia('no_asistio', '', Date.now()))}
             className="inline-flex items-center gap-1 rounded-lg bg-white/5 px-2 py-1 text-[11px] font-medium text-ink-muted transition hover:bg-white/10 hover:text-ink"
           >
             <X size={12} /> No llegó
@@ -140,6 +167,14 @@ function FilaCita({ cita, porCerrar }) {
  * botón para abrir el chat y registrar el contacto en un toque.
  */
 export default function MiDiaView() {
+  const { role } = useAuth();
+  // El admin ve primero el resumen del día; la lista de clientes queda en su pestaña Equipo.
+  if (isAdmin(role)) return <MiDiaAdmin equipo={<EquipoDelDia embebido />} />;
+  return <EquipoDelDia />;
+}
+
+/** Pendientes de clientes y citas de hoy (la vista de siempre de "Mi día"). */
+export function EquipoDelDia({ embebido = false }) {
   const { user, role } = useAuth();
   const { clients, citas, sellerColors } = useData();
   const { goToSection } = useUI();
@@ -155,8 +190,8 @@ export default function MiDiaView() {
   );
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6">
-      <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-2">
+    <div className={embebido ? '' : 'h-full overflow-y-auto p-4 sm:p-6'}>
+      <div className={`mx-auto grid gap-4 lg:grid-cols-2 ${embebido ? '' : 'max-w-5xl'}`}>
         <Seccion
           icon={AlertTriangle}
           tono="text-state-danger"

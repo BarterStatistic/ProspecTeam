@@ -16,6 +16,8 @@ import {
   UserCog,
   Bot,
   AlertTriangle,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useData } from '../context/DataContext.jsx';
@@ -48,6 +50,7 @@ import Input from '../components/ui/Input.jsx';
 import Avatar from '../components/ui/Avatar.jsx';
 import MiniBars from '../components/charts/MiniBars.jsx';
 import PublicidadView from './PublicidadView.jsx';
+import AlexIAView from './AlexIAView.jsx';
 import HBarChart from '../components/charts/HBarChart.jsx';
 import ReglasPagoCard from '../components/admin/ReglasPagoCard.jsx';
 import MesesVentaCard from '../components/admin/MesesVentaCard.jsx';
@@ -180,7 +183,7 @@ export default function AdminPanelView() {
   const [selected, setSelected] = useState([]);
   // '' significa "todos los promotores".
   const [promotorSel, setPromotorSel] = useState('');
-  // Pestaña del panel: ventas y equipo, o publicidad y agencia (solo admin).
+  // Pestaña del panel: ventas y equipo, publicidad y agencia, o Alex IA (estas dos, solo admin).
   const [pestana, setPestana] = useState('ventas');
   const { openBartersito } = useUI();
 
@@ -325,10 +328,10 @@ export default function AdminPanelView() {
   const maxRegistros = Math.max(1, ...rows.map((r) => r.registros));
 
   const pestanas = (
-    <div className="flex items-center gap-4 border-b border-white/[0.08]">
+    <div className="flex items-center gap-4 overflow-x-auto border-b border-white/[0.08]">
       {[
         ['ventas', 'Ventas y equipo'],
-        ...(canViewPublicidad(role) ? [['publicidad', 'Publicidad y agencia']] : []),
+        ...(canViewPublicidad(role) ? [['publicidad', 'Publicidad y agencia'], ['alex', 'Alex IA']] : []),
       ].map(([id, label]) => (
         <button
           key={id}
@@ -348,6 +351,17 @@ export default function AdminPanelView() {
       )}
     </div>
   );
+
+  if (pestana === 'alex' && canViewPublicidad(role)) {
+    return (
+      <div className="h-full overflow-y-auto px-3 py-3 sm:px-6 md:py-5">
+        <div className="mx-auto max-w-6xl space-y-3.5">
+          {pestanas}
+          <AlexIAView />
+        </div>
+      </div>
+    );
+  }
 
   if (pestana === 'publicidad' && canViewPublicidad(role)) {
     return (
@@ -539,7 +553,7 @@ export default function AdminPanelView() {
               icon={CalendarClock}
               label="Citas agendadas"
               value={totals.citas}
-              hint={`${totals.citasAtendidas} atendidas`}
+              hint={`${totals.citasAsistieron} asistieron`}
             />
             <StatCard
               icon={Layers}
@@ -691,7 +705,7 @@ export default function AdminPanelView() {
                         <td className="py-2.5 pr-3 text-right text-ink-muted">{r.cancelados}</td>
                         <td className="py-2.5 pr-3 text-right text-ink-muted">
                           {r.citas}
-                          <span className="text-ink-faint"> / {r.citasAtendidas}</span>
+                          <span className="text-ink-faint"> / {r.citasAsistieron}</span>
                         </td>
                         <td className="py-2.5 pr-3 text-right text-ink-muted">{r.enProceso}</td>
                         <td className="py-2.5 pr-3 text-right text-ink-muted">{autorizacionCounts.get(r.key) ?? 0}</td>
@@ -708,7 +722,7 @@ export default function AdminPanelView() {
                       <td className="py-2 pr-3 text-right">{totals.cancelados}</td>
                       <td className="py-2 pr-3 text-right">
                         {totals.citas}
-                        <span className="text-ink-faint"> / {totals.citasAtendidas}</span>
+                        <span className="text-ink-faint"> / {totals.citasAsistieron}</span>
                       </td>
                       <td className="py-2 pr-3 text-right">{totals.enProceso}</td>
                       <td className="py-2 pr-3 text-right">{totalAutorizaciones}</td>
@@ -747,11 +761,86 @@ export default function AdminPanelView() {
                 ))}
               </ul>
               <p className="mt-2 text-[11px] text-ink-faint">
-                Citas: agendadas / atendidas. La conversión compara las ventas entregadas contra los
+                Citas: agendadas / asistieron. La conversión compara las ventas entregadas contra los
                 prospectos registrados en el mismo periodo. Autorizaciones cuenta llenados completos del
                 Buró Automático.
               </p>
             </>
+          )}
+        </Section>
+
+        {/* ---------------- Citas y asistencia ---------------- */}
+        <Section
+          title="Citas y asistencia"
+          hint="Citas del periodo por fecha de la cita. El vendedor las confirma; tú o la promotora registran si el cliente fue."
+        >
+          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatCard
+              icon={Bot}
+              label="Agendadas por Alex"
+              value={totals.citasAlex}
+              hint={`${totals.citas} citas en total`}
+              tone="gold"
+            />
+            <StatCard
+              icon={CheckCircle2}
+              label="Confirmadas"
+              value={totals.citasConfirmadas}
+              hint="Confirmadas por el vendedor"
+              tone="success"
+            />
+            <StatCard
+              icon={UserCheck}
+              label="Asistieron"
+              value={totals.citasAsistieron}
+              hint="El cliente fue a la cita"
+              tone="success"
+            />
+            <StatCard
+              icon={UserX}
+              label="No asistieron"
+              value={totals.citasNoAsistieron}
+              hint="El cliente no fue"
+              tone="danger"
+            />
+          </div>
+          {rows.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[460px] text-left text-[13px] tabular-nums">
+                <thead className="text-[11.5px] text-ink-faint">
+                  <tr className="border-b border-white/10">
+                    <th className="py-2 pr-3 font-semibold">Vendedor</th>
+                    <th className="py-2 pr-3 text-right font-semibold">Citas</th>
+                    <th className="py-2 pr-3 text-right font-semibold">De Alex</th>
+                    <th className="py-2 pr-3 text-right font-semibold">Confirmadas</th>
+                    <th className="py-2 pr-3 text-right font-semibold">Asistieron</th>
+                    <th className="py-2 text-right font-semibold">No asistieron</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.key} className="border-b border-white/5">
+                      <td className="py-2 pr-3 text-ink">{r.label}</td>
+                      <td className="py-2 pr-3 text-right text-ink-muted">{r.citas}</td>
+                      <td className="py-2 pr-3 text-right text-gold">{r.citasAlex}</td>
+                      <td className="py-2 pr-3 text-right text-ink-muted">{r.citasConfirmadas}</td>
+                      <td className="py-2 pr-3 text-right text-state-success">{r.citasAsistieron}</td>
+                      <td className="py-2 text-right text-state-danger">{r.citasNoAsistieron}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="font-semibold text-ink">
+                    <td className="py-2 pr-3">Total</td>
+                    <td className="py-2 pr-3 text-right">{totals.citas}</td>
+                    <td className="py-2 pr-3 text-right">{totals.citasAlex}</td>
+                    <td className="py-2 pr-3 text-right">{totals.citasConfirmadas}</td>
+                    <td className="py-2 pr-3 text-right">{totals.citasAsistieron}</td>
+                    <td className="py-2 text-right">{totals.citasNoAsistieron}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           )}
         </Section>
 

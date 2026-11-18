@@ -10,6 +10,7 @@
 // toca: alex_upsert_prospecto hace `data || patch` con otras llaves.
 
 import { esDeAlex } from './alex.js';
+import { asistenciaDe } from './citas.js';
 import { normalizePhone } from './clients.js';
 import { ALERTAS_FUERA, esRezagado, ultimoToque } from '../../supabase/functions/_shared/rezagadosLogic.js';
 
@@ -169,15 +170,17 @@ export function colaDelDia(clients, citas, { username, esAdmin = false, now = Da
   const hoy = inicioDelDia(now);
   const manana = hoy + DIA;
   const desde = hoy - CITAS_SIN_CERRAR_DIAS * DIA;
-  const pendientes = (citas ?? []).filter((c) => c.fechaCita && !c.atendida);
+  const pendientes = (citas ?? []).filter((c) => c.fechaCita && asistenciaDe(c) === 'pendiente');
   const citasHoy = pendientes
     .filter((c) => c.fechaCita >= hoy && c.fechaCita < manana)
     .sort((a, b) => a.fechaCita - b.fechaCita);
-  // `noAsistio` lo marca "Mi día" cuando el cliente no llegó: la cita queda
-  // cerrada sin contarse como atendida.
-  const citasSinCerrar = pendientes
-    .filter((c) => !c.noAsistio && c.fechaCita >= desde && c.fechaCita < hoy)
-    .sort((a, b) => b.fechaCita - a.fechaCita);
+  // Cerrar una cita (¿llegó el cliente?) es de admin y promotor: al vendedor no
+  // se le acumulan citas por cerrar que no puede cerrar.
+  const citasSinCerrar = esAdmin
+    ? pendientes
+        .filter((c) => c.fechaCita >= desde && c.fechaCita < hoy)
+        .sort((a, b) => b.fechaCita - a.fechaCita)
+    : [];
 
   return { urgentes, rezagados, calientes, seguimiento, citasHoy, citasSinCerrar };
 }
@@ -187,4 +190,16 @@ export function pendientesDelDia(cola) {
   return (
     cola.urgentes.length + cola.rezagados.length + cola.calientes.length + cola.citasSinCerrar.length
   );
+}
+
+/**
+ * Prospecto que nadie atiende todavía: sin vendedor asignado, o de Alex sin
+ * ningún contacto registrado (ni con el botón ni con la etiqueta de Chatwoot).
+ * Es el filtro "Sin atender" del tablero de Prospectos.
+ */
+export function sinAtender(client, now = Date.now()) {
+  if (client?.section !== 'prospectos') return false;
+  if (!String(client.createdBy ?? '').trim()) return true;
+  const espera = esperaDe(client, now);
+  return !!espera && !espera.contactado;
 }

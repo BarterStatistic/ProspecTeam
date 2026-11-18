@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { regresoAColumna, mensajeEliminarCliente } from './clients.js';
+import { regresoAColumna, mensajeEliminarCliente, comentariosDeTarjeta } from './clients.js';
 
 describe('regresoAColumna', () => {
   it('devuelve la tarjeta al final de su columna de origen', () => {
@@ -73,5 +73,30 @@ describe('tarjetaDeAlexPorTelefono', () => {
     expect(tarjetaDeAlexPorTelefono(lista, '8449990000')).toBeNull();
     expect(tarjetaDeAlexPorTelefono(lista, '8441110000')).toBeNull();
     expect(tarjetaDeAlexPorTelefono(lista, '')).toBeNull();
+  });
+});
+
+describe('comentariosDeTarjeta', () => {
+  it('en Procesos siempre se ven, con la tarjeta cerrada o abierta', () => {
+    const c = { section: 'procesos', notes: 'Falta el comprobante de domicilio' };
+    expect(comentariosDeTarjeta(c, false)).toMatchObject({ mostrar: true, vacio: false, completo: false });
+    expect(comentariosDeTarjeta(c, true)).toMatchObject({ mostrar: true, vacio: false, completo: true });
+  });
+
+  it('en Procesos sin comentarios deja el renglón vacío en lugar de desaparecer', () => {
+    for (const notes of [undefined, null, '', '   ']) {
+      expect(comentariosDeTarjeta({ section: 'procesos', notes }, false)).toMatchObject({ mostrar: true, vacio: true });
+    }
+  });
+
+  it('fuera de Procesos solo salen al abrir la tarjeta y si hay texto', () => {
+    const c = { section: 'prospectos', notes: 'Llamar el lunes' };
+    expect(comentariosDeTarjeta(c, false).mostrar).toBe(false);
+    expect(comentariosDeTarjeta(c, true).mostrar).toBe(true);
+    expect(comentariosDeTarjeta({ section: 'prospectos', notes: '' }, true).mostrar).toBe(false);
+  });
+
+  it('devuelve el texto sin espacios sobrantes', () => {
+    expect(comentariosDeTarjeta({ section: 'procesos', notes: '  hola ' }, false).texto).toBe('hola');
   });
 });
