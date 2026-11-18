@@ -465,6 +465,16 @@ export function createSupabaseStore({ url, key }) {
       }
       return data;
     },
+    /** Desglose del costo de IA de la agencia por rango de fechas: supabase/marga_costos_agencia.sql. */
+    async costosAgencia(desde, hasta) {
+      const { data, error } = await sb.rpc('marga_costos_agencia', { p_desde: desde, p_hasta: hasta });
+      if (error) {
+        const e = new Error(error.message || 'No se pudo leer el desglose de costos.');
+        e.sinInstalar = error.code === 'PGRST202';
+        throw e;
+      }
+      return data;
+    },
     /** Bandeja "Por decidir hoy" de la agencia: supabase/marga_centro_de_mando.sql. */
     async porDecidir() {
       const { data, error } = await sb.rpc('marga_por_decidir');
