@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { regresoAColumna, mensajeEliminarCliente, comentariosDeTarjeta } from './clients.js';
+import { regresoAColumna, mensajeEliminarCliente, comentariosDeTarjeta, parcheReasignacion, datosDeSustitucion } from './clients.js';
 
 describe('regresoAColumna', () => {
   it('devuelve la tarjeta al final de su columna de origen', () => {
@@ -98,5 +98,33 @@ describe('comentariosDeTarjeta', () => {
 
   it('devuelve el texto sin espacios sobrantes', () => {
     expect(comentariosDeTarjeta({ section: 'procesos', notes: '  hola ' }, false).texto).toBe('hola');
+  });
+});
+
+describe('parcheReasignacion', () => {
+  it('cambia el dueño y el Vendedor Prospect Team si nombraba al anterior', () => {
+    const c = { createdBy: 'Alejandro Acosta', prospectTeamSeller: 'alejandro acosta' };
+    expect(parcheReasignacion(c, 'Emmanuel Bernal')).toEqual({
+      createdBy: 'Emmanuel Bernal',
+      prospectTeamSeller: 'Emmanuel Bernal',
+    });
+  });
+  it('no toca un Vendedor Prospect Team que nombra a otra persona', () => {
+    const c = { createdBy: 'Alejandro Acosta', prospectTeamSeller: 'Braulio' };
+    expect(parcheReasignacion(c, 'Emmanuel Bernal')).toEqual({ createdBy: 'Emmanuel Bernal' });
+  });
+});
+
+describe('datosDeSustitucion', () => {
+  it('toma solo los campos llenos y agrega la nota debajo de la anterior', () => {
+    const patch = datosDeSustitucion(
+      { firstName: 'Daniel', lastName: '', phone: '844 1', motorcycles: '  ', notes: 'Lo atendió Manuel', buroAutorizado: false },
+      { notes: 'Llegó por Alex' },
+    );
+    expect(patch).toEqual({ firstName: 'Daniel', phone: '844 1', notes: 'Llegó por Alex\nLo atendió Manuel' });
+  });
+  it('marca el buró autorizado sin desmarcarlo nunca', () => {
+    expect(datosDeSustitucion({ buroAutorizado: true })).toEqual({ buroAutorizado: true });
+    expect(datosDeSustitucion({ buroAutorizado: false })).toEqual({});
   });
 });

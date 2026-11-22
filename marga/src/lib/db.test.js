@@ -630,3 +630,46 @@ describe('createClient: tarjeta de Alex con el mismo teléfono', () => {
     expect(c.phone).toBe('8442223344');
   });
 });
+
+describe('reasignarVendedor y sustituirCliente', () => {
+  it('reasignarVendedor cambia el dueño y avisa al nuevo vendedor', async () => {
+    const c = await db.createClient(
+      { section: 'procesos', stage: 'credito_por_subir', firstName: 'Daniel', lastName: 'X', phone: '8440000001', prospectTeamSeller: 'Alejandro' },
+      { username: 'Alejandro' },
+    );
+    await db.reasignarVendedor(c.id, 'Manuel', ADMIN);
+    const despues = store.getClients().find((x) => x.id === c.id);
+    expect(despues.createdBy).toBe('Manuel');
+    expect(despues.prospectTeamSeller).toBe('Manuel');
+    expect(store.getNotificaciones().some((n) => n.destinatario === 'Manuel')).toBe(true);
+  });
+
+  it('sustituirCliente deja la tarjeta a nombre de quien captura y la pasa a Procesos', async () => {
+    const c = await db.createClient(
+      { section: 'prospectos', stage: 'primer_contacto', firstName: 'Daniel', lastName: 'X', phone: '8440000002', notes: 'Llegó' },
+      { username: 'Alejandro' },
+    );
+    await db.sustituirCliente(
+      c.id,
+      { firstName: 'Daniel', lastName: 'X', phone: '8440000002', motorcycles: 'U5', notes: 'Lo cerró Manuel' },
+      { username: 'Manuel' },
+      { aProcesos: true },
+    );
+    const todos = store.getClients();
+    expect(todos).toHaveLength(1);
+    const d = todos[0];
+    expect(d.createdBy).toBe('Manuel');
+    expect(d.motorcycles).toBe('U5');
+    expect(d.notes).toBe('Llegó\nLo cerró Manuel');
+    expect(d.section).toBe('procesos');
+  });
+
+  it('con vendedor null (promotor) conserva el dueño', async () => {
+    const c = await db.createClient(
+      { section: 'procesos', stage: 'credito_por_subir', firstName: 'Ana', lastName: 'Y', phone: '8440000003' },
+      { username: 'Alejandro' },
+    );
+    await db.sustituirCliente(c.id, { motorcycles: 'U2' }, { username: 'promo' }, { vendedor: null });
+    expect(store.getClients()[0].createdBy).toBe('Alejandro');
+  });
+});
