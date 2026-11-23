@@ -86,7 +86,7 @@ const LECTURA_VIGENTE_MS = 45 * 60 * 1000;
  * Trae el detalle del crédito (todas sus etapas llegan juntas). Si no hay
  * lectura, se la pide a las máquinas y sondea cada 5 s hasta que llegue.
  */
-function useDetalle(folio) {
+function useDetalle(folio, { desaparecido = false } = {}) {
   const { dinamo } = useData();
   const [estado, setEstado] = useState('cargando'); // cargando | listo | pidiendo | sinDetalle | error
   const [detalle, setDetalle] = useState(null);
@@ -115,7 +115,8 @@ function useDetalle(folio) {
           // antes la pantalla se quedaba «Pidiendo…» para siempre.
           if (!d.pendiente) {
             parar();
-            if (!d.datos) setEstado('sinDetalle');
+            if (d.datos) setDetalle(d); // quita el «actualizando…»
+            else setEstado('sinDetalle');
           }
         } catch {
           /* reintenta en el próximo sondeo */
@@ -145,6 +146,15 @@ function useDetalle(folio) {
       try {
         const d = (await dinamo.detalle(folio)) ?? {};
         if (!vivo) return;
+        // Un crédito que ya salió de la bandeja de Dinamo no tiene de dónde
+        // leerse: se muestra lo último guardado sin pedirlo (antes se pedía en
+        // cada apertura, el servidor lo cancelaba y la pantalla se quedaba
+        // «actualizando…» para siempre).
+        if (desaparecido) {
+          setDetalle({ ...d, pendiente: false });
+          setEstado(d.datos ? 'listo' : 'sinDetalle');
+          return;
+        }
         if (d.datos) {
           setDetalle(d);
           setEstado('listo');
@@ -161,7 +171,7 @@ function useDetalle(folio) {
       vivo = false;
       parar();
     };
-  }, [dinamo, folio, pedir, sondear]);
+  }, [dinamo, folio, desaparecido, pedir, sondear]);
 
   return { estado, detalle, error, pedir };
 }
@@ -173,7 +183,7 @@ function DetalleDinamo({ credito, onClose }) {
     const pendiente = abribles.find((e) => !['ok', 'vacio'].includes(estadoEtapa(credito.etapas?.[e])));
     return pendiente ?? 'BNC';
   });
-  const { estado, detalle, error, pedir } = useDetalle(credito.folio);
+  const { estado, detalle, error, pedir } = useDetalle(credito.folio, { desaparecido: credito.desaparecido });
   const datos = detalle?.datos?.[CON_DETALLE[etapa]];
 
   return (
@@ -215,8 +225,9 @@ function DetalleDinamo({ credito, onClose }) {
           )}
           {estado === 'sinDetalle' && (
             <p className="text-ink-muted">
-              Dinamo todavía no tiene detalle para este crédito (buró, visitas, call center o evaluación). Aparecerá en
-              cuanto avance de etapa.
+              {credito.desaparecido
+                ? 'Este crédito ya no aparece en la bandeja de Dinamo y no se alcanzó a leer su detalle.'
+                : 'Dinamo todavía no tiene detalle para este crédito (buró, visitas, call center o evaluación). Aparecerá en cuanto avance de etapa.'}
             </p>
           )}
           {estado === 'error' && <p className="text-state-danger">{error}</p>}
@@ -226,16 +237,19 @@ function DetalleDinamo({ credito, onClose }) {
         {estado === 'listo' && (
           <div className="flex items-center justify-between gap-2 text-[11px] text-ink-faint">
             <span>
-              Leído de Dinamo {hace(detalle.actualizado_en)}
+              {credito.desaparecido ? 'Ya no está en la bandeja de Dinamo · último leído ' : 'Leído de Dinamo '}
+              {hace(detalle.actualizado_en)}
               {detalle.pendiente && ' · actualizando…'}
             </span>
-            <button
-              type="button"
-              onClick={pedir}
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-sky2-light transition hover:bg-white/5"
-            >
-              <RefreshCw size={12} /> Volver a leer
-            </button>
+            {!credito.desaparecido && (
+              <button
+                type="button"
+                onClick={pedir}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-sky2-light transition hover:bg-white/5"
+              >
+                <RefreshCw size={12} /> Volver a leer
+              </button>
+            )}
           </div>
         )}
       </div>
