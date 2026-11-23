@@ -74,12 +74,17 @@ export default function EtapasDinamo({ folio, credito, noDrag }) {
 
 // ─── Detalle ────────────────────────────────────────────────────────────────
 
-/** Una lectura más vieja que esto se vuelve a pedir al abrirla. */
-const LECTURA_VIGENTE_MS = 30 * 60 * 1000;
+/**
+ * Una lectura más vieja que esto se vuelve a pedir al abrirla. Desde el agente
+ * 0.5.0 cada lectura de la bandeja (cada 30 min o al «Forzar») trae también el
+ * detalle de todos los créditos, así que normalmente ya está fresco; el margen
+ * sobre los 30 min cubre lo que tarda esa lectura completa.
+ */
+const LECTURA_VIGENTE_MS = 45 * 60 * 1000;
 
 /**
  * Trae el detalle del crédito (todas sus etapas llegan juntas). Si no hay
- * lectura, se la pide a las máquinas y sondea cada 12 s hasta que llegue.
+ * lectura, se la pide a las máquinas y sondea cada 5 s hasta que llegue.
  */
 function useDetalle(folio) {
   const { dinamo } = useData();
@@ -108,7 +113,7 @@ function useDetalle(folio) {
         } catch {
           /* reintenta en el próximo sondeo */
         }
-      }, 12000);
+      }, 5000);
     },
     [dinamo, folio],
   );
@@ -198,7 +203,7 @@ function DetalleDinamo({ credito, onClose }) {
           {estado === 'cargando' && <p className="animate-pulse text-ink-muted">Cargando…</p>}
           {estado === 'pidiendo' && (
             <p className="animate-pulse text-ink-muted">
-              Pidiendo el detalle a las máquinas de la agencia. Suele tardar uno o dos minutos.
+              Pidiendo el detalle a las máquinas de la agencia. Suele tardar menos de un minuto.
             </p>
           )}
           {estado === 'error' && <p className="text-state-danger">{error}</p>}
