@@ -7,6 +7,8 @@ import { hashPassword } from '../lib/auth.js';
 import {
   createClient as dbCreateClient,
   updateClient,
+  reasignarVendedor,
+  sustituirCliente,
   registrarContacto,
   deleteClient,
   moveClient,
@@ -146,6 +148,8 @@ export function DataProvider({ children }) {
       loading: false,
       createClient: (values) => dbCreateClient(values, user),
       updateClient: (id, patch) => updateClient(id, patch, user),
+      reasignarVendedor: (id, vendedor) => reasignarVendedor(id, vendedor, user),
+      sustituirCliente: (id, values, opts) => sustituirCliente(id, values, user, opts),
       registrarContacto: (id, tipo) => registrarContacto(id, tipo, user),
       deleteClient: (id) => deleteClient(id, user),
       moveClient: (id, toSection, toStage) => moveClient(id, toSection, toStage, user),

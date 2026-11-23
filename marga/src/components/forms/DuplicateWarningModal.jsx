@@ -1,13 +1,28 @@
+import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { fullName } from '../../lib/clients.js';
 import { SECTIONS, stageLabel } from '../../lib/constants.js';
 import Modal from '../ui/Modal.jsx';
 import Button from '../ui/Button.jsx';
+import Checkbox from '../ui/Checkbox.jsx';
 
-export default function DuplicateWarningModal({ match, onCancel, onConfirm, onConvertir }) {
+/**
+ * Aviso de captura repetida. Además de "Agregar de todos modos", ofrece
+ * SUSTITUIR: la tarjeta existente toma los datos nuevos, pasa a ser de quien la
+ * captura y (opcional) se pasa a Procesos. Así, si Manuel captura a un cliente
+ * que era de Alejandro, no quedan dos tarjetas ni el asignado equivocado.
+ */
+export default function DuplicateWarningModal({ match, onCancel, onConfirm, onSustituir, capturaEnProcesos = false }) {
   const client = match?.client;
-  // Tarjeta de Alex con el mismo teléfono: no se puede crear otra, solo convertirla.
+  // Tarjeta de Alex con el mismo teléfono: no se puede crear otra, solo sustituirla.
   const bloquea = !!match?.bloquea;
+  const puedeIrAProcesos = !!client && !['procesos', 'ventas'].includes(client.section);
+  const [aProcesos, setAProcesos] = useState(true);
+
+  useEffect(() => {
+    if (match) setAProcesos(true);
+  }, [match]);
+
   return (
     <Modal
       open={!!match}
@@ -19,15 +34,14 @@ export default function DuplicateWarningModal({ match, onCancel, onConfirm, onCo
           <Button variant="ghost" onClick={onCancel}>
             Revisar
           </Button>
-          {bloquea ? (
-            <Button variant="gold" onClick={onConvertir}>
-              Pasar a Procesos
-            </Button>
-          ) : (
-            <Button variant="gold" onClick={onConfirm}>
+          {!bloquea && (
+            <Button variant="ghost" onClick={onConfirm}>
               Agregar de todos modos
             </Button>
           )}
+          <Button variant="gold" onClick={() => onSustituir?.({ aProcesos: puedeIrAProcesos && aProcesos })}>
+            Sustituir
+          </Button>
         </>
       }
     >
@@ -38,8 +52,8 @@ export default function DuplicateWarningModal({ match, onCancel, onConfirm, onCo
             <p>
               {bloquea ? (
                 <>
-                  <span className="font-semibold">Alex ya subió a este cliente.</span> Conviértelo en proceso
-                  en vez de crear otra tarjeta: así la venta queda ligada a su anuncio.
+                  <span className="font-semibold">Alex ya subió a este cliente.</span> Sustitúyelo en vez de crear
+                  otra tarjeta: así la venta queda ligada a su anuncio.
                 </>
               ) : (
                 <>
@@ -55,7 +69,15 @@ export default function DuplicateWarningModal({ match, onCancel, onConfirm, onCo
               En: {SECTIONS[client.section]?.label}
               {client.stage ? ` · ${stageLabel(client.section, client.stage)}` : ''}
             </p>
+            <p className="mt-1 text-xs text-ink-muted">Vendedor: {client.createdBy || 'Sin asignar'}</p>
           </div>
+          <p className="text-xs text-ink-muted">
+            <span className="font-semibold text-ink">Sustituir</span> actualiza esa tarjeta con los datos que
+            capturaste y la deja a tu nombre, sin crear otra.
+          </p>
+          {puedeIrAProcesos && !capturaEnProcesos && (
+            <Checkbox checked={aProcesos} onChange={setAProcesos} label="Pasarlo a Procesos (Proceso comenzado)" />
+          )}
         </div>
       )}
     </Modal>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../../context/DataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { canAssignPromotor } from '../../lib/permissions.js';
+import { canAssignPromotor, isAdmin, isPromotor } from '../../lib/permissions.js';
 import { emptyClient, findDuplicate, tarjetaDeAlexPorTelefono } from '../../lib/clients.js';
 import { normalizarEsquema } from '../../lib/motos.js';
 import { SALE_TYPES, CREDIT_SCHEMES } from '../../lib/constants.js';
@@ -34,13 +34,29 @@ function pickEditable(values) {
 }
 
 export default function ClientFormModal({ open, initial, onClose }) {
-  const { clients, createClient, updateClient, moveClient, promotorUsernames } = useData();
+  const {
+    clients,
+    createClient,
+    updateClient,
+    reasignarVendedor,
+    sustituirCliente,
+    promotorUsernames,
+    teamUsernames,
+  } = useData();
   const { role } = useAuth();
   const [values, setValues] = useState(emptyClient());
   const [error, setError] = useState('');
   const [dupMatch, setDupMatch] = useState(null);
 
   const isEdit = !!initial?.id;
+
+  // El admin cambia a qué vendedor le pertenece el cliente (`createdBy`).
+  const showVendedor = isEdit && isAdmin(role);
+  const vendedorOptions = useMemo(() => {
+    const current = values.createdBy;
+    const base = [...teamUsernames].sort((a, b) => a.localeCompare(b));
+    return current && !base.includes(current) ? [...base, current] : base;
+  }, [teamUsernames, values.createdBy]);
 
   // "Promotor encargado" only applies to the Procesos board.
   const showPromotor = values.section === 'procesos' && canAssignPromotor(role);
@@ -114,6 +130,9 @@ export default function ClientFormModal({ open, initial, onClose }) {
     try {
       if (isEdit) {
         await updateClient(initial.id, pickEditable(values));
+        if (showVendedor && (values.createdBy ?? '') !== (initial.createdBy ?? '')) {
+          await reasignarVendedor(initial.id, values.createdBy ?? '');
+        }
       } else {
         await createClient(values);
       }
@@ -196,6 +215,16 @@ export default function ClientFormModal({ open, initial, onClose }) {
             placeholder="Opcional"
           />
 
+          {showVendedor && (
+            <Select
+              label="Vendedor (a quién le pertenece)"
+              options={vendedorOptions}
+              value={values.createdBy ?? ''}
+              onChange={setInput('createdBy')}
+              placeholder="Sin asignar"
+            />
+          )}
+
           {values.section === 'procesos' && (
             <Input
               label="Folio de Dinamo"
@@ -246,15 +275,20 @@ export default function ClientFormModal({ open, initial, onClose }) {
       <DuplicateWarningModal
         match={dupMatch}
         onCancel={() => setDupMatch(null)}
-        onConvertir={async () => {
+        capturaEnProcesos={values.section === 'procesos'}
+        onSustituir={async ({ aProcesos }) => {
           const tarjeta = dupMatch?.client;
           try {
-            await moveClient(tarjeta.id, 'prospectos', 'proceso_comenzado');
+            // Pasa a ser de quien la captura; el promotor no es vendedor, conserva el dueño.
+            await sustituirCliente(tarjeta.id, values, {
+              aProcesos: aProcesos || values.section === 'procesos',
+              vendedor: isPromotor(role) ? null : undefined,
+            });
             setDupMatch(null);
             onClose();
           } catch (e) {
             setDupMatch(null);
-            setError(e.message || 'No se pudo pasar a Procesos.');
+            setError(e.message || 'No se pudo sustituir el cliente.');
           }
         }}
         onConfirm={() => {

@@ -163,3 +163,48 @@ export function comentariosDeTarjeta(client, abierta) {
   const mostrar = enProcesos || (!!abierta && texto !== '');
   return { mostrar, texto, vacio: texto === '', completo: !!abierta };
 }
+
+/**
+ * Parche para pasar un cliente a otro vendedor. Además de `createdBy`, si el
+ * "Vendedor Prospect Team" (`prospectTeamSeller`) nombraba al vendedor anterior
+ * se cambia también: si no, el anterior lo seguiría viendo (ver canSeeClient).
+ */
+export function parcheReasignacion(client, nuevoVendedor) {
+  const nuevo = String(nuevoVendedor ?? '').trim();
+  const patch = { createdBy: nuevo };
+  const pts = normalizeName(client?.prospectTeamSeller ?? '');
+  if (pts && pts === normalizeName(client?.createdBy ?? '')) patch.prospectTeamSeller = nuevo;
+  return patch;
+}
+
+// Campos que una captura repetida puede reemplazar en la tarjeta existente.
+const CAMPOS_SUSTITUCION = [
+  'firstName',
+  'lastName',
+  'phone',
+  'saleType',
+  'creditScheme',
+  'motorcycles',
+  'prospectTeamSeller',
+  'folioDinamo',
+];
+
+/**
+ * Datos de una captura repetida que sustituyen a los de la tarjeta existente:
+ * solo los que vienen llenos (un campo vacío no borra lo que ya había). Las
+ * notas nuevas se agregan debajo de las anteriores y el buró autorizado se suma.
+ */
+export function datosDeSustitucion(values, actual = {}) {
+  const patch = {};
+  for (const k of CAMPOS_SUSTITUCION) {
+    const v = String(values?.[k] ?? '').trim();
+    if (v) patch[k] = v;
+  }
+  const notaNueva = String(values?.notes ?? '').trim();
+  if (notaNueva) {
+    const previa = String(actual?.notes ?? '').trim();
+    patch.notes = previa && previa !== notaNueva ? `${previa}\n${notaNueva}` : notaNueva;
+  }
+  if (values?.buroAutorizado) patch.buroAutorizado = true;
+  return patch;
+}

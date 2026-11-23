@@ -16,7 +16,7 @@ import {
   cambiosDeMesVenta,
 } from './comisiones.js';
 import { motoPorNombre } from './motos.js';
-import { tarjetaDeAlexPorTelefono } from './clients.js';
+import { datosDeSustitucion, parcheReasignacion, tarjetaDeAlexPorTelefono } from './clients.js';
 import { isAdmin } from './permissions.js';
 import { esEstadoValido } from './disponibilidad.js';
 import { parcheContacto } from './seguimiento.js';
@@ -217,6 +217,55 @@ export async function updateClient(id, patch, actor = null) {
     mensaje: mensajeEdicion(nombreDe(current), actor?.username ?? 'Alguien'),
     clienteId: id,
   });
+}
+
+/**
+ * Cambia el vendedor al que le pertenece un cliente (`createdBy`, el campo que
+ * decide quién lo ve, su color y a quién se le paga la comisión). Ver
+ * `parcheReasignacion` en clients.js. Si ya está facturado, la comisión pasa al
+ * nuevo vendedor (sin renumerar el mes: eso lo hace "Renumerar" en Comisiones).
+ */
+export async function reasignarVendedor(id, nuevoVendedor, actor = null) {
+  const current = store.getClients().find((c) => c.id === id);
+  if (!current) return;
+  const nuevo = String(nuevoVendedor ?? '').trim();
+  if (nuevo === (current.createdBy ?? '')) return;
+  await store.patchClient(id, { ...parcheReasignacion(current, nuevo), updatedAt: now() });
+  if (current.comisionId && store.getComisiones().some((c) => c.id === current.comisionId)) {
+    await store.patchComision(current.comisionId, { vendedor: nuevo });
+  }
+  await notificar({
+    destinatario: nuevo,
+    actor: actor?.username ?? '',
+    tipo: TIPOS.EDICION,
+    mensaje: `${nombreDe(current)} ahora es tu cliente`,
+    clienteId: id,
+  });
+}
+
+/**
+ * Captura repetida: el cliente ya existe (p. ej. llegó con Alejandro y lo atendió
+ * Manuel). En vez de crear otra tarjeta, la existente se SUSTITUYE: toma los
+ * datos nuevos que no vengan vacíos, pasa a ser del vendedor que la captura y,
+ * con `aProcesos`, se pasa de Prospectos (o Cancelados) a Procesos.
+ * `vendedor`: a quién queda (por omisión, quien captura); `null` conserva el
+ * dueño actual (lo usa el promotor, que no es vendedor).
+ */
+export async function sustituirCliente(id, values, actor = null, { aProcesos = false, vendedor } = {}) {
+  const current = store.getClients().find((c) => c.id === id);
+  if (!current) throw new Error('El cliente ya no existe.');
+  const nuevo = vendedor === undefined ? (actor?.username ?? '') : String(vendedor ?? '').trim();
+  const patch = { ...datosDeSustitucion(values, current), updatedAt: now() };
+  if (nuevo && nuevo !== (current.createdBy ?? '')) {
+    Object.assign(patch, parcheReasignacion({ ...current, ...patch }, nuevo));
+  }
+  await store.patchClient(id, patch);
+  if (patch.createdBy !== undefined && current.comisionId && store.getComisiones().some((c) => c.id === current.comisionId)) {
+    await store.patchComision(current.comisionId, { vendedor: nuevo });
+  }
+  if (aProcesos && current.section !== 'procesos' && current.section !== 'ventas') {
+    await moveClient(id, 'prospectos', 'proceso_comenzado', actor);
+  }
 }
 
 /**
