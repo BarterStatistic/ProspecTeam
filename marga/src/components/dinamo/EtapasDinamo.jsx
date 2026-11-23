@@ -88,7 +88,7 @@ const LECTURA_VIGENTE_MS = 45 * 60 * 1000;
  */
 function useDetalle(folio) {
   const { dinamo } = useData();
-  const [estado, setEstado] = useState('cargando'); // cargando | listo | pidiendo | error
+  const [estado, setEstado] = useState('cargando'); // cargando | listo | pidiendo | sinDetalle | error
   const [detalle, setDetalle] = useState(null);
   const [error, setError] = useState('');
   const sondeo = useRef(null);
@@ -109,7 +109,14 @@ function useDetalle(folio) {
             setDetalle(d);
             setEstado('listo');
           }
-          if (!d.pendiente && d.datos) parar();
+          // Sin pedido pendiente ya no hay nada que esperar. Si tampoco hay
+          // datos, el servidor canceló el pedido porque Dinamo no tiene
+          // enlaces de detalle para este crédito (p. ej. aún en Captura):
+          // antes la pantalla se quedaba «Pidiendo…» para siempre.
+          if (!d.pendiente) {
+            parar();
+            if (!d.datos) setEstado('sinDetalle');
+          }
         } catch {
           /* reintenta en el próximo sondeo */
         }
@@ -204,6 +211,12 @@ function DetalleDinamo({ credito, onClose }) {
           {estado === 'pidiendo' && (
             <p className="animate-pulse text-ink-muted">
               Pidiendo el detalle a las máquinas de la agencia. Suele tardar menos de un minuto.
+            </p>
+          )}
+          {estado === 'sinDetalle' && (
+            <p className="text-ink-muted">
+              Dinamo todavía no tiene detalle para este crédito (buró, visitas, call center o evaluación). Aparecerá en
+              cuanto avance de etapa.
             </p>
           )}
           {estado === 'error' && <p className="text-state-danger">{error}</p>}
